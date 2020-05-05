@@ -1,26 +1,26 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import { Grid } from "./Grid";
+import { CssBaseline } from "@material-ui/core";
+import AddNew from "./AddNew";
+import Sample from "./Sample";
+import Editor from "./Editor";
+import { useSelector } from "react-redux";
+import { State } from "./redux/stateType";
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+export default () => {
+  const samples = useSelector((state: State) => state.sampleList);
+  const editId = useSelector(
+    (state: State) => state.editingSample && state.editingSample.id
   );
-}
-
-export default App;
+  return (
+    <>
+      <CssBaseline />
+      <Grid>
+        {samples
+          .map(id => <Sample key={id} id={id} />)
+          .concat(<AddNew key="AddNew" />)}
+      </Grid>
+      {editId && <Editor id={editId} />}
+    </>
+  );
+};
