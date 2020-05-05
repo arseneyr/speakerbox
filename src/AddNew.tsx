@@ -3,7 +3,7 @@ import {
   createStyles,
   WithStyles,
   withStyles,
-  Button
+  Button,
 } from "@material-ui/core";
 import Add from "@material-ui/icons/Add";
 import { loadFromFile } from "./redux";
@@ -13,19 +13,19 @@ const style = createStyles({
   root: {
     width: "100%",
     height: 184,
-    backgroundColor: "white",
-    display: "flex"
+    //backgroundColor: "white",
+    display: "flex",
   },
   rootLabel: {
     display: "flex",
     height: "100%",
-    width: "100%"
+    width: "100%",
   },
   icon: {
     width: "50%",
     height: "50%",
-    color: "rgba(0,0,0,0.4)"
-  }
+    //color: "rgba(0,0,0,0.4)"
+  },
 });
 
 export default withStyles(style)(({ classes }: WithStyles<typeof style>) => {
