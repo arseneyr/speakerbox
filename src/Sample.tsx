@@ -14,8 +14,9 @@ import {
 import MoreVertIcon from "@material-ui/icons/MoreVert";
 import SampleMenu from "./SampleMenu";
 import { useSelector, useDispatch } from "react-redux";
-import { State } from "./redux/stateType";
-import { decodeAudio } from "./redux";
+import { AppDispatch, RootState } from "./redux";
+import { sampleSelectors, decodeSource } from "./redux/samples";
+import { sourceSelectors } from "./redux/sources";
 
 const styles = createStyles({
   card: {
@@ -58,7 +59,7 @@ interface Props extends WithStyles<typeof styles> {
 }
 
 export default withStyles(styles)(({ id, classes }: Props) => {
-  const dispatch = useDispatch();
+  const dispatch: AppDispatch = useDispatch();
   const divRef = useRef<HTMLDivElement>(null);
   const waveRef = useRef<Wavesurfer | null>(null);
   const holdToPlayTimerRef = useRef<number | null>(null);
@@ -67,36 +68,32 @@ export default withStyles(styles)(({ id, classes }: Props) => {
   const [cornerIconEntered, setCornerIconEntered] = useState(false);
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
-  const { title, buffer, isEditing } = useSelector(
-    (state: State) => {
-      const sample = state.loadingSamples[id] || state.storedSamples[id];
-      const workingSampleData = state.workingSampleData[id];
-      return {
-        title: sample!.title,
-        buffer: workingSampleData
-          ? workingSampleData.audioBuffer || null
-          : null,
-        isEditing: Boolean(state.editingSample),
-        storedSample: state.storedSamples[id],
-      };
-    }
-    /*(a, b) =>
-      a.title === b.title &&
-      a.isEditing === b.isEditing &&
-      Boolean(a.buffer) === Boolean(b.buffer) &&
-      shallowEqual(a.storedSample, b.storedSample)*/
-  );
+  const { sample, source, isEditing } = useSelector((state: RootState) => {
+    const sample = sampleSelectors.selectById(state, id);
+    return {
+      sample,
+      source:
+        sample && sample.sourceId
+          ? sourceSelectors.selectById(state, sample.sourceId)
+          : undefined,
+      isEditing: state.samples.editing === id,
+    };
+  });
+  const audioBuffer = sample && "audioBuffer" in sample && sample.audioBuffer;
+  const sourceBuffer = source?.buffer;
 
   useEffect(() => {
-    dispatch(decodeAudio(id));
-  }, [id, dispatch]);
+    !audioBuffer &&
+      sourceBuffer &&
+      dispatch(decodeSource({ buffer: sourceBuffer, sampleId: id }));
+  }, [id, audioBuffer, sourceBuffer, dispatch]);
 
   useEffect(() => {
     waveRef.current && waveRef.current.stop();
   }, [isEditing]);
 
   useEffect(() => {
-    if (!divRef.current || !buffer) {
+    if (!divRef.current || !audioBuffer) {
       return;
     }
     waveRef.current = Wavesurfer.create({
@@ -107,11 +104,11 @@ export default withStyles(styles)(({ id, classes }: Props) => {
       hideScrollbar: true,
       plugins: [RegionsPlugin.create({})],
     });
-    waveRef.current.loadDecodedBuffer(buffer);
+    waveRef.current.loadDecodedBuffer(audioBuffer);
     return () => {
       waveRef.current && waveRef.current.destroy();
     };
-  }, [buffer]);
+  }, [audioBuffer]);
 
   const onMouseDown = useCallback(() => {
     if (!waveRef.current) {
@@ -208,7 +205,7 @@ export default withStyles(styles)(({ id, classes }: Props) => {
     <Card className={classes.card}>
       <CardActionArea
         disableRipple
-        disabled={!buffer}
+        disabled={!audioBuffer}
         onMouseDown={onMouseDown}
         onMouseUp={onMouseUp}
         onTouchStart={onTouchStart}
@@ -222,7 +219,7 @@ export default withStyles(styles)(({ id, classes }: Props) => {
         className={classes.cardActionArea}
       >
         <CardHeader
-          title={title}
+          title={sample?.title}
           classes={{
             action: classes.headerAction,
             title: classes.headerTitle,
@@ -259,7 +256,7 @@ export default withStyles(styles)(({ id, classes }: Props) => {
         />
         <div ref={divRef} style={{ height: 128 }} />
       </CardActionArea>
-      {!buffer && (
+      {!audioBuffer && (
         <div className={classes.loadingDiv}>
           <CircularProgress />
         </div>

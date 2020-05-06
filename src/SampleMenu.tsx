@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, PropsWithChildren } from "react";
 import { Menu, MenuItem as MuiMenuItem } from "@material-ui/core";
 import { useDispatch } from "react-redux";
-import { editSample, deleteSample } from "./redux";
+import { startEditing, deleteSample } from "./redux/samples";
 
 interface MenuProps {
   id: string;
@@ -58,7 +58,7 @@ export default ({ id, anchorEl, onClose }: MenuProps) => {
       <MenuItem
         refCollection={menuItemRefs}
         onClick={useCallback(() => {
-          dispatch(editSample({ id }));
+          dispatch(startEditing(id));
           onClose();
         }, [id, onClose, dispatch])}
       >
@@ -67,7 +67,7 @@ export default ({ id, anchorEl, onClose }: MenuProps) => {
       <MenuItem
         refCollection={menuItemRefs}
         onClick={useCallback(() => {
-          dispatch(deleteSample({ id }));
+          dispatch(deleteSample(id));
           onClose();
         }, [id, onClose, dispatch])}
       >

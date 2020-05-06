@@ -18,8 +18,13 @@ import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
 import { PositionProperty } from "csstype";
 import { ReactComponent as RotateIcon } from "./rotateIcon.svg";
 import { useSelector, useDispatch } from "react-redux";
-import { State } from "./redux/stateType";
-import { editDone, editCancel } from "./redux";
+import {
+  cancelEditing,
+  finishEditing,
+  sampleSelectors,
+  FullSample,
+} from "./redux/samples";
+import { RootState } from "./redux";
 
 const handleStyle = {
   content: '""',
@@ -92,15 +97,16 @@ export default withStyles(style)(({ id, classes }: Props) => {
   const [showEditor, setShowEditor] = useState(
     window.orientation === undefined || window.orientation !== 0
   );
-  const { title, buffer } = useSelector((state: State) => ({
-    title: state.storedSamples[id]!.title,
-    buffer: state.workingSampleData[id]!.audioBuffer!,
-  }));
+  const sample = useSelector((state: RootState) =>
+    sampleSelectors.selectById(state, id)
+  ) as FullSample;
+  const audioBuffer = sample.audioBuffer!;
+  const title = sample.title;
   const [titleValue, setTitleValue] = useState(title);
   const [divRef, setDivRef] = useState<HTMLDivElement | null>(null);
   const waveRef = useRef<Wavesurfer | null>(null);
   const dispatch = useDispatch();
-  const onCancel = useCallback(() => dispatch(editCancel()), [dispatch]);
+  const onCancel = useCallback(() => dispatch(cancelEditing()), [dispatch]);
   useEffect(() => {
     window.onorientationchange = () =>
       setShowEditor(
@@ -116,10 +122,10 @@ export default withStyles(style)(({ id, classes }: Props) => {
         cursorWidth: 0,
         plugins: [RegionsPlugin.create({})],
       });
-      waveRef.current.loadDecodedBuffer(buffer);
+      waveRef.current.loadDecodedBuffer(audioBuffer);
       const region = waveRef.current.addRegion({
         id: 0,
-        end: buffer.duration,
+        end: audioBuffer.duration,
         drag: false,
       });
       region.on("click", () => {
@@ -148,7 +154,7 @@ export default withStyles(style)(({ id, classes }: Props) => {
         }
       };
     }
-  }, [divRef, buffer]);
+  }, [divRef, audioBuffer]);
   const onTitleChange = useCallback(
     (event) => setTitleValue(event.target.value),
     []
@@ -157,7 +163,7 @@ export default withStyles(style)(({ id, classes }: Props) => {
     () =>
       waveRef.current &&
       dispatch(
-        editDone({
+        finishEditing({
           newTitle: titleValue,
           newStart: waveRef.current.regions.list[0].start,
           newEnd: waveRef.current.regions.list[0].end,

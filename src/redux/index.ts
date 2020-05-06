@@ -1,86 +1,51 @@
 import {
   configureStore,
-  applyMiddleware,
-  createStore,
   getDefaultMiddleware,
+  combineReducers,
 } from "@reduxjs/toolkit";
-import {
-  editCancel,
-  editDone,
-  editSample,
-  deleteSample,
-  SampleActionType,
-  reducer as sampleReducer,
-} from "./samples";
-import {
-  loadFromFile,
-  LoadFileActionTypes,
-  reducer as loadFileReducer,
-} from "./loadFile";
-import {
-  decodeAudio,
-  DecodeAudioActionTypes,
-  reducer as decodeAudioReducer,
-} from "./decodeAudio";
-import { reduceReducers } from "./utils";
-import { State } from "./stateType";
-import thunk from "redux-thunk";
-import {
-  persistReducer,
-  persistStore,
-  FLUSH,
-  REHYDRATE,
-  PAUSE,
-  PERSIST,
-  PURGE,
-  REGISTER,
-} from "redux-persist";
+import sources from "./sources";
+import samples, { samplePersistTransform } from "./samples";
+import { persistReducer, persistStore, createTransform } from "redux-persist";
 import localforage from "localforage";
 
 localforage.config({
   driver: localforage.INDEXEDDB,
 });
 
-const initialState: State = {
-  sampleList: [],
-  loadingSamples: {},
-  savedBuffers: {},
-  storedSamples: {},
-  workingSampleData: {},
-};
+const transform = createTransform(samplePersistTransform, (s) => s, {
+  whitelist: ["samples"],
+});
 
-const reducer = persistReducer(
+const reducer = combineReducers({
+  sources,
+  samples,
+});
+
+const persistedReducer = persistReducer(
   {
     key: "root",
     version: 1,
     storage: localforage,
-    whitelist: ["sampleList", "storedSamples", "savedBuffers"],
+    whitelist: ["samples", "sources"],
     serialize: false,
     deserialize: false,
+    transforms: [transform],
   } as any,
-  reduceReducers<
-    State,
-    SampleActionType & LoadFileActionTypes & DecodeAudioActionTypes
-  >(initialState, sampleReducer, loadFileReducer, decodeAudioReducer)
+  reducer
 );
 
-//const store = createStore(reducer, applyMiddleware(thunk));
 const store = configureStore({
-  reducer: reducer,
+  reducer: persistedReducer,
   middleware: getDefaultMiddleware({
-    serializableCheck: {
+    /*serializableCheck: {
       ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-    },
+    },*/
+    serializableCheck: false,
   }),
 });
 persistStore(store as any);
 
-export {
-  editCancel,
-  editDone,
-  editSample,
-  deleteSample,
-  loadFromFile,
-  decodeAudio,
-  store,
-};
+export type AppDispatch = typeof store.dispatch;
+export type RootState = ReturnType<typeof reducer>;
+
+export { store };

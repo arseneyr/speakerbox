@@ -5,15 +5,14 @@ import AddNew from "./AddNew";
 import Sample from "./Sample";
 import Editor from "./Editor";
 import { useSelector } from "react-redux";
-import { State } from "./redux/stateType";
+import { sampleSelectors } from "./redux/samples";
+import { RootState } from "./redux";
 
 const theme = createMuiTheme({ palette: { type: "dark" } });
 
 export default () => {
-  const samples = useSelector((state: State) => state.sampleList);
-  const editId = useSelector(
-    (state: State) => state.editingSample && state.editingSample.id
-  );
+  const samples = useSelector(sampleSelectors.selectIds) as string[];
+  const editId = useSelector((state: RootState) => state.samples.editing);
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
