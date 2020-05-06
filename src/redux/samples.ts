@@ -6,6 +6,7 @@ import {
   PayloadAction,
   createNextState,
 } from "@reduxjs/toolkit";
+import localForage from "localforage";
 
 interface PartialSample {
   id: string;
@@ -27,8 +28,9 @@ const samplesEntityLocalSelectors = samplesEntityAdapter.getSelectors();
 
 const decodeSourceThunk = createAsyncThunk(
   "samples/decodeSource",
-  async ({ buffer, sampleId }: { buffer: ArrayBuffer; sampleId: string }) => {
-    const audioBuffer = await decodeAudioData(buffer.slice(0));
+  async ({ sourceId, sampleId }: { sourceId: string; sampleId: string }) => {
+    const buffer: ArrayBuffer = await localForage.getItem(sourceId);
+    const audioBuffer = await decodeAudioData(buffer);
     return { id: sampleId, audioBuffer };
   }
 );

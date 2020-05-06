@@ -27,6 +27,7 @@
     "typescript": "~3.7.2",
     "uuid": "^8.0.0",
     "wavesurfer.js": "^3.3.3",
+    "workerize-loader": "^1.1.0",
     "xxhashjs": "^0.2.2"
   },
   "scripts": {

@@ -3,7 +3,9 @@ import {
   createEntityAdapter,
   createAsyncThunk,
 } from "@reduxjs/toolkit";
-import { h64 } from "xxhashjs";
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import createLoadSourceWorker from "workerize-loader!./load_source.worker";
+import * as LoadSourceWorker from "./load_source.worker";
 
 declare module "immer" {
   type Draft<T> = T;
@@ -11,7 +13,7 @@ declare module "immer" {
 
 interface AudioSource {
   id: string;
-  buffer: ArrayBuffer; //Omit<ArrayBuffer, typeof Symbol.toStringTag>;
+  title: string;
 }
 
 const audioSourceEntity = createEntityAdapter<AudioSource>();
@@ -21,22 +23,13 @@ const audioSourceSelectors = audioSourceEntity.getSelectors(
 
 const loadFileThunk = createAsyncThunk(
   "sources/loadFile",
-  (file: Blob, { getState }) =>
-    new Promise<AudioSource>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const id = h64(reader.result as ArrayBuffer, 0).toString();
-        resolve(
-          audioSourceSelectors.selectById(getState(), id) || {
-            id,
-            buffer: reader.result as ArrayBuffer,
-          }
-        );
-      };
-
-      reader.onerror = () => reject(reader.error?.message);
-      reader.readAsArrayBuffer(file);
-    })
+  async (file: File, { getState }) => {
+    const title = file.name;
+    const id = await createLoadSourceWorker<typeof LoadSourceWorker>().loadFile(
+      file
+    );
+    return { id, title };
+  }
 );
 
 const sourcesSlice = createSlice({

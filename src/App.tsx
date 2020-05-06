@@ -2,7 +2,7 @@ import React from "react";
 import { Grid } from "./Grid";
 import { CssBaseline, ThemeProvider, createMuiTheme } from "@material-ui/core";
 import AddNew from "./AddNew";
-import Sample from "./Sample";
+import Sample from "./containers/Sample";
 import Editor from "./Editor";
 import { useSelector } from "react-redux";
 import { sampleSelectors } from "./redux/samples";
