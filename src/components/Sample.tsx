@@ -4,14 +4,12 @@ import {
   CardActionArea,
   CardHeader,
   IconButton,
-  createStyles,
-  withStyles,
-  WithStyles,
   CircularProgress,
+  makeStyles,
 } from "@material-ui/core";
 import Edit from "@material-ui/icons/Edit";
 
-const styles = createStyles({
+const useStyles = makeStyles({
   card: {
     position: "relative",
   },
@@ -47,7 +45,7 @@ const styles = createStyles({
   },
 });
 
-interface Props extends WithStyles<typeof styles> {
+interface Props {
   onDivRef(ref: HTMLDivElement): void;
   onMouseDown: React.MouseEventHandler;
   onMouseUp: React.MouseEventHandler;
@@ -59,19 +57,31 @@ interface Props extends WithStyles<typeof styles> {
   onEditClick(): void;
 }
 
-export default withStyles(styles)(({ classes, ...props }: Props) => {
+export default (props: Props) => {
+  const {
+    loading,
+    title,
+    onDivRef,
+    onMouseDown,
+    onMouseUp,
+    onTouchStart,
+    onTouchEnd,
+    onTouchMove,
+    onEditClick,
+  } = props;
+  const classes = useStyles();
   const [cornerIconEntered, setCornerIconEntered] = useState(false);
 
   return (
     <Card className={classes.card}>
       <CardActionArea
         disableRipple
-        disabled={props.loading}
-        onMouseDown={props.onMouseDown}
-        onMouseUp={props.onMouseUp}
-        onTouchStart={props.onTouchStart}
-        onTouchMove={props.onTouchMove}
-        onTouchEnd={props.onTouchEnd}
+        disabled={loading}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
         classes={{
           focusHighlight: cornerIconEntered
             ? classes.cardDisableHover
@@ -80,7 +90,7 @@ export default withStyles(styles)(({ classes, ...props }: Props) => {
         className={classes.cardActionArea}
       >
         <CardHeader
-          title={props.title}
+          title={title}
           classes={{
             action: classes.headerAction,
             title: classes.headerTitle,
@@ -103,20 +113,20 @@ export default withStyles(styles)(({ classes, ...props }: Props) => {
               onMouseUp={(evt: React.MouseEvent<HTMLDivElement>) =>
                 evt.stopPropagation()
               }
-              onClick={props.onEditClick}
+              onClick={onEditClick}
             >
               <Edit />
             </IconButton>
           }
           style={{ padding: "4px 0px" }}
         />
-        <div ref={props.onDivRef} style={{ height: 128 }} />
+        <div ref={onDivRef} style={{ height: 128 }} />
       </CardActionArea>
-      {props.loading && (
+      {loading && (
         <div className={classes.loadingDiv}>
           <CircularProgress />
         </div>
       )}
     </Card>
   );
-});
+};

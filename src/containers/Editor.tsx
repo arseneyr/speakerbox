@@ -47,10 +47,6 @@ export default ({ id }: Props) => {
         hasPlayed = false;
       (window as any).region = region;
       region.on("click", () => {
-        if (region.start < 0) {
-          region.update({ start: 0 });
-          currentStart = 0;
-        }
         hasPlayed = true;
         region.play();
       });
@@ -67,7 +63,8 @@ export default ({ id }: Props) => {
           region.element.dispatchEvent(new Event("click"));
         }
         if (region.start !== currentStart) {
-          currentStart = region.start;
+          currentStart = Math.max(region.start, 0);
+          region.update({ start: currentStart });
           hasPlayed && region.play();
         } else if (region.end !== currentEnd) {
           currentEnd = region.end;

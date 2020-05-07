@@ -1,4 +1,4 @@
-import { sliceAudioBuffer, decodeAudioData } from "../audioUtils";
+import { sliceAudioBuffer, decodeAudioData } from "./audio_utils";
 import {
   createSlice,
   createEntityAdapter,

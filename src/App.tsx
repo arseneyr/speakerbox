@@ -1,7 +1,7 @@
 import React from "react";
-import { Grid } from "./Grid";
+import { Grid } from "./components/Grid";
 import { CssBaseline, ThemeProvider, createMuiTheme } from "@material-ui/core";
-import AddNew from "./AddNew";
+import AddNew from "./components/AddNew";
 import Sample from "./containers/Sample";
 import Editor from "./containers/Editor";
 import { useSelector } from "react-redux";

@@ -1,19 +1,14 @@
 import React, { useCallback, ChangeEvent } from "react";
-import {
-  createStyles,
-  WithStyles,
-  withStyles,
-  Button,
-} from "@material-ui/core";
+import { Button, makeStyles } from "@material-ui/core";
 import Add from "@material-ui/icons/Add";
-import { AppDispatch } from "./redux";
+import { AppDispatch } from "../redux";
 import { useDispatch } from "react-redux";
-import { createSample, setSourceId } from "./redux/samples";
+import { createSample, setSourceId } from "../redux/samples";
 import { v4 } from "uuid";
-import { loadFile } from "./redux/sources";
+import { loadFile } from "../redux/sources";
 import { unwrapResult } from "@reduxjs/toolkit";
 
-const style = createStyles({
+const useStyles = makeStyles({
   root: {
     width: "100%",
     height: 184,
@@ -32,7 +27,8 @@ const style = createStyles({
   },
 });
 
-export default withStyles(style)(({ classes }: WithStyles<typeof style>) => {
+export default () => {
+  const classes = useStyles();
   const dispatch: AppDispatch = useDispatch();
   const onChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -67,4 +63,4 @@ export default withStyles(style)(({ classes }: WithStyles<typeof style>) => {
       <Add className={classes.icon} />
     </Button>
   );
-});
+};
