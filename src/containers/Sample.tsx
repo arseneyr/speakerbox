@@ -1,10 +1,9 @@
-import React, { useRef, useEffect, useCallback, useState } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import Wavesurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
 import { useSelector, useDispatch } from "react-redux";
 import { AppDispatch, RootState } from "../redux";
 import { sampleSelectors, decodeSource, startEditing } from "../redux/samples";
-import { sourceSelectors } from "../redux/sources";
 import Sample from "../components/Sample";
 
 interface Props {

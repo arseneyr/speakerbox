@@ -3,7 +3,7 @@ import { Grid } from "./Grid";
 import { CssBaseline, ThemeProvider, createMuiTheme } from "@material-ui/core";
 import AddNew from "./AddNew";
 import Sample from "./containers/Sample";
-import Editor from "./Editor";
+import Editor from "./containers/Editor";
 import { useSelector } from "react-redux";
 import { sampleSelectors } from "./redux/samples";
 import { RootState } from "./redux";
