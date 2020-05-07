@@ -2,6 +2,15 @@ import { AudioContext } from "standardized-audio-context";
 
 const audioContext = new AudioContext();
 
+export function getAudioContest() {
+  return audioContext;
+}
+
+export function changeOutputDevice(sinkId: string) {
+  const audioElement = new Audio();
+  const dest = audioContext.createMediaStreamDestination();
+}
+
 export async function decodeAudioData(buffer: ArrayBuffer) {
   return audioContext.decodeAudioData(buffer);
 }

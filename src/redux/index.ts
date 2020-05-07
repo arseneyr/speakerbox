@@ -5,6 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import sources from "./sources";
 import samples, { samplePersistTransform } from "./samples";
+import settings from "./settings";
 import { persistReducer, persistStore, createTransform } from "redux-persist";
 import localforage from "localforage";
 
@@ -19,6 +20,7 @@ const transform = createTransform(samplePersistTransform, (s) => s, {
 const reducer = combineReducers({
   sources,
   samples,
+  settings,
 });
 
 const persistedReducer = persistReducer(
@@ -26,7 +28,7 @@ const persistedReducer = persistReducer(
     key: "root",
     version: 1,
     storage: localforage,
-    whitelist: ["samples", "sources"],
+    whitelist: ["samples", "sources", "settings"],
     serialize: false,
     deserialize: false,
     transforms: [transform],

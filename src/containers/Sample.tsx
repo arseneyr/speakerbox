@@ -18,11 +18,12 @@ export default ({ id }: Props) => {
   const holdToPlay = useRef<boolean>(false);
   const touchTimerRef = useRef<number | null>(null);
 
-  const { sample, isEditing } = useSelector((state: RootState) => {
+  const { sample, isEditing, sinkId } = useSelector((state: RootState) => {
     const sample = sampleSelectors.selectById(state, id);
     return {
       sample,
       isEditing: state.samples.editing === id,
+      sinkId: state.settings.sinkId,
     };
   });
   const audioBuffer = sample && "audioBuffer" in sample && sample.audioBuffer;
@@ -50,11 +51,19 @@ export default ({ id }: Props) => {
       hideScrollbar: true,
       plugins: [RegionsPlugin.create({})],
     });
+    waveRef.current.setSinkId(sinkId);
+    (window as any).surfers = ((window as any).surfers || []).concat(
+      waveRef.current
+    );
     waveRef.current.loadDecodedBuffer(audioBuffer);
     return () => {
       waveRef.current && waveRef.current.destroy();
     };
   }, [audioBuffer]);
+
+  useEffect(() => {
+    waveRef.current && waveRef.current.setSinkId(sinkId);
+  }, [sinkId]);
 
   const onMouseDown = useCallback(() => {
     if (!waveRef.current) {
