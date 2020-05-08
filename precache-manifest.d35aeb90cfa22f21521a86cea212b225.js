@@ -4,11 +4,11 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/speakerbox/af60f403372b10a63ad9.worker.js"
   },
   {
-    "revision": "42f4e261f3a1a102bb24446ef566cd9d",
+    "revision": "d9896088bd8328a6f44db6e4c35ce7ac",
     "url": "/speakerbox/index.html"
   },
   {
-    "revision": "e729fc2c6e5af3f46af7",
+    "revision": "472eb2094d19e13cc1f8",
     "url": "/speakerbox/static/css/main.a33e0403.chunk.css"
   },
   {
@@ -20,8 +20,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/speakerbox/static/js/2.9b5f24e2.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "e729fc2c6e5af3f46af7",
-    "url": "/speakerbox/static/js/main.57b58f5c.chunk.js"
+    "revision": "472eb2094d19e13cc1f8",
+    "url": "/speakerbox/static/js/main.e131bb1c.chunk.js"
   },
   {
     "revision": "4fc5985553e0c3d830e0",

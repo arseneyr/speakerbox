@@ -1,8 +1,8 @@
 {
   "files": {
     "main.css": "/speakerbox/static/css/main.a33e0403.chunk.css",
-    "main.js": "/speakerbox/static/js/main.57b58f5c.chunk.js",
-    "main.js.map": "/speakerbox/static/js/main.57b58f5c.chunk.js.map",
+    "main.js": "/speakerbox/static/js/main.e131bb1c.chunk.js",
+    "main.js.map": "/speakerbox/static/js/main.e131bb1c.chunk.js.map",
     "runtime-main.js": "/speakerbox/static/js/runtime-main.ac053861.js",
     "runtime-main.js.map": "/speakerbox/static/js/runtime-main.ac053861.js.map",
     "static/js/2.9b5f24e2.chunk.js": "/speakerbox/static/js/2.9b5f24e2.chunk.js",
@@ -10,7 +10,7 @@
     "af60f403372b10a63ad9.worker.js": "/speakerbox/af60f403372b10a63ad9.worker.js",
     "af60f403372b10a63ad9.worker.js.map": "/speakerbox/af60f403372b10a63ad9.worker.js.map",
     "index.html": "/speakerbox/index.html",
-    "precache-manifest.c28ec3732bd5c11949c3451b6cab6934.js": "/speakerbox/precache-manifest.c28ec3732bd5c11949c3451b6cab6934.js",
+    "precache-manifest.d35aeb90cfa22f21521a86cea212b225.js": "/speakerbox/precache-manifest.d35aeb90cfa22f21521a86cea212b225.js",
     "service-worker.js": "/speakerbox/service-worker.js",
     "static/css/main.a33e0403.chunk.css.map": "/speakerbox/static/css/main.a33e0403.chunk.css.map",
     "static/js/2.9b5f24e2.chunk.js.LICENSE.txt": "/speakerbox/static/js/2.9b5f24e2.chunk.js.LICENSE.txt",
@@ -20,6 +20,6 @@
     "static/js/runtime-main.ac053861.js",
     "static/js/2.9b5f24e2.chunk.js",
     "static/css/main.a33e0403.chunk.css",
-    "static/js/main.57b58f5c.chunk.js"
+    "static/js/main.e131bb1c.chunk.js"
   ]
 }
