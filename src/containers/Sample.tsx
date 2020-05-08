@@ -51,11 +51,7 @@ export default ({ id }: Props) => {
       hideScrollbar: true,
       plugins: [RegionsPlugin.create({})],
     });
-    console.log(sinkId);
     waveRef.current.setSinkId(sinkId);
-    (window as any).surfers = ((window as any).surfers || []).concat(
-      waveRef.current
-    );
     waveRef.current.loadDecodedBuffer(audioBuffer);
     return () => {
       waveRef.current && waveRef.current.destroy();
