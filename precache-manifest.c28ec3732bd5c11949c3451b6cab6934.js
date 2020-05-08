@@ -4,20 +4,24 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/speakerbox/af60f403372b10a63ad9.worker.js"
   },
   {
-    "revision": "e958ae9ae7fad6fc91ff66306df76bfd",
+    "revision": "42f4e261f3a1a102bb24446ef566cd9d",
     "url": "/speakerbox/index.html"
   },
   {
-    "revision": "a71de2c9b29819d8a6ee",
-    "url": "/speakerbox/static/js/2.4c6fd8d6.chunk.js"
+    "revision": "e729fc2c6e5af3f46af7",
+    "url": "/speakerbox/static/css/main.a33e0403.chunk.css"
+  },
+  {
+    "revision": "55ad46f54c742a78a832",
+    "url": "/speakerbox/static/js/2.9b5f24e2.chunk.js"
   },
   {
     "revision": "2d28bd2000d160d628a8e86877732adf",
-    "url": "/speakerbox/static/js/2.4c6fd8d6.chunk.js.LICENSE.txt"
+    "url": "/speakerbox/static/js/2.9b5f24e2.chunk.js.LICENSE.txt"
   },
   {
-    "revision": "e4676687edb1087ce5d0",
-    "url": "/speakerbox/static/js/main.7ad19154.chunk.js"
+    "revision": "e729fc2c6e5af3f46af7",
+    "url": "/speakerbox/static/js/main.57b58f5c.chunk.js"
   },
   {
     "revision": "4fc5985553e0c3d830e0",
