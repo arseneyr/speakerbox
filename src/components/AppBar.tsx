@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   AppBar,
   Toolbar,
@@ -6,9 +6,9 @@ import {
   TextField,
   MenuItem,
 } from "@material-ui/core";
-import { AppDispatch } from "../redux";
-import { useDispatch } from "react-redux";
-import { setSinkId } from "../redux/settings";
+import { AppDispatch, RootState } from "../redux";
+import { useDispatch, useSelector } from "react-redux";
+import { setSinkId, setPreferredSink } from "../redux/settings";
 
 const useStyles = makeStyles({
   outputSelector: {
@@ -16,28 +16,64 @@ const useStyles = makeStyles({
   },
 });
 
+const getDevices = async () =>
+  Object.fromEntries(
+    (await navigator.mediaDevices.enumerateDevices())
+      .filter((d) => d.kind === "audiooutput")
+      .map((d) => [d.deviceId, d.label])
+  );
 export default () => {
   const classes = useStyles();
-  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
-  const [value, setValue] = useState("");
+  const dispatch: AppDispatch = useDispatch();
+  const [enumeratedDevices, setEnumeratedDevices] = useState<{
+    [deviceId: string]: string;
+  }>({});
+  const { preferredSink, sink } = useSelector((state: RootState) => ({
+    preferredSink: state.settings.preferredSink,
+    sink: state.settings.sink,
+  }));
+  const devices = Object.values(enumeratedDevices).length
+    ? Object.assign({}, enumeratedDevices)
+    : { [sink.sinkId]: sink.sinkName };
+  useEffect(() => {
+    const f = async () => setEnumeratedDevices(await getDevices());
+    navigator.mediaDevices.addEventListener("devicechange", f);
+    f();
+  }, []);
+  useEffect(() => {
+    if (
+      preferredSink &&
+      sink.sinkId !== preferredSink.sinkId &&
+      enumeratedDevices[preferredSink.sinkId] !== undefined
+    ) {
+      dispatch(setSinkId(preferredSink));
+    } else if (enumeratedDevices[sink.sinkId] === undefined) {
+      dispatch(
+        setSinkId({
+          sinkId: "default",
+          sinkName: enumeratedDevices["default"] || "Default Output",
+        })
+      );
+    }
+  }, [dispatch, enumeratedDevices, preferredSink, sink]);
   const onOpen = useCallback(async () => {
-    if (devices.length) {
+    if (Object.values(enumeratedDevices).some(Boolean)) {
       return;
     }
-    let newDevices = await navigator.mediaDevices.enumerateDevices();
-    if (newDevices && newDevices[0] && newDevices[0].label === "") {
-      await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      newDevices = await navigator.mediaDevices.enumerateDevices();
-    }
-    setDevices(newDevices);
-  }, [devices]);
-  const dispatch: AppDispatch = useDispatch();
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      setEnumeratedDevices(await getDevices());
+    } catch (e) {}
+  }, [enumeratedDevices]);
   const onChange = useCallback(
-    (event) => {
-      setValue(event.target.value);
-      dispatch(setSinkId(event.target.value));
-    },
-    [dispatch]
+    (event) =>
+      dispatch(
+        setPreferredSink({
+          sinkId: event.target.value,
+          sinkName: enumeratedDevices[event.target.value],
+        })
+      ),
+    [dispatch, enumeratedDevices]
   );
   return (
     <AppBar position="sticky">
@@ -45,22 +81,19 @@ export default () => {
         <TextField
           select
           variant="outlined"
-          label="Choose an ouput device"
           className={classes.outputSelector}
-          defaultValue=""
+          helperText="Output device"
           SelectProps={{
             onOpen,
           }}
           onChange={onChange}
-          value={value}
+          value={sink.sinkId}
         >
-          {devices
-            .filter((d) => d.kind === "audiooutput")
-            .map((d, i) => (
-              <MenuItem key={d.deviceId} value={d.deviceId}>
-                {d.label || `Speaker ${i}`}{" "}
-              </MenuItem>
-            ))}
+          {Object.entries(devices).map(([deviceId, label], i) => (
+            <MenuItem key={deviceId} value={deviceId}>
+              {label || `Speaker ${i}`}
+            </MenuItem>
+          ))}
         </TextField>
       </Toolbar>
     </AppBar>

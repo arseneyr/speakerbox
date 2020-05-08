@@ -45,7 +45,11 @@ const store = configureStore({
     serializableCheck: false,
   }),
 });
-persistStore(store as any);
+const persistor = persistStore(store as any);
+
+export function getPersistor() {
+  return persistor;
+}
 
 export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof reducer>;

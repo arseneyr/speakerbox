@@ -23,7 +23,7 @@ export default ({ id }: Props) => {
     return {
       sample,
       isEditing: state.samples.editing === id,
-      sinkId: state.settings.sinkId,
+      sinkId: state.settings.sink.sinkId,
     };
   });
   const audioBuffer = sample && "audioBuffer" in sample && sample.audioBuffer;
@@ -51,6 +51,7 @@ export default ({ id }: Props) => {
       hideScrollbar: true,
       plugins: [RegionsPlugin.create({})],
     });
+    console.log(sinkId);
     waveRef.current.setSinkId(sinkId);
     (window as any).surfers = ((window as any).surfers || []).concat(
       waveRef.current

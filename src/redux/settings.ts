@@ -1,14 +1,31 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
+interface Sink {
+  sinkId: string;
+  sinkName: string;
+}
+
+interface SettingsState {
+  preferredSink: Sink | null;
+  sink: Sink;
+}
+
 const settingsSlice = createSlice({
   name: "settings",
-  initialState: { sinkId: "default" },
+  initialState: {
+    preferredSink: null,
+    sink: { sinkId: "default", sinkName: "Default Output" },
+  } as SettingsState,
   reducers: {
-    setSinkId: (state, { payload }: PayloadAction<string>) => {
-      state.sinkId = payload;
+    setSinkId: (state, { payload }: PayloadAction<Sink>) => {
+      state.sink = payload;
+    },
+    setPreferredSink: (state, { payload }: PayloadAction<Sink>) => {
+      state.sink = payload;
+      state.preferredSink = payload;
     },
   },
 });
 
-export const { setSinkId } = settingsSlice.actions;
+export const { setSinkId, setPreferredSink } = settingsSlice.actions;
 export default settingsSlice.reducer;

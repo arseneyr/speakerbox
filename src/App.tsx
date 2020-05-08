@@ -27,8 +27,8 @@ export default () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <AppBar />
       <div className={classes.root}>
-        <AppBar />
         <Grid>
           {samples
             .map((id) => <Sample key={id} id={id} />)
