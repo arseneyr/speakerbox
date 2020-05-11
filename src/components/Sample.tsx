@@ -54,7 +54,7 @@ interface Props {
   onTouchMove: React.TouchEventHandler;
   loading: boolean;
   title?: string;
-  onEditClick(): void;
+  onEditClick?(): void;
 }
 
 export default (props: Props) => {
@@ -97,26 +97,28 @@ export default (props: Props) => {
             content: classes.headerTitleContainer,
           }}
           action={
-            <IconButton
-              component="div"
-              onMouseOver={() => setCornerIconEntered(true)}
-              onMouseOut={() => setCornerIconEntered(false)}
-              onTouchStart={(evt: React.TouchEvent<HTMLDivElement>) =>
-                evt.stopPropagation()
-              }
-              onTouchEnd={(evt: React.TouchEvent<HTMLDivElement>) =>
-                evt.stopPropagation()
-              }
-              onMouseDown={(evt: React.MouseEvent<HTMLDivElement>) =>
-                evt.stopPropagation()
-              }
-              onMouseUp={(evt: React.MouseEvent<HTMLDivElement>) =>
-                evt.stopPropagation()
-              }
-              onClick={onEditClick}
-            >
-              <Edit />
-            </IconButton>
+            onEditClick && (
+              <IconButton
+                component="div"
+                onMouseOver={() => setCornerIconEntered(true)}
+                onMouseOut={() => setCornerIconEntered(false)}
+                onTouchStart={(evt: React.TouchEvent<HTMLDivElement>) =>
+                  evt.stopPropagation()
+                }
+                onTouchEnd={(evt: React.TouchEvent<HTMLDivElement>) =>
+                  evt.stopPropagation()
+                }
+                onMouseDown={(evt: React.MouseEvent<HTMLDivElement>) =>
+                  evt.stopPropagation()
+                }
+                onMouseUp={(evt: React.MouseEvent<HTMLDivElement>) =>
+                  evt.stopPropagation()
+                }
+                onClick={onEditClick}
+              >
+                <Edit />
+              </IconButton>
+            )
           }
           style={{ padding: "4px 0px" }}
         />

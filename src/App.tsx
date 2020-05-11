@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Grid } from "./components/Grid";
 import {
   CssBaseline,
@@ -9,10 +9,12 @@ import {
 import AddNew from "./components/AddNew";
 import Sample from "./containers/Sample";
 import Editor from "./containers/Editor";
-import { useSelector } from "react-redux";
+import { useSelector, Provider } from "react-redux";
 import { sampleSelectors } from "./redux/samples";
-import { RootState } from "./redux";
+import { store, getPersistor, remoteStore } from "./redux";
 import AppBar from "./components/AppBar";
+import AppBarContainer from "./containers/AppBar";
+import { PersistGate } from "redux-persist/integration/react";
 
 const theme = createMuiTheme({ palette: { type: "dark" } });
 
@@ -20,22 +22,60 @@ const useStyles = makeStyles({
   root: { padding: "12px 8px" },
 });
 
-export default () => {
+const Main = () => {
   const samples = useSelector(sampleSelectors.selectIds) as string[];
-  const editId = useSelector((state: RootState) => state.samples.editing);
+  const [editId, setEditId] = useState<string | null>(null);
+  const onEditorClose = useCallback(() => setEditId(null), []);
   const classes = useStyles();
+  return (
+    <PersistGate persistor={getPersistor()}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AppBarContainer />
+        <div className={classes.root}>
+          <Grid>
+            {samples
+              .map((id) => <Sample key={id} id={id} onEditClick={setEditId} />)
+              .concat(<AddNew key="AddNew" />)}
+          </Grid>
+        </div>
+        {editId && <Editor onClose={onEditorClose} id={editId} />}
+      </ThemeProvider>
+    </PersistGate>
+  );
+};
+
+interface RemoteProps {
+  id: string;
+}
+
+const Remote = ({ id }: RemoteProps) => {
+  const classes = useStyles();
+  const samples = useSelector(sampleSelectors.selectIds) as string[];
+  useEffect(() => {}, [id]);
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppBar />
+      <AppBar remote />
       <div className={classes.root}>
         <Grid>
-          {samples
-            .map((id) => <Sample key={id} id={id} />)
-            .concat(<AddNew key="AddNew" />)}
+          {samples.map((id) => (
+            <Sample key={id} id={id} />
+          ))}
         </Grid>
       </div>
-      {editId && <Editor id={editId} />}
     </ThemeProvider>
+  );
+};
+
+export default () => {
+  const [remoteCode] = useState(() =>
+    new URLSearchParams(window.location.search).get("r")
+  );
+
+  return (
+    <Provider store={remoteCode ? remoteStore : store}>
+      {remoteCode ? <Remote id={remoteCode} /> : <Main />}
+    </Provider>
   );
 };

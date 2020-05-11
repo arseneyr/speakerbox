@@ -7,10 +7,6 @@ import {
 import createLoadSourceWorker from "workerize-loader!./load_source.worker";
 import * as LoadSourceWorker from "./load_source.worker";
 
-declare module "immer" {
-  type Draft<T> = T;
-}
-
 interface AudioSource {
   id: string;
   title: string;

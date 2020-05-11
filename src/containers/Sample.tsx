@@ -3,14 +3,16 @@ import Wavesurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
 import { useSelector, useDispatch } from "react-redux";
 import { AppDispatch, RootState } from "../redux";
-import { sampleSelectors, decodeSource, startEditing } from "../redux/samples";
+import { sampleSelectors } from "../redux/samples";
 import Sample from "../components/Sample";
+import { audioBufferSelectors, decodeSource } from "../redux/audio_buffer";
 
 interface Props {
   id: string;
+  onEditClick?(id: string): void;
 }
 
-export default ({ id }: Props) => {
+export default ({ id, onEditClick }: Props) => {
   const dispatch: AppDispatch = useDispatch();
   const divRef = useRef<HTMLDivElement | null>(null);
   const waveRef = useRef<Wavesurfer | null>(null);
@@ -18,15 +20,14 @@ export default ({ id }: Props) => {
   const holdToPlay = useRef<boolean>(false);
   const touchTimerRef = useRef<number | null>(null);
 
-  const { sample, isEditing, sinkId } = useSelector((state: RootState) => {
+  const { sample, audioBuffer, sinkId } = useSelector((state: RootState) => {
     const sample = sampleSelectors.selectById(state, id);
     return {
       sample,
-      isEditing: state.samples.editing === id,
+      audioBuffer: audioBufferSelectors.selectById(state, id)?.audioBuffer,
       sinkId: state.settings.sink.sinkId,
     };
   });
-  const audioBuffer = sample && "audioBuffer" in sample && sample.audioBuffer;
   const sourceId = sample && sample?.sourceId;
 
   useEffect(() => {
@@ -34,10 +35,6 @@ export default ({ id }: Props) => {
       sourceId &&
       dispatch(decodeSource({ sourceId, sampleId: id }));
   }, [id, audioBuffer, sourceId, dispatch]);
-
-  useEffect(() => {
-    waveRef.current && waveRef.current.stop();
-  }, [isEditing]);
 
   useEffect(() => {
     if (!divRef.current || !audioBuffer) {
@@ -56,11 +53,7 @@ export default ({ id }: Props) => {
     return () => {
       waveRef.current && waveRef.current.destroy();
     };
-  }, [audioBuffer]);
-
-  useEffect(() => {
-    waveRef.current && waveRef.current.setSinkId(sinkId);
-  }, [sinkId]);
+  }, [audioBuffer, sinkId]);
 
   const onMouseDown = useCallback(() => {
     if (!waveRef.current) {
@@ -148,20 +141,20 @@ export default ({ id }: Props) => {
     [onMouseUp]
   );
 
-  const onEditClick = useCallback(() => dispatch(startEditing(id)), [
-    dispatch,
-    id,
-  ]);
-
   const onDivRef = useCallback((ref) => {
     divRef.current = ref;
   }, []);
+
+  const onEditClickMemo = useCallback(() => {
+    onEditClick && onEditClick(id);
+    waveRef.current && waveRef.current.stop();
+  }, [id, onEditClick]);
 
   return (
     <Sample
       title={sample?.title}
       loading={!audioBuffer}
-      onEditClick={onEditClick}
+      onEditClick={onEditClick && onEditClickMemo}
       onMouseDown={onMouseDown}
       onMouseUp={onMouseUp}
       onTouchStart={onTouchStart}

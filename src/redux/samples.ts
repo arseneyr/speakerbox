@@ -1,12 +1,9 @@
-import { sliceAudioBuffer, decodeAudioData } from "./audio_utils";
 import {
   createSlice,
   createEntityAdapter,
-  createAsyncThunk,
   PayloadAction,
-  createNextState,
 } from "@reduxjs/toolkit";
-import localForage from "localforage";
+import { decodeSource, sliceAudioBuffer } from "./audio_buffer";
 
 interface PartialSample {
   id: string;
@@ -16,7 +13,6 @@ interface PartialSample {
 export interface FullSample extends PartialSample {
   start: number;
   end: number;
-  audioBuffer?: AudioBuffer;
 }
 type Sample = (PartialSample & { error: string }) | PartialSample | FullSample;
 
@@ -26,18 +22,9 @@ const samplesEntitySelectors = samplesEntityAdapter.getSelectors(
 );
 const samplesEntityLocalSelectors = samplesEntityAdapter.getSelectors();
 
-const decodeSourceThunk = createAsyncThunk(
-  "samples/decodeSource",
-  async ({ sourceId, sampleId }: { sourceId: string; sampleId: string }) => {
-    const buffer: ArrayBuffer = await localForage.getItem(sourceId);
-    const audioBuffer = await decodeAudioData(buffer);
-    return { id: sampleId, audioBuffer };
-  }
-);
-
 const samplesSlice = createSlice({
   name: "samples",
-  initialState: samplesEntityAdapter.getInitialState({ editing: "" }),
+  initialState: samplesEntityAdapter.getInitialState(),
   reducers: {
     setSourceId: (
       state,
@@ -47,80 +34,37 @@ const samplesSlice = createSlice({
         id: payload.sampleId,
         changes: { sourceId: payload.sourceId },
       }),
-    deleteSample: (state, action) => {
-      samplesEntityAdapter.removeOne(state, action);
-      if (action.payload === state.editing) {
-        state.editing = "";
-      }
-    },
+    deleteSample: samplesEntityAdapter.removeOne,
     createSample: samplesEntityAdapter.addOne,
-    startEditing: (state, { payload: id }: PayloadAction<string>) => {
-      state.editing = id;
-    },
-    cancelEditing: (state) => {
-      state.editing = "";
-    },
-    finishEditing: (
+    updateTitle: (
       state,
-      {
-        payload,
-      }: PayloadAction<{ newTitle: string; newStart: number; newEnd: number }>
-    ) => {
-      const sample = samplesEntityLocalSelectors.selectById(
-        state,
-        state.editing
-      );
-      if (sample && "audioBuffer" in sample && sample.audioBuffer) {
-        samplesEntityAdapter.updateOne(state, {
-          id: state.editing,
-          changes: {
-            title: payload.newTitle,
-            start: payload.newStart,
-            end: payload.newEnd,
-            audioBuffer: sliceAudioBuffer(
-              sample.audioBuffer,
-              payload.newStart,
-              payload.newEnd
-            ),
-          },
-        });
-      } else {
-        console.error("Editing a non-existant sample!", state.editing);
-      }
-      state.editing = "";
-    },
+      { payload }: PayloadAction<{ id: string; title: string }>
+    ) =>
+      samplesEntityAdapter.updateOne(state, {
+        id: payload.id,
+        changes: { title: payload.title },
+      }),
   },
   extraReducers: (builder) => {
-    builder.addCase(decodeSourceThunk.fulfilled, (state, { payload }) => {
+    builder.addCase(decodeSource.fulfilled, (state, { payload }) => {
       const sample = samplesEntityLocalSelectors.selectById(state, payload.id);
       if (!sample) {
         console.error("Sample deleted before decoding finished!", payload.id);
         return;
       }
 
-      const newSample =
-        "start" in sample
-          ? {
-              ...sample,
-              audioBuffer: sliceAudioBuffer(
-                payload.audioBuffer,
-                sample.start,
-                sample.end
-              ),
-            }
-          : {
-              ...sample,
-              audioBuffer: payload.audioBuffer,
-              start: 0,
-              end: payload.audioBuffer.duration,
-            };
-      samplesEntityAdapter.updateOne(state, {
-        id: newSample.id,
-        changes: newSample,
-      });
+      if (!("start" in sample)) {
+        samplesEntityAdapter.updateOne(state, {
+          id: payload.id,
+          changes: {
+            start: 0,
+            end: payload.audioBuffer.duration,
+          },
+        });
+      }
     });
     builder.addCase(
-      decodeSourceThunk.rejected,
+      decodeSource.rejected,
       (
         state,
         {
@@ -135,36 +79,23 @@ const samplesSlice = createSlice({
           changes: { error: "Failed to decode!" },
         })
     );
+    builder.addCase(sliceAudioBuffer, (state, { payload }) => {
+      samplesEntityAdapter.updateOne(state, {
+        id: payload.id,
+        changes: {
+          start: payload.newStart,
+          end: payload.newEnd,
+        },
+      });
+    });
   },
 });
 
-export const samplePersistTransform = (
-  state: ReturnType<typeof samplesSlice.reducer>
-) =>
-  createNextState(state, (draft) => {
-    const entities = samplesEntityLocalSelectors.selectEntities(draft);
-    samplesEntityAdapter.removeMany(
-      draft,
-      Object.values(entities)
-        .filter((s) => !s!.sourceId || (s as any).error)
-        .map((s) => s!.id)
-    );
-    for (const sample of Object.values(draft.entities)) {
-      sample && "audioBuffer" in sample && delete sample.audioBuffer;
-    }
-    draft.editing = "";
-  });
-
 export const {
   deleteSample,
-  startEditing,
-  finishEditing,
-  cancelEditing,
   createSample,
   setSourceId,
+  updateTitle,
 } = samplesSlice.actions;
-export {
-  decodeSourceThunk as decodeSource,
-  samplesEntitySelectors as sampleSelectors,
-};
+export { samplesEntitySelectors as sampleSelectors };
 export default samplesSlice.reducer;

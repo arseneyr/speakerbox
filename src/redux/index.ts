@@ -4,23 +4,22 @@ import {
   combineReducers,
 } from "@reduxjs/toolkit";
 import sources from "./sources";
-import samples, { samplePersistTransform } from "./samples";
+import samples from "./samples";
 import settings from "./settings";
-import { persistReducer, persistStore, createTransform } from "redux-persist";
+import audioBuffers from "./audio_buffer";
+import { persistReducer, persistStore } from "redux-persist";
 import localforage from "localforage";
+import { remoteSamplesReducer } from "./remote";
 
 localforage.config({
   driver: localforage.INDEXEDDB,
 });
 
-const transform = createTransform(samplePersistTransform, (s) => s, {
-  whitelist: ["samples"],
-});
-
 const reducer = combineReducers({
   sources,
-  samples,
+  samples: remoteSamplesReducer(samples),
   settings,
+  audioBuffers,
 });
 
 const persistedReducer = persistReducer(
@@ -31,7 +30,6 @@ const persistedReducer = persistReducer(
     whitelist: ["samples", "sources", "settings"],
     serialize: false,
     deserialize: false,
-    transforms: [transform],
   } as any,
   reducer
 );
@@ -51,7 +49,13 @@ export function getPersistor() {
   return persistor;
 }
 
+const remoteStore = configureStore({
+  reducer: {
+    samples,
+  },
+});
+
 export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof reducer>;
 
-export { store };
+export { store, remoteStore };

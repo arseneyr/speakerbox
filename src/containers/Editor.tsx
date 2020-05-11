@@ -3,32 +3,32 @@ import Wavesurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
 import { useSelector, useDispatch } from "react-redux";
 import {
-  cancelEditing,
-  finishEditing,
   sampleSelectors,
   FullSample,
   deleteSample,
+  updateTitle,
 } from "../redux/samples";
 import { RootState } from "../redux";
 import Editor from "../components/Editor";
+import { audioBufferSelectors, sliceAudioBuffer } from "../redux/audio_buffer";
 
 interface Props {
   id: string;
+  onClose(): void;
 }
 
-export default ({ id }: Props) => {
-  const sample = useSelector((state: RootState) =>
-    sampleSelectors.selectById(state, id)
-  ) as FullSample;
-  const audioBuffer = sample.audioBuffer!;
-  const title = sample.title;
+export default ({ id, onClose }: Props) => {
+  const { sample, audioBuffer } = useSelector((state: RootState) => ({
+    sample: sampleSelectors.selectById(state, id),
+    audioBuffer: audioBufferSelectors.selectById(state, id)?.audioBuffer,
+  }));
+  const title = sample?.title;
   const [titleValue, setTitleValue] = useState(title);
   const [divRef, setDivRef] = useState<HTMLDivElement | null>(null);
   const waveRef = useRef<Wavesurfer | null>(null);
   const dispatch = useDispatch();
-  const onCancel = useCallback(() => dispatch(cancelEditing()), [dispatch]);
   useEffect(() => {
-    if (divRef) {
+    if (divRef && audioBuffer) {
       waveRef.current = Wavesurfer.create({
         container: divRef,
         interact: false,
@@ -84,30 +84,30 @@ export default ({ id }: Props) => {
     }
   }, [divRef, audioBuffer]);
   const onTitleChange = useCallback((title) => setTitleValue(title), []);
-  const onSave = useCallback(
-    () =>
-      waveRef.current &&
+  const onSave = useCallback(() => {
+    waveRef.current &&
       dispatch(
-        finishEditing({
-          newTitle: titleValue,
+        sliceAudioBuffer({
+          id,
           newStart: waveRef.current.regions.list[0].start,
           newEnd: waveRef.current.regions.list[0].end,
         })
-      ),
-    [titleValue, dispatch]
-  );
-  const onDelete = useCallback(() => dispatch(deleteSample(id)), [
-    dispatch,
-    id,
-  ]);
+      );
+    titleValue && dispatch(updateTitle({ id, title: titleValue }));
+    onClose();
+  }, [id, titleValue, dispatch, onClose]);
+  const onDelete = useCallback(() => {
+    onClose();
+    dispatch(deleteSample(id));
+  }, [dispatch, id, onClose]);
   return (
     <Editor
       ref={setDivRef}
-      onCancel={onCancel}
+      onCancel={onClose}
       onSave={onSave}
       onDelete={onDelete}
       onTitleChange={onTitleChange}
-      title={titleValue}
+      title={titleValue ?? "INVALID!"}
     />
   );
 };
