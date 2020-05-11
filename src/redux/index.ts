@@ -57,5 +57,6 @@ const remoteStore = configureStore({
 
 export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof reducer>;
+export type RemoteState = Pick<RootState, "samples">;
 
 export { store, remoteStore };

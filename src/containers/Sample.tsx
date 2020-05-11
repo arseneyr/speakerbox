@@ -24,8 +24,10 @@ export default ({ id, onEditClick }: Props) => {
     const sample = sampleSelectors.selectById(state, id);
     return {
       sample,
-      audioBuffer: audioBufferSelectors.selectById(state, id)?.audioBuffer,
-      sinkId: state.settings.sink.sinkId,
+      audioBuffer:
+        state.audioBuffers &&
+        audioBufferSelectors.selectById(state, id)?.audioBuffer,
+      sinkId: state.settings && state.settings.sink.sinkId,
     };
   });
   const sourceId = sample && sample?.sourceId;

@@ -11,10 +11,12 @@ import Sample from "./containers/Sample";
 import Editor from "./containers/Editor";
 import { useSelector, Provider } from "react-redux";
 import { sampleSelectors } from "./redux/samples";
-import { store, getPersistor, remoteStore } from "./redux";
+import { store, getPersistor, remoteStore, RemoteState } from "./redux";
 import AppBar from "./components/AppBar";
 import AppBarContainer from "./containers/AppBar";
 import { PersistGate } from "redux-persist/integration/react";
+import { Store } from "@reduxjs/toolkit";
+import { RemoteClient } from "./redux/remote";
 
 const theme = createMuiTheme({ palette: { type: "dark" } });
 
@@ -49,10 +51,10 @@ interface RemoteProps {
   id: string;
 }
 
-const Remote = ({ id }: RemoteProps) => {
+const Remote = () => {
   const classes = useStyles();
   const samples = useSelector(sampleSelectors.selectIds) as string[];
-  useEffect(() => {}, [id]);
+  console.log(samples);
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -68,14 +70,36 @@ const Remote = ({ id }: RemoteProps) => {
   );
 };
 
+const RemoteStoreGate = ({ id }: RemoteProps) => {
+  const [store, setStore] = useState<Store<RemoteState> | null>(null);
+
+  useEffect(() => {
+    const client = new RemoteClient(id);
+    client.store.then(setStore);
+    return () => {
+      client.destroy();
+    };
+  }, [id]);
+
+  return store ? (
+    <Provider store={store}>
+      <Remote />
+    </Provider>
+  ) : (
+    <div>Loading</div>
+  );
+};
+
 export default () => {
   const [remoteCode] = useState(() =>
     new URLSearchParams(window.location.search).get("r")
   );
 
-  return (
-    <Provider store={remoteCode ? remoteStore : store}>
-      {remoteCode ? <Remote id={remoteCode} /> : <Main />}
+  return remoteCode ? (
+    <RemoteStoreGate id={remoteCode} />
+  ) : (
+    <Provider store={store}>
+      <Main />
     </Provider>
   );
 };
