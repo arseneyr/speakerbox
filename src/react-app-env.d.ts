@@ -12,3 +12,7 @@ declare module "workerize-loader!*" {
   function createInstance<T>(): Workerized<T>;
   export = createInstance;
 }
+declare module "@ungap/event-target" {
+  export = EventTarget;
+}
+declare module "react-qr-code";

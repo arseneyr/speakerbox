@@ -6,7 +6,7 @@ import {
   TextField,
   MenuItem,
 } from "@material-ui/core";
-import Remote from "../containers/Remote";
+import Remote from "../containers/RemoteButton";
 
 const useStyles = makeStyles({
   outputSelector: {

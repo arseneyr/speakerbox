@@ -11,6 +11,9 @@ const getDevices = async () =>
       .map((d) => [d.deviceId, d.label])
   );
 export default () => {
+  if (!navigator.mediaDevices) {
+    return null;
+  }
   const dispatch: AppDispatch = useDispatch();
   const [enumeratedDevices, setEnumeratedDevices] = useState<{
     [deviceId: string]: string;

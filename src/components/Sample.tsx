@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   Card,
   CardActionArea,
@@ -46,31 +46,74 @@ const useStyles = makeStyles({
 });
 
 interface Props {
-  onDivRef(ref: HTMLDivElement): void;
-  onMouseDown: React.MouseEventHandler;
-  onMouseUp: React.MouseEventHandler;
-  onTouchStart: React.TouchEventHandler;
-  onTouchEnd: React.TouchEventHandler;
-  onTouchMove: React.TouchEventHandler;
-  loading: boolean;
+  onDivRef?(ref: HTMLDivElement): void;
+  loading?: boolean;
   title?: string;
   onEditClick?(): void;
+  onPlay(): void;
+  onStop(): void;
 }
 
 export default (props: Props) => {
-  const {
-    loading,
-    title,
-    onDivRef,
-    onMouseDown,
-    onMouseUp,
-    onTouchStart,
-    onTouchEnd,
-    onTouchMove,
-    onEditClick,
-  } = props;
+  const { loading, title, onDivRef, onEditClick, onPlay, onStop } = props;
   const classes = useStyles();
   const [cornerIconEntered, setCornerIconEntered] = useState(false);
+  const holdToPlayTimerRef = useRef<number | null>(null);
+  const holdToPlay = useRef<boolean>(false);
+  const touchTimerRef = useRef<number | null>(null);
+
+  const onMouseDown = useCallback(() => {
+    if (holdToPlayTimerRef.current) {
+      clearTimeout(holdToPlayTimerRef.current);
+    }
+    onPlay();
+    holdToPlay.current = false;
+    holdToPlayTimerRef.current = window.setTimeout(() => {
+      holdToPlayTimerRef.current = null;
+      holdToPlay.current = true;
+    }, 500);
+  }, [onPlay]);
+
+  const onMouseUp = useCallback(() => {
+    if (holdToPlayTimerRef.current) {
+      clearTimeout(holdToPlayTimerRef.current);
+      holdToPlayTimerRef.current = null;
+    } else if (holdToPlay.current) {
+      onStop();
+    }
+  }, [onStop]);
+
+  const onTouchStart = useCallback(
+    (event) => {
+      touchTimerRef.current = window.setTimeout(() => {
+        touchTimerRef.current = null;
+        onMouseDown();
+      }, 50);
+    },
+    [onMouseDown]
+  );
+
+  const onTouchMove = useCallback((evt) => {
+    evt.preventDefault();
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  }, []);
+
+  const onTouchEnd = useCallback(
+    (evt) => {
+      evt.preventDefault();
+      if (touchTimerRef.current) {
+        clearTimeout(touchTimerRef.current);
+        touchTimerRef.current = null;
+        onPlay();
+      } else {
+        onMouseUp();
+      }
+    },
+    [onMouseUp, onPlay]
+  );
 
   return (
     <Card className={classes.card}>

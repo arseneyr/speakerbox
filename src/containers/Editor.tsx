@@ -2,12 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Wavesurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
 import { useSelector, useDispatch } from "react-redux";
-import {
-  sampleSelectors,
-  FullSample,
-  deleteSample,
-  updateTitle,
-} from "../redux/samples";
+import { sampleSelectors, deleteSample, updateTitle } from "../redux/samples";
 import { RootState } from "../redux";
 import Editor from "../components/Editor";
 import { audioBufferSelectors, sliceAudioBuffer } from "../redux/audio_buffer";

@@ -17,6 +17,7 @@
     "@types/uuid": "^7.0.3",
     "@types/wavesurfer.js": "^3.3.0",
     "@types/xxhashjs": "^0.2.1",
+    "@ungap/event-target": "^0.2.0",
     "gh-pages": "^2.2.0",
     "localforage": "^1.7.3",
     "peerjs": "^1.2.0",
