@@ -19,7 +19,8 @@ type ClientMessage =
   | PayloadAction<Patch[], "statePatches">;
 type ServerMessage =
   | PayloadAction<string, "play">
-  | PayloadAction<string, "stop">;
+  | PayloadAction<string, "stop">
+  | PayloadAction<null, "stopAll">;
 
 abstract class RemoteBase {
   protected peer!: Peer;
@@ -46,6 +47,8 @@ abstract class RemoteBase {
   protected set conn(c: Peer.DataConnection) {
     c.on("data", this.onData);
     c.on("open", this.onOpen);
+    c.on("close", () => alert("close!"));
+    c.on("error", alert);
     this._conn = c;
   }
   protected get conn() {
@@ -87,6 +90,7 @@ export class RemoteServer extends RemoteBase {
     switch (data.type) {
       case "play":
       case "stop":
+      case "stopAll":
         this.eventTarget.dispatchEvent(
           new CustomEvent(data.type, { detail: data.payload })
         );
@@ -127,6 +131,10 @@ export class RemoteClient extends RemoteBase {
 
   public readonly sendStop = (id: string) => {
     this.send({ type: "stop", payload: id });
+  };
+
+  public readonly sendStopAll = () => {
+    this.send({ type: "stopAll", payload: null });
   };
 
   private static readonly applyDiff = createAction<Patch[]>("applyDiff");

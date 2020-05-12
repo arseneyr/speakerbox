@@ -1,12 +1,5 @@
-import React from "react";
-import {
-  AppBar,
-  Toolbar,
-  makeStyles,
-  TextField,
-  MenuItem,
-} from "@material-ui/core";
-import Remote from "../containers/RemoteButton";
+import React, { FunctionComponent } from "react";
+import { AppBar as MuiAppBar, Toolbar, makeStyles } from "@material-ui/core";
 
 const useStyles = makeStyles({
   outputSelector: {
@@ -14,48 +7,13 @@ const useStyles = makeStyles({
   },
 });
 
-interface NormalProps {
-  onOpen(): void;
-  onChange: React.ChangeEventHandler;
-  value: string;
-  devices: { [deviceId: string]: string };
-  remote?: false;
-}
-
-interface RemoteProps {
-  remote: true;
-}
-
-type Props = NormalProps | RemoteProps;
-
-export default (props: Props) => {
+const AppBar: FunctionComponent = ({ children }) => {
   const classes = useStyles();
   return (
-    <AppBar position="sticky">
-      <Toolbar>
-        {props.remote ? undefined : (
-          <>
-            <TextField
-              select
-              variant="outlined"
-              className={classes.outputSelector}
-              helperText="Output device"
-              SelectProps={{
-                onOpen: props.onOpen,
-              }}
-              onChange={props.onChange}
-              value={props.value}
-            >
-              {Object.entries(props.devices).map(([deviceId, label], i) => (
-                <MenuItem key={deviceId} value={deviceId}>
-                  {label || `Speaker ${i}`}
-                </MenuItem>
-              ))}
-            </TextField>
-            <Remote />
-          </>
-        )}
-      </Toolbar>
-    </AppBar>
+    <MuiAppBar position="sticky">
+      <Toolbar>{children}</Toolbar>
+    </MuiAppBar>
   );
 };
+
+export default AppBar;

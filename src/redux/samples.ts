@@ -2,6 +2,7 @@ import {
   createSlice,
   createEntityAdapter,
   PayloadAction,
+  createNextState,
 } from "@reduxjs/toolkit";
 import { decodeSource, sliceAudioBuffer } from "./audio_buffer";
 
@@ -90,6 +91,19 @@ const samplesSlice = createSlice({
     });
   },
 });
+
+export const samplePersistTransform = (
+  state: ReturnType<typeof samplesSlice.reducer>
+) =>
+  createNextState(state, (draft) => {
+    const entities = samplesEntityLocalSelectors.selectEntities(draft);
+    samplesEntityAdapter.removeMany(
+      draft,
+      Object.values(entities)
+        .filter((s) => !s!.sourceId || (s as any).error)
+        .map((s) => s!.id)
+    );
+  });
 
 export const {
   deleteSample,

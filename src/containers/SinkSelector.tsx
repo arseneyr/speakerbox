@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { AppDispatch, RootState } from "../redux";
 import { useDispatch, useSelector } from "react-redux";
 import { setSinkId, setPreferredSink } from "../redux/settings";
-import AppBar from "../components/AppBar";
+import { TextField, MenuItem } from "@material-ui/core";
 
 const getDevices = async () =>
   Object.fromEntries(
@@ -10,10 +10,12 @@ const getDevices = async () =>
       .filter((d) => d.kind === "audiooutput")
       .map((d) => [d.deviceId, d.label])
   );
+
 export default () => {
   if (!navigator.mediaDevices) {
     return null;
   }
+
   const dispatch: AppDispatch = useDispatch();
   const [enumeratedDevices, setEnumeratedDevices] = useState<{
     [deviceId: string]: string;
@@ -25,11 +27,13 @@ export default () => {
   const devices = Object.values(enumeratedDevices).length
     ? Object.assign({}, enumeratedDevices)
     : { [sink.sinkId]: sink.sinkName };
+
   useEffect(() => {
     const f = async () => setEnumeratedDevices(await getDevices());
     navigator.mediaDevices.addEventListener("devicechange", f);
     f();
   }, []);
+
   useEffect(() => {
     if (
       preferredSink &&
@@ -46,6 +50,7 @@ export default () => {
       );
     }
   }, [dispatch, enumeratedDevices, preferredSink, sink]);
+
   const onOpen = useCallback(async () => {
     if (Object.values(enumeratedDevices).some(Boolean)) {
       return;
@@ -55,6 +60,7 @@ export default () => {
       setEnumeratedDevices(await getDevices());
     } catch (e) {}
   }, [enumeratedDevices]);
+
   const onChange = useCallback(
     (event) =>
       dispatch(
@@ -65,12 +71,23 @@ export default () => {
       ),
     [dispatch, enumeratedDevices]
   );
+
   return (
-    <AppBar
+    <TextField
+      select
+      variant="outlined"
+      style={{ width: 300 }}
+      SelectProps={{
+        onOpen,
+      }}
       onChange={onChange}
-      onOpen={onOpen}
-      devices={devices}
       value={sink.sinkId}
-    />
+    >
+      {Object.entries(devices).map(([deviceId, label], i) => (
+        <MenuItem key={deviceId} value={deviceId}>
+          {label || `Speaker ${i}`}
+        </MenuItem>
+      ))}
+    </TextField>
   );
 };
