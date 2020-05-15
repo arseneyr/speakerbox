@@ -1,6 +1,6 @@
 import localForage from "localforage";
 
-function pFileReader(file: File) {
+function pFileReader(file: Blob) {
   return new Promise<ArrayBuffer>((res, rej) => {
     const fr = new FileReader();
     fr.onload = () => res(fr.result as ArrayBuffer);
@@ -9,7 +9,7 @@ function pFileReader(file: File) {
   });
 }
 
-export async function loadFile(file: File) {
+export async function loadFile(file: Blob) {
   const buffer = await pFileReader(file);
   // eslint-disable-next-line no-restricted-globals
   const crypto = self.crypto.subtle;

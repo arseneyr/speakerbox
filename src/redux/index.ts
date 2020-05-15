@@ -45,6 +45,22 @@ const persistedReducer = persistReducer(
 
 const store = configureStore({
   reducer: persistedReducer,
+  // Devtools do not sanitize state correctly
+  // https://github.com/zalmoxisus/redux-devtools-extension/issues/739
+  devTools: false,
+  //{
+  // actionSanitizer: ((action: PayloadAction<any>) =>
+  //   createNextState(action, (draft) => {
+  //     draft.payload?.audioBuffer &&
+  //       (draft.payload.audioBuffer = `AudioBuffer of length ${draft.payload.audioBuffer.length}`);
+  //   })) as any,
+  // stateSanitizer: ((state: RootState) =>
+  //   createNextState(state, (draft) => {
+  //     Object.values(draft.audioBuffers.entities).forEach((d) => {
+  //       d!.audioBuffer = `AudioBuffer of length ${d?.audioBuffer.length}` as any;
+  //     });
+  //   })) as any,
+  //},
   middleware: getDefaultMiddleware({
     /*serializableCheck: {
       ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
@@ -53,10 +69,6 @@ const store = configureStore({
   }),
 });
 const persistor = persistStore(store as any);
-
-export function getPersistor() {
-  return persistor;
-}
 
 const remoteStore = configureStore({
   reducer: {
@@ -68,4 +80,4 @@ export type AppDispatch = typeof store.dispatch;
 export type RootState = ReturnType<typeof reducer>;
 export type RemoteState = Pick<RootState, "samples">;
 
-export { store, remoteStore };
+export { store, remoteStore, persistor };

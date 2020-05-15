@@ -11,7 +11,7 @@ const AppBar: FunctionComponent = ({ children }) => {
   const classes = useStyles();
   return (
     <MuiAppBar position="sticky">
-      <Toolbar>{children}</Toolbar>
+      <Toolbar style={{ justifyContent: "space-between" }}>{children}</Toolbar>
     </MuiAppBar>
   );
 };

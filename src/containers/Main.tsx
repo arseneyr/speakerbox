@@ -1,10 +1,9 @@
 import { useSelector, Provider } from "react-redux";
 import { sampleSelectors } from "../redux/samples";
-import { useState, useCallback, createRef, useEffect } from "react";
+import React, { useState, useCallback, createRef, useEffect } from "react";
 import { RemoteServer, RemoteProvider, useRemote } from "../redux/remote";
-import { store, getPersistor } from "../redux";
+import { store, persistor } from "../redux";
 import { PersistGate } from "redux-persist/integration/react";
-import React from "react";
 import { Grid } from "../components/Grid";
 import AddNew from "../components/AddNew";
 import Sample from "./Sample";
@@ -13,6 +12,7 @@ import AppBar from "../components/AppBar";
 import SinkSelector from "./SinkSelector";
 import { Button } from "@material-ui/core";
 import RemoteButton from "./RemoteButton";
+import Record from "./Record";
 
 const Main = () => {
   const samples = useSelector(sampleSelectors.selectIds) as string[];
@@ -53,7 +53,7 @@ const Main = () => {
           .map((id) => (
             <Sample key={id} id={id} ref={refs[id]} onEditClick={setEditId} />
           ))
-          .concat(<AddNew key="AddNew" />)}
+          .concat(<AddNew key="AddNew" />, <Record />)}
       </Grid>
       {editId && <Editor onClose={onEditorClose} id={editId} />}
     </>
@@ -65,7 +65,7 @@ export default () => {
   return (
     <Provider store={store}>
       <RemoteProvider value={remote}>
-        <PersistGate persistor={getPersistor()}>
+        <PersistGate persistor={persistor}>
           <Main />
         </PersistGate>
       </RemoteProvider>

@@ -6,6 +6,7 @@ import {
 // eslint-disable-next-line import/no-webpack-loader-syntax
 import createLoadSourceWorker from "workerize-loader!./load_source.worker";
 import * as LoadSourceWorker from "./load_source.worker";
+import localForage from "localforage";
 
 interface AudioSource {
   id: string;
@@ -19,8 +20,8 @@ const audioSourceSelectors = audioSourceEntity.getSelectors(
 
 const loadFileThunk = createAsyncThunk(
   "sources/loadFile",
-  async (file: File, { getState }) => {
-    const title = file.name;
+  async (file: Blob, { getState }) => {
+    const title = file instanceof File ? file.name : "BLOB";
     const id = await createLoadSourceWorker<typeof LoadSourceWorker>().loadFile(
       file
     );
