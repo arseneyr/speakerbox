@@ -29,6 +29,19 @@ const loadFileThunk = createAsyncThunk(
   }
 );
 
+const saveSourceThunk = createAsyncThunk(
+  "sources/saveSource",
+  async ({ buffer, title }: { buffer: ArrayBuffer; title: string }) => {
+    const hash = btoa(
+      String.fromCharCode(
+        ...new Uint8Array(await window.crypto.subtle.digest("SHA-1", buffer))
+      )
+    );
+    await localForage.setItem(hash, buffer);
+    return { id: hash, title };
+  }
+);
+
 const sourcesSlice = createSlice({
   name: "sources",
   initialState: audioSourceEntity.getInitialState(),
@@ -37,9 +50,14 @@ const sourcesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder.addCase(loadFileThunk.fulfilled, audioSourceEntity.addOne);
+    builder.addCase(saveSourceThunk.fulfilled, audioSourceEntity.addOne);
   },
 });
 
 export const { deleteSource } = sourcesSlice.actions;
-export { loadFileThunk as loadFile, audioSourceSelectors as sourceSelectors };
+export {
+  loadFileThunk as loadFile,
+  saveSourceThunk as saveSource,
+  audioSourceSelectors as sourceSelectors,
+};
 export default sourcesSlice.reducer;

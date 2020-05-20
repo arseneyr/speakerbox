@@ -16,3 +16,11 @@ declare module "@ungap/event-target" {
   export = EventTarget;
 }
 declare module "react-qr-code";
+declare module "worker-plugin/loader*" {
+  const exportString: string;
+  export default exportString;
+}
+declare module "!!file-loader*" {
+  const exportString: string;
+  export default exportString;
+}

@@ -53,7 +53,7 @@ const Main = () => {
           .map((id) => (
             <Sample key={id} id={id} ref={refs[id]} onEditClick={setEditId} />
           ))
-          .concat(<AddNew key="AddNew" />, <Record />)}
+          .concat(<AddNew key="AddNew" />, <Record key="Record" />)}
       </Grid>
       {editId && <Editor onClose={onEditorClose} id={editId} />}
     </>

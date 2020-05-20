@@ -2,11 +2,13 @@ import React, { useCallback, useState, useRef } from "react";
 import { Button, Snackbar } from "@material-ui/core";
 import { Alert } from "@material-ui/lab";
 import { useDispatch } from "react-redux";
-import { createSample } from "../redux/samples";
+import { createSample, setSourceId } from "../redux/samples";
 import { v4 } from "uuid";
 import { AppDispatch } from "../redux";
-import { AudioRecorder } from "../redux/audio_utils";
+import { AudioRecorder } from "../recorder";
 import { addAudioBuffer } from "../redux/audio_buffer";
+import { saveSource } from "../redux/sources";
+import { unwrapResult } from "@reduxjs/toolkit";
 
 const getStream = async () => {
   const devices = await navigator.mediaDevices.enumerateDevices();
@@ -53,21 +55,24 @@ export default () => {
     }
     stream.getVideoTracks()[0].addEventListener("ended", onEnd);
     recorder.current = new AudioRecorder();
-    recorder.current.startRecording(stream).then((audioBuffer) => {
-      if (audioBuffer === null) {
+    recorder.current.startRecording(stream).then((arrayBuffer) => {
+      if (arrayBuffer === null) {
         setError("Only silence recorded. Did you mean to play something?");
         return;
       }
+      const title =
+        "Recording on " + new Date().toLocaleString(navigator.language);
       const {
-        payload: { id },
+        payload: { id: sampleId },
       } = dispatch(
         createSample({
           id: v4(),
-          title:
-            "Recording on " + new Date().toLocaleString(navigator.language),
+          title,
         })
       );
-      dispatch(addAudioBuffer({ id, audioBuffer }));
+      dispatch(saveSource({ buffer: arrayBuffer, title }))
+        .then(unwrapResult)
+        .then(({ id }) => dispatch(setSourceId({ sampleId, sourceId: id })));
     });
     setIsRecording(true);
   }, [isRecording, dispatch]);
