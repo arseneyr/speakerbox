@@ -40,8 +40,8 @@ export default ({ id }: RemoteProps) => {
 
   useEffect(() => {
     const client = new RemoteClient(id);
-    client.connect();
     client.store.then((store) => setState({ store, client }));
+    client.connect();
     return () => {
       client.destroy();
       setState(null);

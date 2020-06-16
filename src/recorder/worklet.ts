@@ -1,3 +1,5 @@
+import { createEncoder, WasmMediaEncoder } from "wasm-media-encoders";
+
 declare global {
   interface IAudioWorkletProcessor {
     port: MessagePort;
@@ -17,73 +19,34 @@ interface ProcessorArgs {
 }
 
 const SILENCE_THRESHOLD = 1e-4;
-const TOTAL_STACK = 5 * 1024 * 1024;
-const TOTAL_MEMORY = 16 * 1024 * 1024;
-const WASM_PAGE_SIZE = 64 * 1024;
 
 class MyWorkletProcessor extends AudioWorkletProcessor {
-  private static wasmPromise: Promise<WebAssembly.Instance>;
-  private static memory = new WebAssembly.Memory({
-    initial: TOTAL_MEMORY / WASM_PAGE_SIZE,
-    maximum: TOTAL_MEMORY / WASM_PAGE_SIZE,
-  });
-  private FFI: any;
+  private static encoderPromise: Promise<WasmMediaEncoder<"audio/ogg">>;
+  private encoder!: WasmMediaEncoder<"audio/ogg">;
   private done = false;
   private silence = true;
   private offset = 0;
-  private buffers: ArrayBuffer[];
-  private ref!: number;
-  private pcm_l!: Float32Array;
+  private outBuffer = new Uint8Array(1024 * 1024);
   public constructor(args: { processorOptions: ProcessorArgs }) {
     super();
-    if (!MyWorkletProcessor.wasmPromise) {
-      MyWorkletProcessor.wasmPromise = MyWorkletProcessor.instantitate(
+    if (!MyWorkletProcessor.encoderPromise) {
+      MyWorkletProcessor.encoderPromise = createEncoder(
+        "audio/ogg",
         args.processorOptions.wasmModule
       );
     }
-    MyWorkletProcessor.wasmPromise.then(this.onInstantiate);
-    this.buffers = Array.from(Array(2), () => new ArrayBuffer(48000 * 10 * 4));
+    MyWorkletProcessor.encoderPromise.then(this.onInstantiate);
     this.port.onmessage = this.onMessage;
   }
 
-  private static instantitate(wasmModule: WebAssembly.Module) {
-    let dynamicTop = TOTAL_STACK;
-    function sbrk(increment: number) {
-      const oldDynamicTop = dynamicTop;
-      dynamicTop += increment;
-      return oldDynamicTop;
-    }
-    function exit(status: number) {
-      console.error(`LAME exited with status ${status}`);
-    }
+  private onInstantiate = (encoder: WasmMediaEncoder<"audio/ogg">) => {
+    encoder.configure({
+      sampleRate,
+      channels: 2,
+      vbrQuality: 3,
+    });
+    this.encoder = encoder;
 
-    const imports = {
-      env: {
-        memory: MyWorkletProcessor.memory,
-        pow: Math.pow,
-        powf: Math.pow,
-        exp: Math.exp,
-        sqrtf: Math.sqrt,
-        cos: Math.cos,
-        log: Math.log,
-        sin: Math.sin,
-        sbrk,
-        exit,
-      },
-    };
-    return WebAssembly.instantiate(wasmModule, imports);
-  }
-
-  private onInstantiate = (instance: WebAssembly.Instance) => {
-    this.FFI = instance.exports;
-    this.ref = this.FFI.vmsg_init(sampleRate);
-
-    const pcm_l_ref = new Uint32Array(
-      MyWorkletProcessor.memory.buffer,
-      this.ref,
-      1
-    )[0];
-    this.pcm_l = new Float32Array(MyWorkletProcessor.memory.buffer, pcm_l_ref);
     this.port.postMessage("ready");
   };
   private onMessage = () => {
@@ -93,22 +56,11 @@ class MyWorkletProcessor extends AudioWorkletProcessor {
       this.port.postMessage(null);
       return;
     }
-    if (this.FFI.vmsg_flush(this.ref) < 0) return null;
-    const mp3_ref = new Uint32Array(
-      MyWorkletProcessor.memory.buffer,
-      this.ref + 4,
-      1
-    )[0];
-    const size = new Uint32Array(
-      MyWorkletProcessor.memory.buffer,
-      this.ref + 8,
-      1
-    )[0];
-    const returnBuffer = new ArrayBuffer(size);
-    new Uint8Array(returnBuffer).set(
-      new Uint8Array(MyWorkletProcessor.memory.buffer, mp3_ref, size)
-    );
-    this.port.postMessage(returnBuffer, [returnBuffer]);
+    const mp3Data = this.encoder.finalize();
+    const returnBuffer = new Uint8Array(this.offset + mp3Data.length);
+    returnBuffer.set(new Uint8Array(this.outBuffer.buffer, 0, this.offset));
+    returnBuffer.set(mp3Data, this.offset);
+    this.port.postMessage(returnBuffer.buffer, [returnBuffer.buffer]);
   };
 
   public process(inputs: Float32Array[][]) {
@@ -127,13 +79,17 @@ class MyWorkletProcessor extends AudioWorkletProcessor {
       this.silence = false;
     }
 
-    this.pcm_l.set(inputs[0][0]);
-    this.FFI.vmsg_encode(this.ref, inputs[0][0].length);
+    const mp3Data = this.encoder.encode(inputs[0]);
+    while (mp3Data.length + this.offset > this.outBuffer.length) {
+      const newBuffer = new Uint8Array(this.outBuffer.length * 2);
+      newBuffer.set(this.outBuffer);
+      this.outBuffer = newBuffer;
+    }
+    this.outBuffer.set(mp3Data, this.offset);
+    this.offset += mp3Data.length;
 
     return true;
   }
 }
 
 registerProcessor("audio_scraper", MyWorkletProcessor);
-
-export {};

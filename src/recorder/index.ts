@@ -1,10 +1,12 @@
 // eslint-disable-next-line import/no-webpack-loader-syntax
 import workletUrl from "worker-plugin/loader!./worklet.ts";
 // eslint-disable-next-line import/no-webpack-loader-syntax
-import wasmUrl from "!!file-loader?name=static/js/[hash].wasm!./lame.wasm";
+import wasmUrl from "!!file-loader?name=static/js/[hash].wasm!wasm-media-encoders/wasm/ogg.wasm";
 import { Deferred } from "../globalTypes";
 
-const audioContext = new AudioContext();
+const audioContext = new (window.AudioContext ||
+  ((window as unknown) as { webkitAudioContext: AudioContext })
+    .webkitAudioContext)();
 
 export class AudioRecorder {
   private static worklet: Promise<void>;

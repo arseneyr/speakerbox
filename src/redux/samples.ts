@@ -5,6 +5,11 @@ import {
   createNextState,
 } from "@reduxjs/toolkit";
 import { decodeSource, sliceAudioBuffer } from "./audio_buffer";
+import { REHYDRATE } from "redux-persist";
+import { RootState } from ".";
+import { ActionWithPayload } from "./utils";
+import { sourceSelectors } from "./sources";
+import { v4 } from "uuid";
 
 interface PartialSample {
   id: string;
@@ -88,6 +93,20 @@ const samplesSlice = createSlice({
           end: payload.newEnd,
         },
       });
+    });
+    builder.addCase<
+      typeof REHYDRATE,
+      ActionWithPayload<typeof REHYDRATE, RootState>
+    >(REHYDRATE, (state, { payload }) => {
+      if (payload && samplesEntitySelectors.selectAll(payload).length === 0) {
+        samplesEntityAdapter.setAll(
+          state,
+          sourceSelectors
+            .selectAll(payload)
+            .filter((s) => s.title !== "BLOB")
+            .map((s) => ({ id: v4(), sourceId: s.id, title: s.title }))
+        );
+      }
     });
   },
 });

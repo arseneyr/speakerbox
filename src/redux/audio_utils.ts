@@ -1,6 +1,8 @@
 //import { AudioContext, AudioWorkletNode } from "standardized-audio-context";
 
-const audioContext = new AudioContext();
+const audioContext = new (window.AudioContext ||
+  ((window as unknown) as { webkitAudioContext: AudioContext })
+    .webkitAudioContext)();
 
 export async function decodeAudioData(buffer: ArrayBuffer) {
   return audioContext.decodeAudioData(buffer);

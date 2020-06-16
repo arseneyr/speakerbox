@@ -49,6 +49,7 @@ export default forwardRef<{ stop: () => void }, Props>(
         return;
       }
       waveRef.current = Wavesurfer.create({
+        barWidth: 4,
         container: divRef.current,
         interact: false,
         cursorWidth: 0,
