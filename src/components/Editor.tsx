@@ -11,7 +11,6 @@ import {
   makeStyles,
 } from "@material-ui/core";
 import CloseIcon from "@material-ui/icons/Close";
-import { PositionProperty } from "csstype";
 import { ReactComponent as RotateIcon } from "./rotateIcon.svg";
 
 const handleStyle = {
@@ -20,7 +19,7 @@ const handleStyle = {
   width: 24,
   height: 48,
   backgroundColor: "#69b6d5",
-  position: "absolute" as PositionProperty,
+  position: "absolute",
   top: "50%",
 };
 

@@ -27,7 +27,9 @@ const decodeSourceThunk = createAsyncThunk(
     { sourceId, sampleId }: { sourceId: string; sampleId: string },
     { getState, dispatch }
   ) => {
-    const buffer: ArrayBuffer = await localForage.getItem(sourceId);
+    const buffer: ArrayBuffer = (await localForage.getItem(
+      sourceId
+    )) as ArrayBuffer;
     const audioBuffer = await decodeAudioData(buffer);
     const ret = dispatch(addAudioBuffer({ id: sampleId, audioBuffer })).payload;
     const sample = sampleSelectors.selectById(getState(), sampleId);

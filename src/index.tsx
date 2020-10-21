@@ -11,7 +11,13 @@ ReactDOM.render(
   document.getElementById("root")
 );
 
-navigator.storage?.persist?.();
+navigator.storage
+  ?.persist?.()
+  .then((granted) => console.log("persist granted: ", granted));
+
+navigator.storage
+  ?.persisted?.()
+  .then((persisted) => console.log("already persisted", persisted));
 
 // If you want your app to work offline and load faster, you can change
 // unregister() to register() below. Note this comes with some pitfalls.
