@@ -3,7 +3,7 @@ import {
   getDefaultMiddleware,
   combineReducers,
 } from "@reduxjs/toolkit";
-import sources from "./sources";
+import sources, { sourcesTransform } from "./sources";
 import samples, { samplePersistTransform } from "./samples";
 import settings from "./settings";
 import audioBuffers from "./audio_buffer";
@@ -36,7 +36,7 @@ const persistedReducer = persistReducer(
     version: 1,
     storage: localforage,
     whitelist: ["samples", "sources", "settings"],
-    transforms: [transform],
+    transforms: [transform, sourcesTransform],
     serialize: false,
     deserialize: false,
   } as any,
@@ -47,7 +47,7 @@ const store = configureStore({
   reducer: persistedReducer,
   // Devtools do not sanitize state correctly
   // https://github.com/zalmoxisus/redux-devtools-extension/issues/739
-  devTools: false,
+  // devTools: false,
   //{
   // actionSanitizer: ((action: PayloadAction<any>) =>
   //   createNextState(action, (draft) => {

@@ -40,6 +40,7 @@ export default () => {
       onEnd();
       return;
     }
+    recorder.current = new AudioRecorder();
     const stream = (await (navigator.mediaDevices as any)?.getDisplayMedia({
       video: true,
       audio: true,
@@ -54,7 +55,6 @@ export default () => {
       return;
     }
     stream.getVideoTracks()[0].addEventListener("ended", onEnd);
-    recorder.current = new AudioRecorder();
     recorder.current.startRecording(stream).then((arrayBuffer) => {
       if (arrayBuffer === null) {
         setError("Only silence recorded. Did you mean to play something?");

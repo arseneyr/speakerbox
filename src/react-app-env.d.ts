@@ -1,6 +1,6 @@
 /// <reference types="react-scripts" />
 declare module "wavesurfer.js/dist/plugin/wavesurfer.regions";
-declare module "workerize-loader!*" {
+declare module "workerize-loader?*" {
   type AnyFunction = (...args: any[]) => any;
   type Async<F extends AnyFunction> = (
     ...args: Parameters<F>
@@ -23,4 +23,7 @@ declare module "worker-plugin/loader*" {
 declare module "!!file-loader*" {
   const exportString: string;
   export default exportString;
+}
+declare module "!!babel-loader*wasm-media-encoders" {
+  export * from "wasm-media-encoders";
 }

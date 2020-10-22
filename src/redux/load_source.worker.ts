@@ -17,5 +17,5 @@ export async function loadFile(file: Blob) {
     String.fromCharCode(...new Uint8Array(await crypto.digest("SHA-1", buffer)))
   );
   localForage.setItem(hash, buffer);
-  return hash;
+  return { id: hash, objectUrl: URL.createObjectURL(new Blob([buffer])) };
 }

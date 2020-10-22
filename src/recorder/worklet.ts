@@ -1,4 +1,8 @@
-import { createEncoder, WasmMediaEncoder } from "wasm-media-encoders";
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import {
+  createEncoder,
+  WasmMediaEncoder,
+} from '!!babel-loader?{"presets": [["@babel/preset-env", {"targets": "edge 79, firefox 76, chrome 66"}]]}!wasm-media-encoders';
 
 declare global {
   interface IAudioWorkletProcessor {

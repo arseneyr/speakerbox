@@ -1,5 +1,10 @@
-const { override, addWebpackModuleRule } = require("customize-cra");
+const {
+  override,
+  addWebpackModuleRule,
+  removeModuleScopePlugin,
+} = require("customize-cra");
 
 module.exports = override(
-  addWebpackModuleRule({ test: /\.wasm$/, type: "javascript/auto" })
+  addWebpackModuleRule({ test: /\.wasm$/, type: "javascript/auto" }),
+  removeModuleScopePlugin()
 );

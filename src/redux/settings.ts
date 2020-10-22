@@ -17,7 +17,7 @@ const settingsSlice = createSlice({
     sink: { sinkId: "default", sinkName: "Default Output" },
   } as SettingsState,
   reducers: {
-    setSinkId: (state, { payload }: PayloadAction<Sink>) => {
+    setSink: (state, { payload }: PayloadAction<Sink>) => {
       state.sink = payload;
     },
     setPreferredSink: (state, { payload }: PayloadAction<Sink>) => {
@@ -27,5 +27,5 @@ const settingsSlice = createSlice({
   },
 });
 
-export const { setSinkId, setPreferredSink } = settingsSlice.actions;
+export const { setSink, setPreferredSink } = settingsSlice.actions;
 export default settingsSlice.reducer;

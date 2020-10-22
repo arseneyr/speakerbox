@@ -1,29 +1,25 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { AppDispatch, RootState } from "../redux";
 import { useDispatch, useSelector } from "react-redux";
-import { setSinkId, setPreferredSink } from "../redux/settings";
+import { setSink, setPreferredSink } from "../redux/settings";
 import { TextField, MenuItem } from "@material-ui/core";
 
-const getDevices = async () =>
-  Object.fromEntries(
+const getDevices = async () => {
+  return Object.fromEntries(
     (await navigator.mediaDevices.enumerateDevices())
       .filter((d) => d.kind === "audiooutput")
       .map((d) => [d.deviceId, d.label])
   );
+};
 
-export default () => {
-  if (!navigator.mediaDevices) {
-    return null;
-  }
-
+const SinkSelector: React.FunctionComponent = () => {
   const dispatch: AppDispatch = useDispatch();
   const [enumeratedDevices, setEnumeratedDevices] = useState<{
     [deviceId: string]: string;
   }>({});
-  const { preferredSink, sink } = useSelector((state: RootState) => ({
-    preferredSink: state.settings.preferredSink,
-    sink: state.settings.sink,
-  }));
+  const { preferredSink, sink } = useSelector(
+    (state: RootState) => state.settings
+  );
   const devices = Object.values(enumeratedDevices).length
     ? Object.assign({}, enumeratedDevices)
     : { [sink.sinkId]: sink.sinkName };
@@ -40,10 +36,13 @@ export default () => {
       sink.sinkId !== preferredSink.sinkId &&
       enumeratedDevices[preferredSink.sinkId] !== undefined
     ) {
-      dispatch(setSinkId(preferredSink));
-    } else if (enumeratedDevices[sink.sinkId] === undefined) {
+      dispatch(setSink(preferredSink));
+    } else if (
+      enumeratedDevices[sink.sinkId] === undefined &&
+      sink.sinkId !== "default"
+    ) {
       dispatch(
-        setSinkId({
+        setSink({
           sinkId: "default",
           sinkName: enumeratedDevices["default"] || "Default Output",
         })
@@ -56,8 +55,12 @@ export default () => {
       return;
     }
     try {
-      await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      const mediaStream = await navigator.mediaDevices.getUserMedia({
+        video: false,
+        audio: true,
+      });
       setEnumeratedDevices(await getDevices());
+      mediaStream.getTracks().forEach((t) => t.stop());
     } catch (e) {}
   }, [enumeratedDevices]);
 
@@ -91,3 +94,5 @@ export default () => {
     </TextField>
   );
 };
+
+export default SinkSelector;
