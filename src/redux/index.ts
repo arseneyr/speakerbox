@@ -2,8 +2,9 @@ import {
   configureStore,
   getDefaultMiddleware,
   combineReducers,
+  createNextState,
 } from "@reduxjs/toolkit";
-import sources from "./sources";
+import sources, { migrate } from "./sources";
 import samples, { samplePersistTransform } from "./samples";
 import settings from "./settings";
 import audioBuffers from "./audio_buffer";

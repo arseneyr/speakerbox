@@ -13,9 +13,9 @@ export async function loadFile(file: Blob) {
   const buffer = await pFileReader(file);
   // eslint-disable-next-line no-restricted-globals
   const crypto = self.crypto.subtle;
-  const hash = btoa(
+  const id = btoa(
     String.fromCharCode(...new Uint8Array(await crypto.digest("SHA-1", buffer)))
   );
-  localForage.setItem(hash, buffer);
-  return hash;
+  localForage.setItem(id, buffer);
+  return { id, buffer };
 }

@@ -16,7 +16,10 @@ import Record from "./Record";
 
 const Main = () => {
   const samples = useSelector(sampleSelectors.selectIds) as string[];
-  const [editId, setEditId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<{
+    id: string;
+    mediaElement: HTMLAudioElement;
+  } | null>(null);
   const onEditorClose = useCallback(() => setEditId(null), []);
   const remote = useRemote() as RemoteServer;
 
@@ -55,7 +58,7 @@ const Main = () => {
           ))
           .concat(<AddNew key="AddNew" />, <Record key="Record" />)}
       </Grid>
-      {editId && <Editor onClose={onEditorClose} id={editId} />}
+      {editId && <Editor onClose={onEditorClose} {...editId} />}
     </>
   );
 };

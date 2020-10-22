@@ -15,12 +15,13 @@ interface PartialSample {
   id: string;
   title: string;
   sourceId?: string;
+  error?: string;
 }
 export interface FullSample extends PartialSample {
   start: number;
   end: number;
 }
-type Sample = (PartialSample & { error: string }) | PartialSample | FullSample;
+type Sample = PartialSample | FullSample;
 
 const samplesEntityAdapter = createEntityAdapter<Sample>();
 const samplesEntitySelectors = samplesEntityAdapter.getSelectors(
@@ -50,6 +51,8 @@ const samplesSlice = createSlice({
         id: payload.id,
         changes: { title: payload.title },
       }),
+
+    updateSample: samplesEntityAdapter.updateOne,
   },
   extraReducers: (builder) => {
     builder.addCase(decodeSource.fulfilled, (state, { payload }) => {
@@ -129,6 +132,7 @@ export const {
   createSample,
   setSourceId,
   updateTitle,
+  updateSample,
 } = samplesSlice.actions;
 export { samplesEntitySelectors as sampleSelectors };
 export default samplesSlice.reducer;

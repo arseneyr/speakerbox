@@ -4,110 +4,98 @@ import React, {
   useCallback,
   forwardRef,
   useImperativeHandle,
+  useState,
 } from "react";
-import Wavesurfer from "wavesurfer.js";
-import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
-import { useSelector, useDispatch } from "react-redux";
-import { AppDispatch, RootState } from "../redux";
-import { sampleSelectors } from "../redux/samples";
+import { useSelector } from "react-redux";
+import { RootState } from "../redux";
+import { sampleSelectors, FullSample } from "../redux/samples";
 import Sample from "../components/Sample";
-import { audioBufferSelectors, decodeSource } from "../redux/audio_buffer";
+import localForage from "localforage";
 import { useRemote, RemoteServer } from "../redux/remote";
+import { sourceSelectors } from "../redux/sources";
 
 interface Props {
   id: string;
-  onEditClick?(id: string): void;
+  onEditClick?(param: { id: string; mediaElement: HTMLAudioElement }): void;
 }
 
 export default forwardRef<{ stop: () => void }, Props>(
   ({ id, onEditClick }, ref) => {
-    const dispatch: AppDispatch = useDispatch();
-    const divRef = useRef<HTMLDivElement | null>(null);
-    const waveRef = useRef<Wavesurfer | null>(null);
+    const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
+    const endTimer = useRef<number | null>(null);
     const remote = useRemote() as RemoteServer;
 
-    const { sample, audioBuffer, sinkId } = useSelector((state: RootState) => {
+    const { sample, sinkId, buffer } = useSelector((state: RootState) => {
       const sample = sampleSelectors.selectById(state, id);
       return {
         sample,
-        audioBuffer:
-          state.audioBuffers &&
-          audioBufferSelectors.selectById(state, id)?.audioBuffer,
         sinkId: state.settings && state.settings.sink.sinkId,
+        buffer:
+          sample?.sourceId &&
+          sourceSelectors.selectById(state, sample?.sourceId)?.buffer,
       };
     });
-    const sourceId = sample && sample?.sourceId;
+    const { start, end } =
+      sample && "start" in sample ? sample : { start: 0, end: undefined };
 
     useEffect(() => {
-      !audioBuffer &&
-        sourceId &&
-        dispatch(decodeSource({ sourceId, sampleId: id }));
-    }, [id, audioBuffer, sourceId, dispatch]);
+      if (!buffer) return;
+      const a = new Audio(URL.createObjectURL(new Blob([buffer])));
+      a.addEventListener("canplaythrough", () => setAudio(a));
+    }, [buffer]);
 
     useEffect(() => {
-      if (!divRef.current || !audioBuffer) {
-        return;
+      if (audio && (audio as any).setSinkId) {
+        (audio as any).setSinkId(sinkId);
       }
-      waveRef.current = Wavesurfer.create({
-        barWidth: 4,
-        container: divRef.current,
-        interact: false,
-        cursorWidth: 0,
-        responsive: true,
-        hideScrollbar: true,
-        plugins: [RegionsPlugin.create({})],
-      });
-      waveRef.current.setSinkId(sinkId);
-      waveRef.current.loadDecodedBuffer(audioBuffer);
-      return () => {
-        waveRef.current && waveRef.current.destroy();
-      };
-    }, [audioBuffer, sinkId]);
+    }, [audio, sinkId]);
 
-    const onPlay = useCallback(() => {
-      if (waveRef.current) {
-        waveRef.current.seekTo(0);
-        waveRef.current.play();
+    const stop = useCallback(() => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = start;
+        if (endTimer.current !== null) {
+          window.clearTimeout(endTimer.current);
+          endTimer.current = null;
+        }
       }
-    }, []);
+    }, [audio, start]);
 
-    const onStop = useCallback(() => {
-      if (waveRef.current) {
-        waveRef.current.stop();
-        waveRef.current.seekTo(0);
+    const play = useCallback(() => {
+      stop();
+      if (audio) {
+        audio.play();
+        if (end) {
+          endTimer.current = window.setTimeout(stop, (end - start) * 1000);
+        }
       }
-    }, []);
+    }, [audio, start, end, stop]);
 
     useImperativeHandle(
       ref,
       () => ({
-        stop: onStop,
+        stop,
       }),
-      [onStop]
+      [stop]
     );
 
     useEffect(() => {
-      remote.addHandler("play", (remoteId) => remoteId === id && onPlay());
-      remote.addHandler("stop", (remoteId) => remoteId === id && onStop());
-    }, [remote, id, onPlay, onStop]);
-
-    const onDivRef = useCallback((ref) => {
-      divRef.current = ref;
-    }, []);
+      remote.addHandler("play", (remoteId) => remoteId === id && play());
+      remote.addHandler("stop", (remoteId) => remoteId === id && stop());
+    }, [remote, id, play, stop]);
 
     const onEditClickMemo = useCallback(() => {
-      onEditClick && onEditClick(id);
-      waveRef.current && waveRef.current.stop();
-    }, [id, onEditClick]);
+      stop();
+      onEditClick && audio && onEditClick({ id, mediaElement: audio });
+    }, [id, onEditClick, stop, audio]);
 
     return (
       <Sample
         title={sample?.title}
-        loading={!audioBuffer}
-        onEditClick={onEditClick && onEditClickMemo}
-        onPlay={onPlay}
-        onStop={onStop}
-        onDivRef={onDivRef}
+        loading={!audio}
+        onEditClick={onEditClickMemo}
+        onPlay={play}
+        onStop={stop}
       />
     );
   }

@@ -2,20 +2,29 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import Wavesurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
 import { useSelector, useDispatch } from "react-redux";
-import { sampleSelectors, deleteSample, updateTitle } from "../redux/samples";
+import {
+  sampleSelectors,
+  deleteSample,
+  updateTitle,
+  updateSample,
+} from "../redux/samples";
 import { RootState } from "../redux";
 import Editor from "../components/Editor";
-import { audioBufferSelectors, sliceAudioBuffer } from "../redux/audio_buffer";
+import {
+  audioBufferSelectors,
+  sliceAudioBuffer,
+  decodeSource,
+} from "../redux/audio_buffer";
 
 interface Props {
   id: string;
+  mediaElement: HTMLAudioElement;
   onClose(): void;
 }
 
-export default ({ id, onClose }: Props) => {
-  const { sample, audioBuffer } = useSelector((state: RootState) => ({
+export default ({ id, onClose, mediaElement }: Props) => {
+  const { sample } = useSelector((state: RootState) => ({
     sample: sampleSelectors.selectById(state, id),
-    audioBuffer: audioBufferSelectors.selectById(state, id)?.audioBuffer,
   }));
   const title = sample?.title;
   const [titleValue, setTitleValue] = useState(title);
@@ -23,18 +32,20 @@ export default ({ id, onClose }: Props) => {
   const waveRef = useRef<Wavesurfer | null>(null);
   const dispatch = useDispatch();
   useEffect(() => {
-    if (divRef && audioBuffer) {
+    if (divRef) {
       waveRef.current = Wavesurfer.create({
         container: divRef,
         interact: false,
         hideScrollbar: true,
+        backend: "MediaElement",
         cursorWidth: 0,
         plugins: [RegionsPlugin.create({})],
       });
-      waveRef.current.loadDecodedBuffer(audioBuffer);
+      waveRef.current.load(mediaElement);
       const region = waveRef.current.addRegion({
         id: 0,
-        end: audioBuffer.duration,
+        start: sample && "start" in sample ? sample.start : 0,
+        end: sample && "end" in sample ? sample.end : mediaElement.duration,
         drag: false,
       });
       let currentStart = region.start,
@@ -77,15 +88,17 @@ export default ({ id, onClose }: Props) => {
         }
       };
     }
-  }, [divRef, audioBuffer]);
+  }, [divRef, mediaElement, sample]);
   const onTitleChange = useCallback((title) => setTitleValue(title), []);
   const onSave = useCallback(() => {
     waveRef.current &&
       dispatch(
-        sliceAudioBuffer({
+        updateSample({
           id,
-          newStart: waveRef.current.regions.list[0].start,
-          newEnd: waveRef.current.regions.list[0].end,
+          changes: {
+            start: waveRef.current.regions.list[0].start,
+            end: waveRef.current.regions.list[0].end,
+          },
         })
       );
     titleValue && dispatch(updateTitle({ id, title: titleValue }));

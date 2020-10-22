@@ -6,17 +6,50 @@ import {
   IconButton,
   CircularProgress,
   makeStyles,
+  Typography,
 } from "@material-ui/core";
+import { CSSTransition } from "react-transition-group";
 import Edit from "@material-ui/icons/Edit";
 
 const useStyles = makeStyles({
   card: {
     position: "relative",
+    backgroundColor: "unset",
+    height: "100%",
+  },
+  progressDiv: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    height: "100%",
+    backgroundColor: "#fd7c3e",
+    "&-enter": {
+      width: 0,
+    },
+    "&-enter-active": {
+      width: "100%",
+      transitionProperty: "width",
+    },
   },
   cardActionArea: {
     userSelect: "none",
     touchAction: "manipulation",
     "-webkitTouchCallout": "none",
+    padding: 8,
+    color: "rgba(255,255,255,0.70)",
+    mixBlendMode: "multiply",
+    backgroundColor: "rgba(0,0,0,0.85)",
+    border: "4px solid rgba(255,255,255,0.25)",
+    transition: "color 50ms, border-color 50ms",
+    "&:hover": {
+      color: "rgba(255,255,255,0.90)",
+      borderColor: "rgba(255,255,255,0.90)",
+    },
+  },
+  cardActionContent: {
+    height: "3em",
+    font: `italic 32px/1em 'Heebo', sans-serif`,
+    overflow: "hidden",
   },
   cardDisableHover: {
     opacity: [["0"], "!important"] as any,
@@ -46,33 +79,35 @@ const useStyles = makeStyles({
 });
 
 interface Props {
-  onDivRef?(ref: HTMLDivElement): void;
   loading?: boolean;
   title?: string;
   onEditClick?(): void;
   onPlay(): void;
   onStop(): void;
+  duration: number;
 }
 
 export default (props: Props) => {
-  const { loading, title, onDivRef, onEditClick, onPlay, onStop } = props;
+  const { loading, title, duration, onEditClick, onPlay, onStop } = props;
   const classes = useStyles();
   const [cornerIconEntered, setCornerIconEntered] = useState(false);
   const holdToPlayTimerRef = useRef<number | null>(null);
   const holdToPlay = useRef<boolean>(false);
   const touchTimerRef = useRef<number | null>(null);
+  const [playing, setPlaying] = useState(false);
 
   const onMouseDown = useCallback(() => {
     if (holdToPlayTimerRef.current) {
       clearTimeout(holdToPlayTimerRef.current);
     }
     onPlay();
+    setPlaying(true);
     holdToPlay.current = false;
     holdToPlayTimerRef.current = window.setTimeout(() => {
       holdToPlayTimerRef.current = null;
       holdToPlay.current = true;
     }, 500);
-  }, [onPlay]);
+  }, [duration, onPlay]);
 
   const onMouseUp = useCallback(() => {
     if (holdToPlayTimerRef.current) {
@@ -117,8 +152,14 @@ export default (props: Props) => {
 
   return (
     <Card className={classes.card}>
+      <CSSTransition
+        in={playing}
+        timeout={4000}
+        classNames={classes.progressDiv}
+      >
+        <div className={classes.progressDiv}></div>
+      </CSSTransition>
       <CardActionArea
-        disableRipple
         disabled={loading}
         onMouseDown={onMouseDown}
         onMouseUp={onMouseUp}
@@ -132,7 +173,7 @@ export default (props: Props) => {
         }}
         className={classes.cardActionArea}
       >
-        <CardHeader
+        {/*<CardHeader
           title={title}
           classes={{
             action: classes.headerAction,
@@ -164,8 +205,8 @@ export default (props: Props) => {
             )
           }
           style={{ padding: "4px 0px" }}
-        />
-        <div ref={onDivRef} style={{ height: 128 }} />
+        />*/}
+        <div className={classes.cardActionContent}>{title}</div>
       </CardActionArea>
       {loading && (
         <div className={classes.loadingDiv}>

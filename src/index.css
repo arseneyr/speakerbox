@@ -4,4 +4,11 @@ html,
   height: 100%;
   width: 100%;
   overflow-x: hidden;
+  background: linear-gradient(152.56deg, #14ff80 19.1%, #23f2ff 82.53%);
 }
+
+#root {
+  position: relative;
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Heebo:wght@800&display=swap");
