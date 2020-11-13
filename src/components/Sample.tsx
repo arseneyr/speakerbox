@@ -1,176 +1,205 @@
-import React, { useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
-  Card,
-  CardActionArea,
-  CardHeader,
-  IconButton,
-  CircularProgress,
   makeStyles,
+  ButtonBase,
+  Theme,
+  Zoom,
+  Tooltip,
 } from "@material-ui/core";
-import Edit from "@material-ui/icons/Edit";
+import { CSSTransition } from "react-transition-group";
+import { GridItem } from "./Grid";
+import { Skeleton } from "@material-ui/lab";
+import { useWindowWidth } from "../hooks";
 
-const useStyles = makeStyles({
-  card: {
-    position: "relative",
-  },
-  cardActionArea: {
-    userSelect: "none",
-    touchAction: "manipulation",
-    "-webkitTouchCallout": "none",
-  },
-  cardDisableHover: {
-    opacity: [["0"], "!important"] as any,
-  },
-  headerAction: {
-    margin: "0px 4px",
-  },
-  headerTitle: {
-    padding: "0px 12px",
-    whiteSpace: "nowrap",
-    textOverflow: "ellipsis",
-    overflow: "hidden",
-  },
-  headerTitleContainer: {
-    minWidth: 0,
-  },
-  loadingDiv: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    height: "100%",
-    width: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+const useStyles = makeStyles<Theme, { duration: number; startPercent: number }>(
+  {
+    skeleton: {
+      borderRadius: 8,
+    },
+    button: {
+      width: "100%",
+      borderRadius: 8,
+      backgroundColor: "#565656",
+      transition: "opacity 100ms",
+      "&:hover > $title": {
+        opacity: 1,
+      },
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      "$skeleton > &": {
+        opacity: 0.5,
+        visibility: "unset",
+      },
+    },
+    title: {
+      transition: "opacity 200ms",
+      opacity: 0.8,
+      padding: "8px 8px 0 8px",
+      boxSizing: "content-box",
+      height: "2.4em",
+      lineHeight: "1.2em",
+      font: `italic 800 24px "Merriweather Sans"`,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      display: "-webkit-box",
+      "-webkit-line-clamp": 2,
+      "-webkit-box-orient": "vertical",
+      overflowWrap: "anywhere",
+    },
+    progress: {
+      height: 8,
+      width: "100%",
+      background: "linear-gradient(to left, #FF6BF9, #FF7A9A)",
+      clipPath: (props) => `inset(0 ${props.startPercent}% 0 0)`,
+    },
+    progressEnterActive: {
+      "&&": {
+        clipPath: "inset(0 0 0 0)",
+      },
+      transition: (props) =>
+        props.duration ? `clip-path ${props.duration}ms linear` : undefined,
+    },
+    progressEnterDone: {
+      clipPath: "unset",
+    },
+    progressExit: {
+      clipPath: "unset",
+      opacity: 1,
+    },
+    progressExitActive: {
+      opacity: 0,
+      transition: "opacity 2s ease-in",
+    },
+    progressExitDone: {
+      opacity: 0,
+    },
+  }
+);
 
-interface Props {
-  loading?: boolean;
+interface SampleProps {
   title?: string;
-  onEditClick?(): void;
-  onPlay(): void;
-  onStop(): void;
+  onMouseDown?: () => void;
+  onMouseUp?: () => void;
+  playbackStart?: number;
+  durationMs?: number;
+  loading?: boolean;
 }
 
-export default (props: Props) => {
-  const { loading, title, onEditClick, onPlay, onStop } = props;
-  const classes = useStyles();
-  const [cornerIconEntered, setCornerIconEntered] = useState(false);
-  const holdToPlayTimerRef = useRef<number | null>(null);
-  const holdToPlay = useRef<boolean>(false);
-  const touchTimerRef = useRef<number | null>(null);
+const Sample: React.FunctionComponent<SampleProps> = (props) => {
+  const {
+    title,
+    playbackStart,
+    durationMs,
+    loading,
+    onMouseDown,
+    onMouseUp,
+  } = props;
 
-  const onMouseDown = useCallback(() => {
-    if (holdToPlayTimerRef.current) {
-      clearTimeout(holdToPlayTimerRef.current);
-    }
-    onPlay();
-    holdToPlay.current = false;
-    holdToPlayTimerRef.current = window.setTimeout(() => {
-      holdToPlayTimerRef.current = null;
-      holdToPlay.current = true;
-    }, 500);
-  }, [onPlay]);
+  const titleDiv = useRef<HTMLDivElement>(null);
+  const [adjustedDuration, setAdjustedDuration] = useState(0);
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+  const [tooltip, setTooltip] = useState("");
+  const width = useWindowWidth;
 
-  const onMouseUp = useCallback(() => {
-    if (holdToPlayTimerRef.current) {
-      clearTimeout(holdToPlayTimerRef.current);
-      holdToPlayTimerRef.current = null;
-    } else if (holdToPlay.current) {
-      onStop();
-    }
-  }, [onStop]);
+  const startPercent =
+    durationMs && playbackStart && !loading
+      ? Math.max(0, 1 - (Date.now() - playbackStart) / durationMs) * 100
+      : 100;
 
-  const onTouchStart = useCallback(
-    (event) => {
-      touchTimerRef.current = window.setTimeout(() => {
-        touchTimerRef.current = null;
-        onMouseDown();
-      }, 50);
-    },
-    [onMouseDown]
+  const classes = useStyles({ duration: adjustedDuration, startPercent });
+  const [currentPlaybackStart, setCurrentPlaybackStart] = useState(
+    playbackStart
   );
 
-  const onTouchMove = useCallback((evt) => {
-    evt.preventDefault();
-    if (touchTimerRef.current) {
-      clearTimeout(touchTimerRef.current);
-      touchTimerRef.current = null;
+  useEffect(() => {
+    setCurrentPlaybackStart(playbackStart);
+    if (playbackStart && durationMs) {
+      const ad = durationMs - Date.now() + playbackStart;
+      setAdjustedDuration(ad);
+      setTooltipOpen(false);
+      let timer: any = setTimeout(() => {
+        setAdjustedDuration(0);
+        timer = null;
+      }, ad);
+      return () => {
+        setAdjustedDuration(0);
+        timer && clearTimeout(timer);
+        timer = null;
+      };
     }
-  }, []);
+  }, [playbackStart, durationMs]);
 
-  const onTouchEnd = useCallback(
-    (evt) => {
-      evt.preventDefault();
-      if (touchTimerRef.current) {
-        clearTimeout(touchTimerRef.current);
-        touchTimerRef.current = null;
-        onPlay();
-      } else {
-        onMouseUp();
-      }
-    },
-    [onMouseUp, onPlay]
+  useEffect(() => {
+    if (
+      titleDiv.current &&
+      titleDiv.current.scrollHeight > titleDiv.current.offsetHeight
+    ) {
+      setTooltip(title ?? "");
+    } else {
+      setTooltip("");
+    }
+  }, [width, title]);
+
+  const Button = (
+    <ButtonBase
+      className={classes.button}
+      onMouseDown={onMouseDown}
+      onMouseUp={onMouseUp}
+      disabled={loading}
+    >
+      <Tooltip
+        title={tooltip}
+        open={tooltipOpen}
+        onOpen={() => setTooltipOpen(true)}
+        onClose={() => setTooltipOpen(false)}
+      >
+        <div ref={titleDiv} className={classes.title}>
+          {title}
+        </div>
+      </Tooltip>
+      <CSSTransition
+        in={
+          currentPlaybackStart === playbackStart &&
+          !!adjustedDuration &&
+          !loading
+        }
+        timeout={{
+          enter: adjustedDuration,
+          exit: 2000,
+        }}
+        classNames={{
+          enterActive: classes.progressEnterActive,
+          enterDone: classes.progressEnterDone,
+          exit: classes.progressExit,
+          exitActive: classes.progressExitActive,
+          exitDone: classes.progressExitDone,
+        }}
+      >
+        <div className={classes.progress} />
+      </CSSTransition>
+    </ButtonBase>
   );
 
   return (
-    <Card className={classes.card}>
-      <CardActionArea
-        disableRipple
-        disabled={loading}
-        onMouseDown={onMouseDown}
-        onMouseUp={onMouseUp}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        classes={{
-          focusHighlight: cornerIconEntered
-            ? classes.cardDisableHover
-            : undefined,
-        }}
-        className={classes.cardActionArea}
-      >
-        <CardHeader
-          title={title}
-          classes={{
-            action: classes.headerAction,
-            title: classes.headerTitle,
-            content: classes.headerTitleContainer,
-          }}
-          action={
-            onEditClick && (
-              <IconButton
-                component="div"
-                onMouseOver={() => setCornerIconEntered(true)}
-                onMouseOut={() => setCornerIconEntered(false)}
-                onTouchStart={(evt: React.TouchEvent<HTMLDivElement>) =>
-                  evt.stopPropagation()
-                }
-                onTouchEnd={(evt: React.TouchEvent<HTMLDivElement>) =>
-                  evt.stopPropagation()
-                }
-                onMouseDown={(evt: React.MouseEvent<HTMLDivElement>) =>
-                  evt.stopPropagation()
-                }
-                onMouseUp={(evt: React.MouseEvent<HTMLDivElement>) =>
-                  evt.stopPropagation()
-                }
-                onClick={onEditClick}
-              >
-                <Edit />
-              </IconButton>
-            )
-          }
-          style={{ padding: "4px 0px" }}
-        />
-        <div style={{ height: 128 }} />
-      </CardActionArea>
-      {/* {loading && (
-        <div className={classes.loadingDiv}>
-          <CircularProgress />
-        </div>
-      )} */}
-    </Card>
+    <Zoom in={true} appear>
+      <GridItem>
+        {loading ? (
+          <Skeleton
+            height="73.6px"
+            width="100%"
+            variant="rect"
+            animation="wave"
+            className={classes.skeleton}
+          >
+            {Button}
+          </Skeleton>
+        ) : (
+          Button
+        )}
+      </GridItem>
+    </Zoom>
   );
 };
+
+export default Sample;

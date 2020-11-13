@@ -28,3 +28,8 @@ declare module "!!file-loader*" {
 declare module "!!babel-loader*wasm-media-encoders" {
   export * from "wasm-media-encoders";
 }
+
+declare module "*.ttf" {
+  const exportString: string;
+  export default exportString;
+}
