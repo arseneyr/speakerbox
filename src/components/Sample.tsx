@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useMemo } from "react";
 import {
   Card,
   CardActionArea,
@@ -46,7 +46,6 @@ const useStyles = makeStyles({
 });
 
 interface Props {
-  onDivRef?(ref: HTMLDivElement): void;
   loading?: boolean;
   title?: string;
   onEditClick?(): void;
@@ -55,7 +54,7 @@ interface Props {
 }
 
 export default (props: Props) => {
-  const { loading, title, onDivRef, onEditClick, onPlay, onStop } = props;
+  const { loading, title, onEditClick, onPlay, onStop } = props;
   const classes = useStyles();
   const [cornerIconEntered, setCornerIconEntered] = useState(false);
   const holdToPlayTimerRef = useRef<number | null>(null);
@@ -165,13 +164,13 @@ export default (props: Props) => {
           }
           style={{ padding: "4px 0px" }}
         />
-        <div ref={onDivRef} style={{ height: 128 }} />
+        <div style={{ height: 128 }} />
       </CardActionArea>
-      {loading && (
+      {/* {loading && (
         <div className={classes.loadingDiv}>
           <CircularProgress />
         </div>
-      )}
+      )} */}
     </Card>
   );
 };

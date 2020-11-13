@@ -4,6 +4,7 @@ import React, {
   useCallback,
   forwardRef,
   useImperativeHandle,
+  useState,
 } from "react";
 import Wavesurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugin/wavesurfer.regions";
@@ -13,7 +14,9 @@ import { sampleSelectors } from "../redux/samples";
 import Sample from "../components/Sample";
 import { audioBufferSelectors, decodeSource } from "../redux/audio_buffer";
 import { useRemote, RemoteServer } from "../redux/remote";
-import { sourceSelectors, getSourceUrl } from "../redux/sources";
+import { getSourceUrl, sourceSelectors } from "../redux/sources";
+import { createSelector } from "@reduxjs/toolkit";
+import { Skeleton } from "@material-ui/lab";
 
 interface Props {
   id: string;
@@ -23,36 +26,35 @@ interface Props {
 export default forwardRef<{ stop: () => void }, Props>(
   ({ id, onEditClick }, ref) => {
     const dispatch: AppDispatch = useDispatch();
-    const divRef = useRef<HTMLDivElement | null>(null);
     // const waveRef = useRef<Wavesurfer | null>(null);
     const audioRef = useRef<HTMLAudioElement>(new Audio());
     const remote = useRemote() as RemoteServer;
+    const [loading, setLoading] = useState(true);
+    // const selectorRef = useRef(makeSampleSelector());
 
-    const { sample, objectUrl, sinkId } = useSelector((state: RootState) => {
-      const sample = sampleSelectors.selectById(state, id);
-      return {
-        sample,
-        // audioBuffer:
-        //   state.audioBuffers &&
-        //   audioBufferSelectors.selectById(state, id)?.audioBuffer,
-        objectUrl:
-          sample?.sourceId &&
-          sourceSelectors.selectById(state, sample.sourceId)?.objectUrl,
-        sinkId: state.settings && state.settings.sink.sinkId,
-      };
-    });
-    const sourceId = sample && sample?.sourceId;
-
-    useEffect(() => {
-      !objectUrl && sourceId && dispatch(getSourceUrl(sourceId));
-      // dispatch(decodeSource({ sourceId, sampleId: id }));
-    }, [id, objectUrl, sourceId, dispatch]);
+    const { title, sourceId, objectUrl, sinkId } = useSelector(
+      (state: RootState) => {
+        const sample = sampleSelectors.selectById(state, id);
+        return {
+          title: sample?.title,
+          sourceId: sample?.sourceId,
+          objectUrl: sample?.sourceId
+            ? sourceSelectors.selectById(state, sample?.sourceId)?.objectUrl
+            : undefined,
+          sinkId: state.settings.sink.sinkId,
+        };
+      }
+    );
 
     useEffect(() => {
-      if (!divRef.current || !objectUrl) {
+      if (!objectUrl) {
+        sourceId && dispatch(getSourceUrl(sourceId));
         return;
       }
       audioRef.current.src = objectUrl;
+      audioRef.current.addEventListener("canplaythrough", () =>
+        setLoading(false)
+      );
       // waveRef.current = Wavesurfer.create({
       //   barWidth: 4,
       //   container: divRef.current,
@@ -67,7 +69,7 @@ export default forwardRef<{ stop: () => void }, Props>(
       // return () => {
       //   waveRef.current && waveRef.current.destroy();
       // };
-    }, [objectUrl]);
+    }, [objectUrl, sourceId, dispatch]);
 
     useEffect(() => {
       (audioRef.current as any).setSinkId?.(sinkId);
@@ -78,6 +80,8 @@ export default forwardRef<{ stop: () => void }, Props>(
       //   waveRef.current.seekTo(0);
       //   waveRef.current.play();
       // }
+      audioRef.current.currentTime = 0;
+      audioRef.current.play();
     }, []);
 
     const onStop = useCallback(() => {
@@ -85,6 +89,8 @@ export default forwardRef<{ stop: () => void }, Props>(
       //   waveRef.current.stop();
       //   waveRef.current.seekTo(0);
       // }
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
     }, []);
 
     useImperativeHandle(
@@ -100,23 +106,20 @@ export default forwardRef<{ stop: () => void }, Props>(
       remote.addHandler("stop", (remoteId) => remoteId === id && onStop());
     }, [remote, id, onPlay, onStop]);
 
-    const onDivRef = useCallback((ref) => {
-      divRef.current = ref;
-    }, []);
-
     const onEditClickMemo = useCallback(() => {
       onEditClick && onEditClick(id);
       // waveRef.current && waveRef.current.stop();
     }, [id, onEditClick]);
 
-    return (
+    return loading ? (
+      <Skeleton />
+    ) : (
       <Sample
-        title={sample?.title}
-        // loading={!audioBuffer}
+        title={title}
+        loading={loading}
         onEditClick={onEditClick && onEditClickMemo}
         onPlay={onPlay}
         onStop={onStop}
-        onDivRef={onDivRef}
       />
     );
   }

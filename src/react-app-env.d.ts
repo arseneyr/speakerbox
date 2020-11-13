@@ -2,12 +2,13 @@
 declare module "wavesurfer.js/dist/plugin/wavesurfer.regions";
 declare module "workerize-loader?*" {
   type AnyFunction = (...args: any[]) => any;
-  type Async<F extends AnyFunction> = (
+  type Unpromisify<T> = T extends PromiseLike<infer U> ? U : T;
+  type Async<F extends Function> = (
     ...args: Parameters<F>
-  ) => Promise<ReturnType<F>>;
+  ) => Promise<Unpromisify<ReturnType<F>>>;
 
-  type Workerized<T> = Worker &
-    { [K in keyof T]: T[K] extends AnyFunction ? Async<T[K]> : never };
+  export type Workerized<T> = Worker &
+    { [K in keyof T]: T[K] extends Function ? Async<T[K]> : never };
 
   function createInstance<T>(): Workerized<T>;
   export = createInstance;

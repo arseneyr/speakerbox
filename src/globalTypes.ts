@@ -23,6 +23,8 @@ type DeepOmitArray<T extends any[], K> = {
   [P in keyof T]: DeepOmit<T[P], K>;
 };
 
+export type Unpromisify<T> = T extends PromiseLike<infer U> ? U : T;
+
 /**
  * Copyright (c) 2016 shogogg <shogo@studofly.net>
  *

@@ -17,7 +17,7 @@ import Record from "./Record";
 const Main = () => {
   const samples = useSelector(sampleSelectors.selectIds) as string[];
   const [editId, setEditId] = useState<string | null>(null);
-  const onEditorClose = useCallback(() => setEditId(null), []);
+  const onEditorClose = () => setEditId(null);
   const remote = useRemote() as RemoteServer;
 
   const [refs, setRefs] = useState<{
@@ -35,11 +35,14 @@ const Main = () => {
     );
   }, [samples]);
 
-  const stopAll = useCallback(() => {
-    Object.values(refs).forEach((r) => r.current?.stop());
-  }, [refs]);
+  const stopAll = () => Object.values(refs).forEach((r) => r.current?.stop());
 
   useEffect(() => remote.addHandler("stopAll", stopAll), [stopAll, remote]);
+
+  const onEditClick = (id: string) => {
+    stopAll();
+    setEditId(id);
+  };
 
   return (
     <>
@@ -51,7 +54,7 @@ const Main = () => {
       <Grid>
         {samples
           .map((id) => (
-            <Sample key={id} id={id} ref={refs[id]} onEditClick={setEditId} />
+            <Sample key={id} id={id} ref={refs[id]} onEditClick={onEditClick} />
           ))
           .concat(<AddNew key="AddNew" />, <Record key="Record" />)}
       </Grid>

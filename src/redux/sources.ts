@@ -4,65 +4,99 @@ import {
   createAsyncThunk,
   createNextState,
   Draft,
+  ThunkAction,
+  PayloadAction,
+  Update,
+  AnyAction,
+  ActionCreator,
+  createSelector,
+  Middleware,
 } from "@reduxjs/toolkit";
 // eslint-disable-next-line import/no-webpack-loader-syntax
-import createLoadSourceWorker from "workerize-loader?name=static/js/[hash].js!./load_source.worker";
-import * as LoadSourceWorker from "./load_source.worker";
+import createLoadSourceWorker, {
+  Workerized,
+} from "workerize-loader?name=static/js/[hash].js!./load_source.worker";
+import type * as LoadSourceWorker from "./load_source.worker";
 import localForage from "localforage";
-import { createTransform } from "redux-persist";
-import { RootState } from ".";
+import { createTransform, REHYDRATE } from "redux-persist";
+import { AppDispatch, RootState } from ".";
+import FileType from "file-type/browser";
+import { createWorkerPool } from "./worker_pool";
+import { v4 } from "uuid";
+import { AudioContext } from "standardized-audio-context";
+import { scheduleScan } from "./transcoder";
+import { sampleSelectors } from "./samples";
 
 interface AudioSource {
   id: string;
   title: string;
-  objectUrl?: string;
+  mimeType?: string;
+  transcoding?: boolean;
+  objectUrl?: string | false;
 }
 
 const audioSourceEntity = createEntityAdapter<AudioSource>();
 const audioSourceSelectors = audioSourceEntity.getSelectors(
-  (state: any) => state.sources
+  (state: RootState) => state.sources
+);
+const audioSourceLocalSelectors = audioSourceEntity.getSelectors();
+
+export const workerPool = createWorkerPool<Workerized<typeof LoadSourceWorker>>(
+  createLoadSourceWorker
 );
 
 const loadFileThunk = createAsyncThunk(
   "sources/loadFile",
-  async (file: Blob, { getState }) => {
+  async (file: Blob, api) => {
     const title = file instanceof File ? file.name : "BLOB";
-    const res = await createLoadSourceWorker<
-      typeof LoadSourceWorker
-    >().loadFile(file);
-    return { ...res, title };
+    const res = await workerPool.loadFile(file);
+    api.dispatch(sourcesSlice.actions.saveSource({ ...res, title }));
+    scheduleScan(api);
+    return res;
   }
 );
 
-const saveSourceThunk = createAsyncThunk(
-  "sources/saveSource",
-  async ({ buffer, title }: { buffer: ArrayBuffer; title: string }) => {
-    const hash = btoa(
-      String.fromCharCode(
-        ...new Uint8Array(await window.crypto.subtle.digest("SHA-1", buffer))
-      )
-    );
-    await localForage.setItem(hash, buffer);
-    return {
-      id: hash,
+const saveBufferSourceThunk = createAsyncThunk(
+  "sources/saveBufferSource",
+  async (
+    {
+      buffer,
       title,
-      objectUrl: URL.createObjectURL(new Blob([buffer])),
-    };
+      mimeType,
+    }: { buffer: ArrayBuffer; title: string; mimeType?: string },
+    api
+  ) => {
+    const id = v4();
+    await localForage.setItem(id, buffer);
+    api.dispatch(
+      sourcesSlice.actions.saveSource({
+        id,
+        title,
+        mimeType: mimeType ?? (await FileType.fromBuffer(buffer))?.mime,
+        objectUrl: URL.createObjectURL(new Blob([buffer])),
+      })
+    );
+    scheduleScan(api);
+    return { id };
   }
 );
 
 const getSourceUrl = createAsyncThunk(
   "sources/getSourceUrl",
   async (id: string) => {
-    const arrayBuffer = await localForage.getItem<ArrayBuffer>(id);
-    if (!arrayBuffer) {
-      throw new Error("Source not found");
-    }
+    const buffer = await localForage.getItem<ArrayBuffer>(id);
 
     return {
       id,
-      changes: { objectUrl: URL.createObjectURL(new Blob([arrayBuffer])) },
+      changes: {
+        objectUrl: buffer ? URL.createObjectURL(new Blob([buffer])) : undefined,
+      },
     };
+  },
+  {
+    condition: (id, { getState }) =>
+      audioSourceSelectors.selectById(getState() as RootState, id)
+        ?.objectUrl === undefined,
   }
 );
 
@@ -70,31 +104,64 @@ const sourcesSlice = createSlice({
   name: "sources",
   initialState: audioSourceEntity.getInitialState(),
   reducers: {
+    saveSource: audioSourceEntity.upsertOne,
     deleteSource: audioSourceEntity.removeOne,
+    updateSource: audioSourceEntity.updateOne,
   },
-  extraReducers: (builder) =>
+  extraReducers: (builder) => {
     builder
-      .addCase(loadFileThunk.fulfilled, audioSourceEntity.addOne)
-      .addCase(saveSourceThunk.fulfilled, audioSourceEntity.addOne)
-      .addCase(getSourceUrl.fulfilled, audioSourceEntity.updateOne),
+      .addCase(getSourceUrl.pending, (state, action) => {
+        const source = audioSourceLocalSelectors.selectById(
+          state,
+          action.meta.arg
+        );
+        source && (source.objectUrl = false);
+      })
+      .addCase(getSourceUrl.fulfilled, audioSourceEntity.updateOne);
+  },
 });
 
 const sourcesTransform = createTransform<RootState, RootState>(
   createNextState((draft) => {
-    Object.values(audioSourceSelectors.selectEntities(draft)).forEach(
-      (v) => delete v?.objectUrl
+    Object.values(audioSourceLocalSelectors.selectEntities(draft)).forEach(
+      (v) => {
+        delete v?.transcoding;
+        delete v?.objectUrl;
+      }
     );
   }),
   (state) => state,
   { whitelist: ["sources"] }
 );
 
-export const { deleteSource } = sourcesSlice.actions;
+const sourcesMiddleware: Middleware = (api) => (next) => (action) => {
+  const ret = next(action);
+  if (action.type === REHYDRATE) {
+    scheduleScan(api);
+  }
+  return ret;
+};
+
+const selectSource = createSelector(
+  (state: RootState, id: string) => sampleSelectors.selectById(state, id),
+  (state: RootState) => audioSourceSelectors.selectEntities(state),
+  (sample, sourceEntities) =>
+    sample?.sourceId ? sourceEntities[sample.sourceId] : undefined
+);
+
+const selectObjectUrl = createSelector(
+  selectSource,
+  (source) => source?.objectUrl
+);
+
+export const { deleteSource, updateSource } = sourcesSlice.actions;
 export {
   loadFileThunk as loadFile,
-  saveSourceThunk as saveSource,
+  saveBufferSourceThunk as saveBufferSource,
   audioSourceSelectors as sourceSelectors,
   sourcesTransform,
+  // selectSourceObjectUrl,
+  sourcesMiddleware,
   getSourceUrl,
 };
 

@@ -3,7 +3,7 @@ import {
   getDefaultMiddleware,
   combineReducers,
 } from "@reduxjs/toolkit";
-import sources, { sourcesTransform } from "./sources";
+import sources, { sourcesMiddleware, sourcesTransform } from "./sources";
 import samples, { samplePersistTransform } from "./samples";
 import settings from "./settings";
 import audioBuffers from "./audio_buffer";
@@ -61,12 +61,13 @@ const store = configureStore({
   //     });
   //   })) as any,
   //},
-  middleware: getDefaultMiddleware({
-    /*serializableCheck: {
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      /*serializableCheck: {
       ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
     },*/
-    serializableCheck: false,
-  }),
+      serializableCheck: false,
+    }).concat(sourcesMiddleware),
 });
 const persistor = persistStore(store as any);
 

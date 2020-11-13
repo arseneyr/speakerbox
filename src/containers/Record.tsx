@@ -7,7 +7,7 @@ import { v4 } from "uuid";
 import { AppDispatch } from "../redux";
 import { AudioRecorder } from "../recorder";
 import { addAudioBuffer } from "../redux/audio_buffer";
-import { saveSource } from "../redux/sources";
+import { saveBufferSource } from "../redux/sources";
 import { unwrapResult } from "@reduxjs/toolkit";
 
 const getStream = async () => {
@@ -35,7 +35,7 @@ export default () => {
     stopTrack.current = null;
     setIsRecording(false);
   };
-  const onClick = useCallback(async () => {
+  const onClick = async () => {
     if (isRecording) {
       onEnd();
       return;
@@ -70,12 +70,14 @@ export default () => {
           title,
         })
       );
-      dispatch(saveSource({ buffer: arrayBuffer, title }))
+      dispatch(
+        saveBufferSource({ buffer: arrayBuffer, title, mimeType: "audio/ogg" })
+      )
         .then(unwrapResult)
         .then(({ id }) => dispatch(setSourceId({ sampleId, sourceId: id })));
     });
     setIsRecording(true);
-  }, [isRecording, dispatch]);
+  };
   return (navigator.mediaDevices as any)?.getDisplayMedia ? (
     <>
       <Button onClick={onClick}>
