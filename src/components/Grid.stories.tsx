@@ -1,15 +1,18 @@
 /* eslint-disable import/no-anonymous-default-export */
 import React, { ComponentProps } from "react";
-import { Story } from "@storybook/react";
+import { DecoratorFn, Meta, Story } from "@storybook/react";
 import { Grid } from "./Grid";
 import Sample from "./Sample";
 import { Primary } from "./Sample.stories";
 import faker from "faker";
 
+export const gridDecorator: DecoratorFn = (Story) => <Grid>{Story()}</Grid>;
+
 export default {
   title: "Grid",
   component: Grid,
-};
+  includeStories: ["Many"],
+} as Meta;
 
 const GridTemplate: Story<
   ComponentProps<typeof Grid> & { items: ComponentProps<typeof Sample>[] }

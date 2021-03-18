@@ -33,3 +33,12 @@ declare module "*.ttf" {
   const exportString: string;
   export default exportString;
 }
+
+declare module "*.wav" {
+  const exportString: string;
+  export default exportString;
+}
+declare module "*.mp3" {
+  const exportString: string;
+  export default exportString;
+}
