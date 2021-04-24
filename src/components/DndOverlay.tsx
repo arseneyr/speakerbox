@@ -1,5 +1,5 @@
 import React from "react";
-import { Fade, makeStyles, Modal, Typography } from "@material-ui/core";
+import { Backdrop, makeStyles, Modal, Typography } from "@material-ui/core";
 
 const useStyles = makeStyles((theme) => ({
   labelContainer: {
@@ -20,14 +20,16 @@ const DndOverlay: React.FunctionComponent<DndOverlayProps> = (props) => {
   const { open } = props;
   const classes = useStyles();
   return (
-    <Modal open={open ?? false}>
-      <Fade in={open}>
-        <div className={classes.labelContainer}>
-          <Typography align="center" variant="h3">
-            Drop file to add a sample
-          </Typography>
-        </div>
-      </Fade>
+    <Modal
+      open={open ?? false}
+      BackdropComponent={Backdrop}
+      BackdropProps={{ transitionDuration: 150 }}
+    >
+      <div className={classes.labelContainer}>
+        <Typography align="center" variant="h3">
+          Drop file to add a sample
+        </Typography>
+      </div>
     </Modal>
   );
 };

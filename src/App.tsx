@@ -5,7 +5,7 @@ import RemoteMain from "./containers/RemoteMain";
 
 const theme = createMuiTheme({ palette: { type: "dark" } });
 
-export default () => {
+const App = () => {
   const [remoteCode] = useState(() =>
     new URLSearchParams(window.location.search).get("r")
   );
@@ -17,3 +17,5 @@ export default () => {
     </ThemeProvider>
   );
 };
+
+export default App;

@@ -5,6 +5,11 @@ import DndOverlay from "./DndOverlay";
 export default {
   title: "DndOverlay",
   component: DndOverlay,
+  parameters: {
+    backgrounds: {
+      default: "light",
+    },
+  },
 } as Meta;
 
 export const Template: Story<ComponentProps<typeof DndOverlay>> = (args) => (

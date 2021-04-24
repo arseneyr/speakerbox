@@ -14,6 +14,9 @@ import { useWindowWidth } from "../hooks";
 const useStyles = makeStyles<Theme, SampleProps>((theme) => ({
   skeleton: {
     borderRadius: 8,
+    width: "100%",
+    height: "100%",
+    minWidth: "100%",
   },
   button: {
     width: "100%",
@@ -200,8 +203,6 @@ const Sample: React.FunctionComponent<SampleProps> = (props) => {
       <GridItem>
         {loading ? (
           <Skeleton
-            height="73.6px"
-            width="100%"
             variant="rect"
             animation="wave"
             className={classes.skeleton}
