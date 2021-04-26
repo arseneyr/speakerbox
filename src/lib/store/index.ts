@@ -33,8 +33,6 @@ interface SampleState extends SampleSavedState {
   error?: string;
 }
 
-const sampleStateWritable = (init) =>
-  persistantWritable(init, (v) => backend.setSampleState(v));
 const mainStateWritable = (init) =>
   persistantWritable(init, (v) => backend.setMainState(v));
 

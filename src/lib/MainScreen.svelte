@@ -7,6 +7,9 @@
 
 <Grid>
   <!-- <AddButton /> -->
-  <ControlPanel slot="panel" />
+  <ControlPanel
+    slot="panel"
+    addOptions={[{ text: "Add Sample", icon: "add" }]}
+  />
   <slot name="samples" />
 </Grid>

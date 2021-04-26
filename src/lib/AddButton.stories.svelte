@@ -1,5 +1,6 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
+  import { action } from "@storybook/addon-actions";
   import AddButton from "./AddButton.svelte";
 </script>
 
@@ -17,8 +18,22 @@
 
 <Template let:args>
   <div style="min-height: 90vh;">
-    <AddButton {...args} on:add={args.onAdd} on:record={args.onRecord} />
+    <AddButton {...args} />
   </div>
 </Template>
 
-<Story name="Default" />
+<Story
+  name="Default"
+  args={{
+    options: [
+      { text: "Add Sample", icon: "add", onClick: action("onAdd") },
+      { text: "Record Desktop", icon: "mic", onClick: action("onRecord") },
+    ],
+  }}
+/>
+<Story
+  name="Single option"
+  args={{
+    options: [{ text: "Add Sample", icon: "add", onClick: action("onAdd") }],
+  }}
+/>
