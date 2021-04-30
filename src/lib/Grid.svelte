@@ -1,7 +1,3 @@
-<script>
-  import { compute_slots } from "svelte/internal";
-</script>
-
 <div class="root">
   {#if $$slots.panel}
     <div class="panel">

@@ -1,8 +1,8 @@
 <script>
-  import Button, { Label, Group, GroupItem, Icon } from "@smui/button";
-  import Menu from "@smui/menu";
-  import List, { Item, Text, Graphic } from "@smui/list";
-  import { afterUpdate, tick } from "svelte";
+  import Button, { Label, Group, GroupItem, Icon } from "@smui/button/styled";
+  import Menu from "@smui/menu/styled";
+  import List, { Item, Text, Graphic } from "@smui/list/styled";
+  import { tick } from "svelte";
 
   interface Option {
     icon: string;
@@ -24,7 +24,12 @@
 
 <div class="root">
   <Group variant="raised">
-    <Button on:click={mainButton.onClick} variant="raised" color="secondary">
+    <Button
+      on:click={mainButton.onClick}
+      class={options.length > 1 && "mainButtonMulti"}
+      variant="raised"
+      color="secondary"
+    >
       <Icon class="material-icons">{mainButton.icon}</Icon>
       <Label style="padding-top: 2px">{mainButton.text}</Label>
     </Button>
@@ -71,12 +76,19 @@
   .root {
     display: inline-block;
   }
+  .root :global(.mainButtonMulti) {
+    padding-right: 8px;
+  }
+
   .root :global(.menu) {
     width: 100%;
     margin-top: 4px;
   }
   .root :global(.menu > ul) {
-    padding-bottom: 0px;
+    padding: 0px;
+  }
+  .root :global(.menu *) {
+    color: #000;
   }
   /* button {
     width: 100%;
@@ -99,6 +111,7 @@
     @include typography.typography("button");
     padding-left: 10px;
     padding-right: 0;
+    margin: 0px;
   }
   .root :global(.text > .material-icons) {
     margin-right: 8px;

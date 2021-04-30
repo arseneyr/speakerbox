@@ -1,6 +1,6 @@
 <script>
-  import Ripple from "@smui/ripple";
-  import IconButton from "@smui/icon-button";
+  import Ripple from "@smui/ripple/styled";
+  import IconButton from "@smui/icon-button/styled";
   import { fade, scale } from "svelte/transition";
   import { backOut } from "svelte/easing";
 
@@ -38,23 +38,6 @@
        The #if block will dismount only when the intro fully plays -->
 
     <div class="progressPlaceholder" />
-    {#key transition}
-      {#if transition && outDuration === 0}
-        <div
-          class="progressBar progressPlaceholder"
-          in:grow={transition}
-          on:introstart={() => (outDuration = 0)}
-          on:introend={() => {
-            outDuration = 200;
-          }}
-          on:outroend={() => {
-            transition = null;
-            outDuration = 0;
-          }}
-          out:fade|local={{ duration: outDuration }}
-        />
-      {/if}
-    {/key}
   </button>
   {#if iconButton && iconButton.icon}
     <div
@@ -64,6 +47,7 @@
     >
       <IconButton
         class="material-icons iconButton"
+        ripple={false}
         on:click={(evt) => {
           evt.stopPropagation();
           iconButton.onClick();
@@ -71,6 +55,23 @@
       >
     </div>
   {/if}
+  {#key transition}
+    {#if transition && outDuration === 0}
+      <div
+        class="progressBar progressPlaceholder"
+        in:grow={transition}
+        on:introstart={() => (outDuration = 0)}
+        on:introend={() => {
+          outDuration = 200;
+        }}
+        on:outroend={() => {
+          transition = null;
+          outDuration = 0;
+        }}
+        out:fade|local={{ duration: outDuration }}
+      />
+    {/if}
+  {/key}
 </div>
 
 <style>
@@ -128,5 +129,7 @@
     background: theme.$progressColor;
     position: absolute;
     bottom: 0;
+    border-bottom-left-radius: 2px;
+    border-bottom-right-radius: 2px;
   }
 </style>

@@ -1,3 +1,37 @@
+@use 'sass:color';
+@use '@material/theme/color-palette';
+
+$background: #1c2524;
+$accent: #ff6bf9;
+
+$darkColor: #1c2524;
+$mainColor: #2f4541;
+$lightTextColor: #ebeee7;
+$lightAccent: #749d85;
+$darkAccent: #707e82;
+$sampleFont: 1.6em "Lexend", sans-serif;
+$progressColor: linear-gradient(to left, #ff6bf9, #ff7a9a);
+$lighterColor: #9dafad;
+
+// Svelte Colors!
 @use '@material/theme/index' as theme with (
-  $secondary: #9dafad
+  $primary: $accent,
+  $secondary: $lighterColor,
+  $surface: $lighterColor,
+  $background: #fff,
+  $error: color-palette.$red-900,
+  $on-surface: #ebeee7
 );
+
+html,
+body {
+  background-color: $background;
+  color: theme.$on-surface;
+}
+
+a {
+  color: #40b3ff;
+}
+a:visited {
+  color: color.scale(#40b3ff, $lightness: -35%);
+}

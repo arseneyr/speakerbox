@@ -1,6 +1,7 @@
 <script>
   import "../app.scss";
   import "normalize.css";
+  // import "../../static/smui.css";
 </script>
 
 <svelte:head>
