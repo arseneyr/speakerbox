@@ -1,6 +1,6 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import SampleButton from "./SampleButton.svelte";
+  import SampleButton from "$lib/components/SampleButton.svelte";
   import SampleButtonWrapper from "./SampleButtonWrapper.svelte";
 
   let startTime = null;
@@ -41,3 +41,5 @@
 <Story name="Reactive">
   <SampleButtonWrapper title="YOOOO" duration={3000} />
 </Story>
+
+<Story name="Loading" args={{ title: "still loading", loading: true }} />

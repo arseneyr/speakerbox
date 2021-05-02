@@ -1,3 +1,5 @@
+const path = require("path");
+
 module.exports = {
   stories: [
     "../src/**/*.stories.mdx",
@@ -11,5 +13,11 @@ module.exports = {
   ],
   svelteOptions: {
     preprocess: require("../svelte.config.cjs").preprocess,
+  },
+  webpackFinal: (config) => {
+    config.resolve = config.resolve || {};
+    config.resolve.alias = config.resolve.alias || {};
+    config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
+    return config;
   },
 };

@@ -4,12 +4,13 @@
   // Some dark magic here: Chromium will suspend audio elements
   // after some time and trying to play results in a short delay.
   // For some reason, creating audio contexts prevents this.
+  new AudioContext();
   setInterval(() => new AudioContext(), 10000);
 </script>
 
 <script>
-  import SampleButton from "./SampleButton.svelte";
-  import { getSample } from "./store";
+  import SampleButton from "$lib/components/SampleButton.svelte";
+  import { getSample } from "$lib/store";
 
   export let id = "";
 
@@ -30,6 +31,7 @@
   <SampleButton
     title={$title}
     duration={durationMs}
+    loading={$loading}
     {startTime}
     on:click={() => {
       startTime = Date.now();

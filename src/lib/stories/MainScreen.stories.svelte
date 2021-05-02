@@ -1,11 +1,11 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import MainScreen from "./MainScreen.svelte";
-  import Sample from "./Sample.svelte";
+  import MainScreen from "$lib/MainScreen.svelte";
+  import Sample from "$lib/Sample.svelte";
   import faker from "faker";
-  import wav from "../../static/sample.wav";
-  import { createNewSample, getSample, initialize } from "./store";
-  import inMemory from "./store/inMemory";
+  import wav from "../../../static/sample.wav";
+  import { createNewSample, initialize } from "$lib/store";
+  import inMemory from "$lib/store/inMemory";
 
   initialize(inMemory);
 </script>

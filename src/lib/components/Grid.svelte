@@ -14,12 +14,12 @@
     grid-gap: 0.8rem;
     grid-auto-rows: 48px;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-rows: auto;
   }
   .panel {
-    grid-row-end: span 2;
-    grid-column-end: span 1;
+    grid-column: 1 / -1;
   }
-
+  /*
   @media (min-width: 632px) {
     .panel {
       grid-column-end: span 2;
@@ -30,7 +30,7 @@
     .panel {
       grid-column-end: span 2;
     }
-  }
+  } */
 
   /* @media (min-width: 500px) {
     div {

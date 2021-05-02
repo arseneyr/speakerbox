@@ -1,9 +1,9 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import Sample from "./Sample.svelte";
-  import InMemory from "./store/inMemory";
-  import { initialize, createNewSample } from "./store";
-  import wav from "../../static/sample.wav";
+  import Sample from "$lib/Sample.svelte";
+  import InMemory from "$lib/store/inMemory";
+  import { initialize, createNewSample } from "$lib/store";
+  import wav from "../../../static/sample.wav";
 
   let store;
   let staticStore;

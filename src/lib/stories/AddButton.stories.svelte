@@ -1,7 +1,7 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import { action } from "@storybook/addon-actions";
-  import AddButton from "./AddButton.svelte";
+  import AddButton from "$lib/components/AddButton.svelte";
 </script>
 
 <Meta

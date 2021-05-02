@@ -7,6 +7,7 @@
   export let title: string = "";
   export let startTime: number | null = null;
   export let duration: number | null = null;
+  export let loading = false;
 
   export let iconButton:
     | { icon: string; onClick: () => void }
@@ -32,8 +33,13 @@
 </script>
 
 <div class="root">
-  <button use:Ripple={{ surface: true }} on:click on:mouseover>
-    <div class="title">{title}</div>
+  <button
+    use:Ripple={!loading && { surface: true }}
+    on:click
+    on:mouseover
+    disabled={loading}
+  >
+    <div class="title" class:loading>{title}</div>
     <!-- The #key block forcefully remounts when the props change or after outro
        The #if block will dismount only when the intro fully plays -->
 
@@ -75,7 +81,7 @@
 </div>
 
 <style>
-  @use "../theme.scss";
+  @use 'smui-theme' as theme;
   div.root {
     position: relative;
     width: 100%;
@@ -104,6 +110,9 @@
     width: 100%;
     padding: 4px 8px 4px 8px;
     box-sizing: border-box;
+    &.loading {
+      opacity: 0.4;
+    }
   }
   button {
     padding: 0;
@@ -118,6 +127,19 @@
     position: relative;
     user-select: none;
     height: 100%;
+    &:disabled {
+      animation: 1s linear infinite alternate pulse;
+      cursor: unset;
+    }
+  }
+
+  @keyframes pulse {
+    from {
+      opacity: 0.6;
+    }
+    to {
+      opacity: 1;
+    }
   }
 
   div.progressPlaceholder {

@@ -13,7 +13,6 @@
   export let options: Option[] = [];
   $: mainButton = options[0];
   let menuOpen = false;
-  let anchor;
   let downButtonHandler = () => {
     menuOpen = true;
   };
