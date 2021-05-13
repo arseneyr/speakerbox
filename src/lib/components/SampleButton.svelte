@@ -84,9 +84,9 @@
   @use 'smui-theme' as theme;
   div.root {
     position: relative;
-    width: 100%;
+    /* width: 100%;
     height: 100%;
-    min-width: 0px;
+    min-width: 0px; */
   }
 
   .iconButtonWrapper {

@@ -12,7 +12,7 @@
     width: 100%;
     display: grid;
     grid-gap: 0.8rem;
-    grid-auto-rows: 48px;
+    /* grid-auto-rows: 48px; */
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     grid-template-rows: auto;
   }
