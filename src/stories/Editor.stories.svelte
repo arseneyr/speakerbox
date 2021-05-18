@@ -1,7 +1,7 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import Editor from "$lib/components/Editor.svelte";
-  import wav from "../../../static/long_sample.mp3";
+  import wav from "./long_sample.mp3";
   import faker from "faker";
   import { createNewSample } from "$lib/store";
   const samplePromise = fetch(wav)

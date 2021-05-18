@@ -3,7 +3,7 @@
   import Sample from "$lib/Sample.svelte";
   import InMemory from "$lib/store/inMemory";
   import { initialize, createNewSample } from "$lib/store";
-  import wav from "../../../static/sample.wav";
+  import wav from "./sample.wav";
 
   let store;
   let staticStore;

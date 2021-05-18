@@ -3,7 +3,7 @@
   import MainScreen from "$lib/MainScreen.svelte";
   import Sample from "$lib/Sample.svelte";
   import faker from "faker";
-  import wav from "../../../static/sample.wav";
+  import wav from "./sample.wav";
   import { createNewSample, initialize } from "$lib/store";
   import inMemory from "$lib/store/inMemory";
 

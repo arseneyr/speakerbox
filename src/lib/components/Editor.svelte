@@ -33,7 +33,6 @@
     });
 
     wavesurfer.on("ready", () => {
-      debugger;
       region = wavesurfer.addRegion({
         id: 0,
         end: wavesurfer.getDuration(),
