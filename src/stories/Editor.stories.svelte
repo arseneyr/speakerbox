@@ -3,10 +3,10 @@
   import Editor from "$lib/components/Editor.svelte";
   import wav from "./long_sample.mp3";
   import faker from "faker";
-  import { createNewSample } from "$lib/store";
+  import SampleStore from "$lib/store";
   const samplePromise = fetch(wav)
     .then((b) => b.blob())
-    .then((blob) => createNewSample(blob, faker.lorem.sentence()));
+    .then((blob) => SampleStore.createNewSample(blob, faker.lorem.sentence()));
 </script>
 
 <Meta title="Editor" component={Editor} />

@@ -4,7 +4,7 @@
   import Sample from "$lib/Sample.svelte";
   import faker from "faker";
   import wav from "./sample.wav";
-  import { createNewSample, initialize } from "$lib/store";
+  import SampleStore, { initialize } from "$lib/store";
   import inMemory from "$lib/store/inMemory";
 
   initialize(inMemory);
@@ -17,7 +17,7 @@
     <svelte:fragment slot="samples">
       {#await fetch(wav).then((b) => b.arrayBuffer()) then buf}
         {#each args.items as title}
-          <Sample id={createNewSample(buf, title).id} />
+          <Sample id={SampleStore.createNewSample(buf, title).id} />
         {/each}
       {/await}
     </svelte:fragment>

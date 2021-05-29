@@ -54,6 +54,8 @@
     "@smui/select": "^4.2.0",
     "@smui/slider": "^4.2.0",
     "@smui/textfield": "^4.2.0",
+    "@smui/tooltip": "^4.2.0",
+    "@types/uuid": "^8.3.0",
     "browser-fs-access": "^0.17.0",
     "gridstack": "^4.1.0",
     "localforage": "^1.9.0",

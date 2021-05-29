@@ -1,6 +1,13 @@
-import { derived, get, readable, Writable, writable } from "svelte/store";
+import {
+  Readable,
+  readable,
+  Unsubscriber,
+  Writable,
+  writable,
+} from "svelte/store";
 import { v4 } from "uuid";
-import { persistantWritable } from "./utils";
+import { persistantWritable, privateReadable, waitForValue } from "./utils";
+import audioContext from "$lib/audioContext";
 
 const VERSION = "1.0";
 
@@ -33,15 +40,16 @@ interface SampleState extends SampleSavedState {
   error?: string;
 }
 
-const mainStateWritable = (init) =>
-  persistantWritable(init, (v) => backend.setMainState(v));
+const mainStateWritable = (init: MainSavedState) =>
+  persistantWritable(init, (v) => backend!.setMainState(v));
 
-type SampleStore = ReturnType<typeof createSampleStore>;
+// type SampleStore = ReturnType<typeof createSampleStore>;
 
-let backend: StorageBackend = null;
-const sampleStores = new Map<string, SampleStore>();
+let backend: StorageBackend | null = null;
 
-export async function initialize(newBackend: StorageBackend) {
+export async function initialize(
+  newBackend: StorageBackend
+): Promise<Writable<MainSavedState>> {
   backend = newBackend;
   let mainState = await backend.getMainState();
   if (!mainState) {
@@ -51,82 +59,122 @@ export async function initialize(newBackend: StorageBackend) {
   return mainStateWritable(mainState);
 }
 
-export function getSample(id: string): SampleStore {
-  let store = sampleStores.get(id);
-  if (!store) {
-    store = createSampleStore(id);
-    store.loadExisting();
+interface Player {
+  play(): void;
+  stop(): void;
+}
+
+export default class SampleStore {
+  public title = writable<string | null>(null);
+  public paused = writable(true);
+  public readonly audioBuffer = privateReadable<AudioBuffer | null>(null);
+
+  public loading = privateReadable(true);
+  public error = privateReadable<string | null>(null);
+  public player = privateReadable<Player | null>(null);
+  public duration = privateReadable<number | null>(null);
+
+  private _audioData = writable<ArrayBuffer | null>(null);
+  private _destroyCbs: Unsubscriber[];
+
+  private constructor(public readonly id: string) {
+    this._destroyCbs = [
+      this.title.subscribe((newTitle) =>
+        backend?.setSampleState({ id, title: newTitle ?? undefined })
+      ),
+      this._audioData.subscribe((newData) => {
+        // backend.setSampleData(id, newData)
+        if (newData) {
+          const audio = new Audio(URL.createObjectURL(new Blob([newData])));
+          audio.ondurationchange = () => (this.duration.val = audio.duration);
+          audio.onpause = () => this.paused.set(true);
+          this.player.val = {
+            play: () => {
+              audio.currentTime = 0;
+              audio.play();
+            },
+            stop: () => {
+              audio.pause();
+              audio.currentTime = 0;
+            },
+          };
+        }
+      }),
+      this.audioBuffer.onSubscribe(() => {
+        if (!this.audioBuffer.val) {
+          waitForValue(this._audioData)
+            .then((a) => audioContext.decodeAudioData(a))
+            .then((ab) => (this.audioBuffer.val = ab));
+        }
+      }),
+    ];
   }
-  return store;
-}
 
-export function createNewSample(
-  data: Blob | ArrayBuffer,
-  title?: string
-): SampleStore {
-  const id = v4();
-  const store = createSampleStore(id);
-  store.title.set(title);
-  (data instanceof Blob ? data.arrayBuffer() : Promise.resolve(data)).then(
-    (buf) => {
-      store.loading.set(false);
-      store.audioData.set(buf);
+  public destroy(): void {
+    this._destroyCbs.forEach((stop) => stop());
+    SampleStore._sampleMap.delete(this.id);
+  }
+
+  public setAudioBuffer(buffer: AudioBuffer) {
+    this._audioData.set(null);
+    this.audioBuffer.val = buffer;
+    let source: AudioBufferSourceNode;
+    this.player.val = {
+      play: () => {
+        source = audioContext.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioContext.destination);
+        source.start();
+      },
+      stop: () => {
+        source?.stop();
+      },
+    };
+  }
+
+  private async _loadExisting() {
+    this.loading.val = true;
+    const [state, data] = await Promise.all([
+      backend?.getSampleState(this.id),
+      backend?.getSampleData(this.id),
+    ]);
+    this.loading.val = false;
+    if (!state) {
+      this.error.val = "Sample could not be loaded";
+    } else if (!data) {
+      this.error.val = "Sample audio data could not be loaded";
+    } else {
+      this._audioData.set(data);
     }
-  );
+  }
 
-  sampleStores.set(id, store);
-  return store;
-}
+  private static _sampleMap = new Map<string, SampleStore>();
 
-export function destroySample(id: string): void {
-  sampleStores.get(id)?.destroy();
-  sampleStores.delete(id);
-}
+  public static getSample(id: string): SampleStore {
+    let store = SampleStore._sampleMap.get(id);
+    if (!store) {
+      store = new SampleStore(id);
+      store._loadExisting();
+      SampleStore._sampleMap.set(id, store);
+    }
+    return store;
+  }
 
-function createSampleStore(id: string) {
-  const title = writable<string>(undefined);
-  const loading = writable(true);
-  const paused = writable(true);
-  const audioData = writable<ArrayBuffer>(undefined);
-  const error = writable<string>(undefined);
-
-  const sync = [
-    title.subscribe((newTitle) =>
-      backend.setSampleState({ id, title: newTitle })
-    ),
-    audioData.subscribe((newData) => backend.setSampleData(id, newData)),
-  ];
-
-  return {
-    id,
-    title,
-    loading,
-    paused,
-    audioData,
-    destroy: () => {
-      sync.forEach((stop) => stop());
-    },
-    loadExisting: async () => {
-      const [state, data] = await Promise.all([
-        backend.getSampleState(id),
-        backend.getSampleData(id),
-      ]);
-      loading.set(false);
-      if (!state) {
-        error.set("Sample could not be loaded");
-      } else if (!data) {
-        error.set("Sample audio data could not be loaded");
-      } else {
-        audioData.set(data);
+  public static createNewSample(
+    data: ArrayBuffer | Blob,
+    title?: string
+  ): SampleStore {
+    const id = v4();
+    const store = new SampleStore(id);
+    store.title.set(title ?? null);
+    (data instanceof Blob ? data.arrayBuffer() : Promise.resolve(data)).then(
+      (buf) => {
+        store.loading.val = false;
+        store._audioData.set(buf);
       }
-    },
+    );
 
-    // updateData: async (data: ArrayBuffer) => {
-    //   await backend.setSampleData(id, data);
-    //   update((s) => ({
-    //     ...s,
-    //     audioData: data,
-    //   }));
-    // },
-  };
+    SampleStore._sampleMap.set(id, store);
+    return store;
+  }
 }

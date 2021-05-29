@@ -32,10 +32,9 @@ class EditManager {
     return () => (this._setAudioBuffer = null);
   });
 
-  async loadData(audioData: ArrayBuffer): Promise<void> {
-    const buf = await new AudioContext().decodeAudioData(audioData);
-    this._originalAudioBuffer = buf;
-    this._audioBuffer = buf;
+  async loadData(audioBuffer: AudioBuffer): Promise<void> {
+    this._originalAudioBuffer = audioBuffer;
+    this._audioBuffer = audioBuffer;
   }
 
   private set _audioBuffer(newVal: AudioBuffer) {

@@ -10,24 +10,19 @@
 
 <script>
   import SampleButton from "$lib/components/SampleButton.svelte";
-  import { getSample } from "$lib/store";
+  import SampleStore from "$lib/store";
 
-  export let id = "";
+  export let id;
 
   let startTime;
-  let duration;
 
-  let audioElement;
-
-  const { title, paused, audioData, loading } = getSample(id);
-  $: src = $audioData ? URL.createObjectURL(new Blob([$audioData])) : undefined;
-  $: durationMs = duration * 1000;
-
-  $: console.log(src);
+  const { title, paused, loading, player, duration } = SampleStore.getSample(
+    id
+  );
+  $: durationMs = $duration && $duration * 1000;
 </script>
 
-{#if !$loading && src}
-  <audio bind:duration {src} bind:paused={$paused} bind:this={audioElement} />
+{#if !$loading && $player}
   <SampleButton
     title={$title}
     duration={durationMs}
@@ -37,7 +32,7 @@
       startTime = Date.now();
       // We would rather do a bind:currentTime but it seems to skip
       // activation sometimes. Perhaps a result of svelte batching?
-      audioElement.currentTime = 0;
+      $player.play();
       $paused = false;
     }}
     iconButton={!$paused
@@ -45,7 +40,7 @@
           icon: "stop",
           onClick: () => {
             $paused = true;
-            audioElement.currentTime = 0;
+            $player.stop();
             startTime = undefined;
           },
         }

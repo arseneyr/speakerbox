@@ -1,21 +1,21 @@
 <script lang="ts">
   import Textfield from "@smui/textfield/styled";
   import Button, { Group, Icon } from "@smui/button/styled";
+  import Tooltip, { Wrapper } from "@smui/tooltip/styled";
   import CloseButton from "$lib/components/CloseButton.svelte";
   import { onDestroy, onMount, tick } from "svelte";
   import Wavesurfer from "wavesurfer.js";
   import Regions from "wavesurfer.js/dist/plugin/wavesurfer.regions";
-  import { get } from "svelte/store";
-  import { getSample } from "$lib/store";
+  import SampleStore from "$lib/store";
   import EditManager from "$lib/EditManager";
 
   export let id;
 
-  const { paused, title, audioData } = getSample(id);
+  const { paused, title, audioBuffer } = SampleStore.getSample(id);
 
   const editManager = new EditManager();
-  const { audioBuffer, undoable, redoable } = editManager;
-  $: $audioData && editManager.loadData($audioData);
+  const { audioBuffer: workingBuffer, undoable, redoable } = editManager;
+  $: $audioBuffer && editManager.loadData($audioBuffer);
 
   $paused = true;
 
@@ -59,7 +59,9 @@
     },
   };
 
-  $: wavesurfer && $audioBuffer && wavesurfer.loadDecodedBuffer($audioBuffer);
+  $: wavesurfer &&
+    $workingBuffer &&
+    wavesurfer.loadDecodedBuffer($workingBuffer);
   $: if (wavesurfer) {
     if ($paused && wavesurfer.isPlaying()) {
       wavesurfer.pause();
@@ -181,15 +183,19 @@
 </script>
 
 <div class="root" class:playing={!$paused}>
-  <Textfield
-    bind:value={currentTitleValue}
-    on:input={debounce}
-    class="title"
-    input$spellcheck="false"
-    input$autocomplete="off"
-    input$autocorrect="off"
-    input$autocapitalize="off"
-  />
+  <div class="topBar">
+    <Textfield
+      bind:value={currentTitleValue}
+      on:input={debounce}
+      class="title"
+      input$spellcheck="false"
+      input$autocomplete="off"
+      input$autocorrect="off"
+      input$autocapitalize="off"
+    />
+
+    <CloseButton />
+  </div>
   <div class="waveform" bind:this={waveformEl} />
   <div class="buttonPanel">
     <Group variant="outlined" disabled={!ready}>
@@ -207,36 +213,48 @@
       </Button>
     </Group>
     <Group variant="outlined">
-      <Button
-        variant="outlined"
-        color="secondary"
-        disabled={!region}
-        on:click={() => onEdit("cut")}
-        ><Icon class="material-icons">content_cut</Icon>
-      </Button>
-      <Button
-        variant="outlined"
-        color="secondary"
-        disabled={!region}
-        on:click={() => onEdit("crop")}
-        ><Icon class="material-icons">crop</Icon>
-      </Button>
+      <Wrapper>
+        <Button
+          variant="outlined"
+          color="secondary"
+          disabled={!region}
+          on:click={() => onEdit("cut")}
+          ><Icon class="material-icons">content_cut</Icon>
+        </Button>
+        <Tooltip xPos="start">Cut</Tooltip>
+      </Wrapper>
+      <Wrapper>
+        <Button
+          variant="outlined"
+          color="secondary"
+          disabled={!region}
+          on:click={() => onEdit("crop")}
+          ><Icon class="material-icons">crop</Icon>
+        </Button>
+        <Tooltip>Crop</Tooltip>
+      </Wrapper>
     </Group>
     <Group variant="outlined">
-      <Button
-        variant="outlined"
-        color="secondary"
-        disabled={!$undoable}
-        on:click={onUndo}
-        ><Icon class="material-icons">undo</Icon>
-      </Button>
-      <Button
-        variant="outlined"
-        color="secondary"
-        disabled={!$redoable}
-        on:click={onRedo}
-        ><Icon class="material-icons">redo</Icon>
-      </Button>
+      <Wrapper>
+        <Button
+          variant="outlined"
+          color="secondary"
+          disabled={!$undoable}
+          on:click={onUndo}
+          ><Icon class="material-icons">undo</Icon>
+        </Button>
+        <Tooltip xPos="start">Undo</Tooltip>
+      </Wrapper>
+      <Wrapper>
+        <Button
+          variant="outlined"
+          color="secondary"
+          disabled={!$redoable}
+          on:click={onRedo}
+          ><Icon class="material-icons">redo</Icon>
+        </Button>
+        <Tooltip>Redo</Tooltip>
+      </Wrapper>
     </Group>
   </div>
 </div>
@@ -253,12 +271,19 @@
     padding: 0px 24px 24px 24px;
     box-sizing: border-box;
   }
-  .root > :global(.title) {
+  .topBar {
+    display: flex;
+    flex-direction: row;
     margin-bottom: 16px;
-    width: 40%;
-    min-width: 300px;
+    justify-content: space-between;
+    align-items: center;
+    margin-right: -16px;
   }
-  .root > :global(.title > input) {
+  .topBar > :global(.title) {
+    max-width: 500px;
+    flex-grow: 1;
+  }
+  .topBar > :global(.title > input) {
     @include typography.typography("headline5");
   }
   .waveform > :global(wave) {

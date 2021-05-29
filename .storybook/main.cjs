@@ -1,4 +1,5 @@
 const path = require("path");
+const sveltePreprocess = require("svelte-preprocess");
 
 module.exports = {
   stories: [
@@ -11,13 +12,37 @@ module.exports = {
     "@storybook/addon-svelte-csf",
     "@storybook/preset-scss",
   ],
+  // svelteOptions: {
+  //   preprocess: require("../svelte.config.cjs").preprocess,
+  // },
   svelteOptions: {
-    preprocess: require("../svelte.config.cjs").preprocess,
+    preprocess: sveltePreprocess({
+      defaults: {
+        script: "typescript",
+        style: "scss",
+      },
+    }),
   },
   webpackFinal: (config) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
+
+    // Storybook bug: https://github.com/storybookjs/storybook/issues/12019#issuecomment-702207045
+    const { options } = config.module.rules[0].use[0];
+    options.plugins = options.plugins.filter(
+      excludePlugins(["@babel/plugin-transform-classes"])
+    );
     return config;
   },
 };
+
+function excludePlugins(excludePaths) {
+  return (plugin) => {
+    const name = typeof plugin === "string" ? plugin : plugin[0];
+    if (typeof name !== "string") {
+      throw new Error(`Not a string: ${name}`);
+    }
+    return !excludePaths.some((path) => name.includes(path));
+  };
+}
