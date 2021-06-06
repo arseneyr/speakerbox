@@ -10,15 +10,17 @@
   import EditManager from "$lib/EditManager";
 
   export let id;
+  export function stop() {
+    wavesurfer && wavesurfer.stop();
+  }
 
-  const { paused, title, audioBuffer } = SampleStore.getSample(id);
+  const { title, audioBuffer } = SampleStore.getSample(id);
 
   const editManager = new EditManager();
   const { audioBuffer: workingBuffer, undoable, redoable } = editManager;
   $: $audioBuffer && editManager.loadData($audioBuffer);
 
-  $paused = true;
-
+  let paused = true;
   let waveformEl;
   let wavesurfer;
   let region;
@@ -59,13 +61,19 @@
     },
   };
 
-  $: wavesurfer &&
-    $workingBuffer &&
+  // $: wavesurfer &&
+  //   $workingBuffer &&
+  //   wavesurfer.loadDecodedBuffer($workingBuffer);
+  $: if (wavesurfer && $workingBuffer) {
     wavesurfer.loadDecodedBuffer($workingBuffer);
+  } else {
+    ready = false;
+  }
+
   $: if (wavesurfer) {
-    if ($paused && wavesurfer.isPlaying()) {
+    if (paused && wavesurfer.isPlaying()) {
       wavesurfer.pause();
-    } else if (!$paused && !wavesurfer.isPlaying()) {
+    } else if (!paused && !wavesurfer.isPlaying()) {
       wavesurfer.play();
     }
   }
@@ -82,19 +90,19 @@
     wavesurfer.disableDragSelection();
     function onPlaybackLeave() {
       region.un("out", onPlaybackLeave);
-      $paused = true;
+      paused = true;
     }
     region.handleLeftEl.addEventListener("click", (e) => {
       e.stopPropagation();
       region.play();
-      $paused = false;
+      paused = false;
     });
     region.handleRightEl.addEventListener("click", (e) => {
       e.stopPropagation();
       region.un("out");
       region.on("out", onPlaybackLeave);
       wavesurfer.play(Math.max(region.end - 1, region.start), region.end);
-      $paused = false;
+      paused = false;
     });
     regionClose = new CloseButton({
       target: region.element,
@@ -112,13 +120,13 @@
       editManager.crop(region.start, region.end);
     }
     wavesurfer.stop();
-    $paused = true;
+    paused = true;
     onRegionClose();
   }
 
   async function onUndo() {
     wavesurfer.stop();
-    $paused = true;
+    paused = true;
     const action = editManager.undo();
     // await tick();
     if (action) {
@@ -138,7 +146,7 @@
   }
   function onRedo() {
     wavesurfer.stop();
-    $paused = true;
+    paused = true;
     region && onRegionClose();
     editManager.redo();
   }
@@ -172,7 +180,7 @@
         })
       );
       wavesurfer.on("finish", () => {
-        $paused = true;
+        paused = true;
         wavesurfer.stop();
       });
       wavesurfer.un("ready");
@@ -182,7 +190,7 @@
   });
 </script>
 
-<div class="root" class:playing={!$paused}>
+<div class="root" class:playing={!paused}>
   <div class="topBar">
     <Textfield
       bind:value={currentTitleValue}
@@ -202,10 +210,10 @@
       <Button
         variant="outlined"
         color="secondary"
-        on:click={() => ($paused = !$paused)}
+        on:click={() => (paused = !paused)}
         disabled={!ready}
       >
-        {#if $paused}
+        {#if paused}
           <Icon class="material-icons">play_arrow</Icon>
         {:else}
           <Icon class="material-icons">pause</Icon>

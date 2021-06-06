@@ -1,6 +1,7 @@
 import {
   Readable,
   readable,
+  StartStopNotifier,
   Subscriber,
   Writable,
   writable,
@@ -19,6 +20,27 @@ export function persistantWritable<T>(
 interface HandlerElement {
   handler: () => void | (() => void);
   unsub?: () => void;
+}
+
+type PrivateWritable<T> = Readable<T> & {
+  _set: Writable<T>["set"];
+};
+
+export function privateWritable<T>(
+  value: T,
+  start?: StartStopNotifier<T>
+): PrivateWritable<T> {
+  const ret = writable(value, start) as Writable<T> & {
+    _set: Writable<T>["set"];
+  };
+
+  Object.defineProperty(
+    ret,
+    "_set",
+    Object.getOwnPropertyDescriptor(ret, "set")
+  );
+  delete ret["set"];
+  return ret;
 }
 
 export function privateReadable<T>(init?: T) {

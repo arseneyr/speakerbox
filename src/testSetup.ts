@@ -1,0 +1,77 @@
+declare global {
+  const WebAudioTestAPI: {
+    createEncodedBuffer: () => [ArrayBuffer, AudioBuffer];
+    setState: any;
+  };
+  interface AudioContext {
+    decodeAudioData: jest.Mock<Promise<AudioBuffer>, [ArrayBuffer]>;
+  }
+}
+
+type TypedArray =
+  | {
+      buffer: ArrayBuffer;
+      byteLength: number;
+    }
+  | ArrayBuffer;
+
+function equal(buf1: TypedArray, buf2: TypedArray) {
+  if (buf1.byteLength != buf2.byteLength) return false;
+  const ta1 = new Int8Array(buf1 instanceof ArrayBuffer ? buf1 : buf1.buffer);
+  const ta2 = new Int8Array(buf2 instanceof ArrayBuffer ? buf2 : buf2.buffer);
+  for (let i = 0; i != ta1.length; i++) {
+    if (ta1[i] != ta2[i]) return false;
+  }
+  return true;
+}
+
+WebAudioTestAPI.setState({
+  "AudioBuffer#copyToChannel": "enabled",
+  "AudioContext#decodeAudioData": "promise",
+});
+
+const decodeMap = new Map();
+WebAudioTestAPI.createEncodedBuffer = () => {
+  const encodedData = Float32Array.from({ length: 4 }, () => Math.random());
+  const decodedData = new AudioContext().createBuffer(2, 44100, 44100);
+
+  decodeMap.set(encodedData, decodedData);
+  return [encodedData, decodedData];
+};
+
+const OriginalAudioContext = AudioContext;
+
+(global as any).AudioContext = function (...args) {
+  const ret = new OriginalAudioContext(...args);
+  ret.decodeAudioData = jest.fn((arrayBuffer) => {
+    for (const [encoded, decoded] of decodeMap.entries()) {
+      if (equal(encoded, arrayBuffer)) {
+        return Promise.resolve(decoded);
+      }
+    }
+    return Promise.reject(new Error("Cannot decode audiobuffer"));
+  });
+  return ret;
+};
+
+const OriginalBlob = Blob;
+(global as any).Blob = function (...args) {
+  const ret = new OriginalBlob(...args) as any;
+  if (
+    args.length >= 1 &&
+    args[0].length >= 1 &&
+    args[0][0] instanceof Float32Array
+  ) {
+    ret._buf = Uint8Array.from(
+      Buffer.concat(args[0].map((a) => Buffer.from(a.buffer)))
+    ).buffer;
+  }
+  return ret;
+};
+Blob.prototype = OriginalBlob.prototype;
+
+Blob.prototype.arrayBuffer = function () {
+  return Promise.resolve(this._buf);
+};
+
+export {};

@@ -7,7 +7,7 @@
   export let title: string = "";
   export let startTime: number | null = null;
   export let duration: number | null = null;
-  export let loading = false;
+  export let loading = true;
 
   export let iconButton:
     | { icon: string; onClick: () => void }
@@ -40,9 +40,6 @@
     disabled={loading}
   >
     <div class="title" class:loading>{title}</div>
-    <!-- The #key block forcefully remounts when the props change or after outro
-       The #if block will dismount only when the intro fully plays -->
-
     <div class="progressPlaceholder" />
   </button>
   {#if iconButton && iconButton.icon}
@@ -61,6 +58,9 @@
       >
     </div>
   {/if}
+  <!-- The #key block forcefully remounts when the props change or after outro
+       The #if block will dismount only when the intro fully plays -->
+
   {#key transition}
     {#if transition && outDuration === 0}
       <div
