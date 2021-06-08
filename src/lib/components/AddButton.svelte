@@ -19,6 +19,13 @@
   $: if (menuOpen) {
     downButtonHandler = undefined;
   }
+  let menuEl;
+  $: if (menuEl) {
+    try {
+      // Disgusting rummaging inside the menu component
+      menuEl.$$.ctx[3].$$.ctx[8].flipCornerHorizontally();
+    } catch (e) {}
+  }
 </script>
 
 <div class="root">
@@ -56,6 +63,7 @@
           menuOpen = true;
         };
       })}
+    bind:this={menuEl}
   >
     <List>
       {#each options.slice(1) as option (option.text)}
@@ -80,7 +88,7 @@
   }
 
   .root :global(.menu) {
-    width: 100%;
+    /* width: 100%; */
     margin-top: 4px;
   }
   .root :global(.menu > ul) {
@@ -109,7 +117,8 @@
   .root :global(.text) {
     @include typography.typography("button");
     padding-left: 10px;
-    padding-right: 0;
+    padding-right: 10px;
+    white-space: nowrap;
     margin: 0px;
   }
   .root :global(.text > .material-icons) {

@@ -6,7 +6,7 @@ import {
   writable,
 } from "svelte/store";
 import { v4 } from "uuid";
-import { persistantWritable, privateReadable, privateWritable } from "./utils";
+import { persistantWritable, privateWritable } from "./utils";
 import audioContext from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 
@@ -38,16 +38,15 @@ const mainStateWritable = (init: MainSavedState) =>
 
 let backend: StorageBackend | null = null;
 
-export async function initialize(
-  newBackend: StorageBackend
-): Promise<Writable<MainSavedState>> {
-  backend = newBackend;
-  let mainState = await backend.getMainState();
-  if (!mainState) {
-    mainState = { version: VERSION, samples: [] };
-  }
+export const mainStore = writable<MainSavedState | null>(null);
 
-  return mainStateWritable(mainState);
+export async function initialize(newBackend: StorageBackend): Promise<void> {
+  backend = newBackend;
+  let mainSavedState = await backend.getMainState();
+  if (!mainSavedState) {
+    mainSavedState = { version: VERSION, samples: [] };
+  }
+  mainStore.set(mainSavedState);
 }
 
 interface Player {
@@ -59,7 +58,6 @@ export default class SampleStore {
   public readonly title = writable<string | null>(null);
   public readonly playing = privateWritable(false);
   public readonly audioBuffer: Readable<AudioBuffer | null>;
-
   public readonly loading = privateWritable(true);
   public readonly error = privateWritable<string | null>(null);
   public readonly player: Readable<Player | null>;
@@ -148,6 +146,7 @@ export default class SampleStore {
           source.start();
         },
         stop: () => {
+          this.playing._set(false);
           source?.stop();
         },
       };

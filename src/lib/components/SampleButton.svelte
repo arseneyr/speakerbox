@@ -7,7 +7,7 @@
   export let title: string = "";
   export let startTime: number | null = null;
   export let duration: number | null = null;
-  export let loading = true;
+  export let loading;
 
   export let iconButton:
     | { icon: string; onClick: () => void }

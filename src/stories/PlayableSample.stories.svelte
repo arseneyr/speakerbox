@@ -30,7 +30,7 @@
   {/if}
 </Template>
 
-<Story name="Yes" />
+<Story name="Drag n Drop" />
 
 <Story name="Static">
   {#if staticStore}
