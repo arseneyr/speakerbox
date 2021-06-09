@@ -4,7 +4,7 @@
   import VizPanel from "./VizPanel.svelte";
 </script>
 
-<div class="root">
+<div class="root fullWidth">
   <div class="left">
     <img src={logo} width="200px" />
     <div class="underLogo">

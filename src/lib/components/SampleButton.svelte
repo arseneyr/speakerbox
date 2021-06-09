@@ -40,12 +40,12 @@
     on:mouseover
     disabled={loading}
   >
+    {#if editMode}
+      <div class="editMode">EDIT</div>
+    {/if}
     <div class="title" class:loading>{title}</div>
     <div class="progressPlaceholder" />
   </button>
-  {#if editMode}
-    <div class="editMode title">EDIT</div>
-  {/if}
   {#if iconButton && iconButton.icon}
     <div
       in:scale={{ duration: 200, easing: backOut }}
@@ -102,8 +102,8 @@
     background-color: theme.$lighterColor;
     transition: opacity 0.2s;
     color: theme.$mainColor;
-    font: theme.$sampleFont;
-    font-weight: 900;
+    /* font: theme.$sampleFont; */
+    font-weight: 700;
     display: flex;
     justify-content: center;
     cursor: pointer;

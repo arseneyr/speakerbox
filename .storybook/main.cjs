@@ -27,6 +27,8 @@ module.exports = {
     config.resolve = config.resolve || {};
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
+    config.resolve.mainFields = config.resolve.mainFields || {};
+    config.resolve.mainFields.push("exports");
 
     // Storybook bug: https://github.com/storybookjs/storybook/issues/12019#issuecomment-702207045
     const { options } = config.module.rules[0].use[0];

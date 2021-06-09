@@ -8,19 +8,19 @@
 
   export let mainStore;
 
-  let editing = [];
-  let editMode = false;
+  export let editing = [];
+  export let editMode = false;
 </script>
 
 <Grid>
-  <ControlPanel slot="panel">
+  <ControlPanel>
     <a slot="link" href="javascript:;" on:click={() => alert("yo")}
       >Sync with Google Drive</a
     >
 
     <AddButton
       slot="addButton"
-      options={[{ text: "Add Sample", icon: "add", onClick: () => {} }]}
+      options={[{ text: "Record Desktop", icon: "mic", onClick: () => {} }]}
     />
     <Button
       slot="editButton"
@@ -39,13 +39,17 @@
   <!-- <slot name="samples" /> -->
   {#each $mainStore.samples as id (id)}
     {#if editing.includes(id)}
-      <Editor {id} />
+      <Editor
+        {id}
+        on:close={() => (editing = editing.filter((i) => i !== id))}
+      />
     {:else}
       <Sample
         {id}
         {editMode}
         on:delete={() =>
           ($mainStore.samples = $mainStore.samples.filter((i) => i !== id))}
+        on:edit={() => (editing = editing.concat(id))}
       />
     {/if}
   {/each}

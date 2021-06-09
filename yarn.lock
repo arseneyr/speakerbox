@@ -5573,6 +5573,11 @@ etag@~1.8.1:
   resolved "https://registry.yarnpkg.com/etag/-/etag-1.8.1.tgz#41ae2eeb65efa62268aebfea83ac7d79299b0887"
   integrity sha1-Qa4u62XvpiJorr/qg6x9eSmbCIc=
 
+eventemitter3@^4.0.7:
+  version "4.0.7"
+  resolved "https://registry.yarnpkg.com/eventemitter3/-/eventemitter3-4.0.7.tgz#2de9b68f6528d5644ef5c59526a1b4a07306169f"
+  integrity sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==
+
 events@^3.0.0:
   version "3.3.0"
   resolved "https://registry.yarnpkg.com/events/-/events-3.3.0.tgz#31a95ad0a924e2d2c419a813aeb2c4e878ea7400"
@@ -8855,12 +8860,24 @@ p-map@^4.0.0:
   dependencies:
     aggregate-error "^3.0.0"
 
+"p-queue@https://github.com/arseneyr/p-queue#abortcontroller":
+  version "7.1.0"
+  resolved "https://github.com/arseneyr/p-queue#2a6707b4a9bb1681170c75bcb77fcb8e9574f586"
+  dependencies:
+    eventemitter3 "^4.0.7"
+    p-timeout "^5.0.0"
+
 p-timeout@^3.1.0:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-3.2.0.tgz#c7e17abc971d2a7962ef83626b35d635acf23dfe"
   integrity sha512-rhIwUycgwwKcP9yTOOFK/AKsAopjjCakVqLHePO3CC6Mir1Z99xT+R63jZxAT5lFZLa2inS5h+ZS2GvR99/FBg==
   dependencies:
     p-finally "^1.0.0"
+
+p-timeout@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/p-timeout/-/p-timeout-5.0.0.tgz#0f5dc08422e7243f8317669c461734cd1257a8dc"
+  integrity sha512-z+bU/N7L1SABsqKnQzvAnINgPX7NHdzwUV+gHyJE7VGNDZSr03rhcPODCZSWiiT9k+gf74QPmzcZzqJRvxYZow==
 
 p-try@^2.0.0:
   version "2.2.0"

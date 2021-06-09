@@ -10,6 +10,7 @@ import { v4 } from "uuid";
 import { persistantWritable, privateWritable } from "./utils";
 import audioContext from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
+import PQueue from "p-queue";
 
 const VERSION = "1.0";
 
@@ -119,60 +120,77 @@ export default class SampleStore {
 
   // Ensures we only create one player at a time and don't clog up
   // the main thread
-  private static _playerWaterfall = Promise.resolve();
+  private static _playerCreateQueue = new PQueue({ concurrency: 1 });
+
+  private _playerCreateAbort: AbortController | null = null;
 
   private async _createPlayer(
     [encoded, decoded]: [ArrayBuffer | null, AudioBuffer | null],
     set: (val: Player) => void
   ) {
-    SampleStore._playerWaterfall = SampleStore._playerWaterfall.then(
-      async () => {
-        if (encoded) {
-          const audio = new Audio(URL.createObjectURL(new Blob([encoded])));
-          audio.ondurationchange = () => this.duration._set(audio.duration);
-          audio.onpause = () => this.playing._set(false);
-          await new Promise<void>((res) => {
-            audio.oncanplaythrough = () => {
-              audio.oncanplaythrough = undefined;
-              res();
-            };
-          });
-          this.loading._set(false);
-          set({
-            play: () => {
-              audio.currentTime = 0;
-              audio.play();
-              this.playing._set(true);
-            },
-            stop: () => {
-              audio.pause();
-              audio.currentTime = 0;
-            },
-          });
-        } else if (decoded) {
-          let source: AudioBufferSourceNode;
-          this.loading._set(false);
-          set({
-            play: () => {
-              source = audioContext.createBufferSource();
-              source.buffer = decoded;
-              source.connect(audioContext.destination);
-              source.onended = () => this.playing._set(false);
-              this.playing._set(true);
-              source.start();
-            },
-            stop: () => {
-              this.playing._set(false);
-              source?.stop();
-            },
-          });
-        } else {
-          this.loading._set(true);
-          this.playing._set(false);
-          set(null);
+    this._playerCreateAbort?.abort();
+    if (encoded) {
+      try {
+        this._playerCreateAbort = new AbortController();
+        const audio = await SampleStore._playerCreateQueue.add(
+          () =>
+            new Promise<HTMLAudioElement>((res) => {
+              const audio = new Audio(URL.createObjectURL(new Blob([encoded])));
+              audio.ondurationchange = () => this.duration._set(audio.duration);
+              audio.onpause = () => this.playing._set(false);
+              audio.oncanplaythrough = () => res(audio);
+              this._playerCreateAbort.signal.addEventListener("abort", () => {
+                audio.oncanplaythrough = undefined;
+                audio.removeAttribute("src");
+              });
+            }),
+          { signal: this._playerCreateAbort.signal }
+        );
+        this.loading._set(false);
+
+        set({
+          play: () => {
+            audio.currentTime = 0;
+            audio.play();
+            this.playing._set(true);
+          },
+          stop: () => {
+            audio.pause();
+            audio.currentTime = 0;
+          },
+        });
+      } catch (e) {
+        if (e.name !== "AbortError") {
+          throw e;
         }
       }
-    );
+    } else if (decoded) {
+      let source: AudioBufferSourceNode;
+      this.loading._set(false);
+      this.duration._set(decoded.duration);
+      set({
+        play: () => {
+          if (source) {
+            source.onended = undefined;
+            source.stop();
+          }
+          source = audioContext.createBufferSource();
+          source.buffer = decoded;
+          source.connect(audioContext.destination);
+          source.onended = () => this.playing._set(false);
+          this.playing._set(true);
+          source.start();
+        },
+        stop: () => {
+          this.playing._set(false);
+          source?.stop();
+        },
+      });
+    } else {
+      this.loading._set(true);
+      this.playing._set(false);
+      set(null);
+    }
   }
 
   private _decodePromise = null;
@@ -200,7 +218,7 @@ export default class SampleStore {
   }
 
   private readonly _decodeAudio = PCancelable.fn((arrayBuffer: ArrayBuffer) =>
-    audioContext.decodeAudioData(arrayBuffer)
+    audioContext.decodeAudioData(arrayBuffer.slice(0))
   );
 
   private static readonly _sampleMap = new Map<string, SampleStore>();

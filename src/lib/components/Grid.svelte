@@ -1,9 +1,9 @@
 <div class="root">
-  {#if $$slots.panel}
+  <!-- {#if $$slots.panel}
     <div class="panel">
       <slot name="panel" />
     </div>
-  {/if}
+  {/if} -->
   <slot />
 </div>
 
@@ -15,6 +15,10 @@
     /* grid-auto-rows: 48px; */
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     grid-template-rows: auto;
+  }
+
+  .root > :global(.fullWidth) {
+    grid-column: 1 / -1;
   }
   .panel {
     grid-column: 1 / -1;

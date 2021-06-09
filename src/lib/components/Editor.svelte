@@ -3,7 +3,7 @@
   import Button, { Group, Icon } from "@smui/button/styled";
   import Tooltip, { Wrapper } from "@smui/tooltip/styled";
   import CloseButton from "$lib/components/CloseButton.svelte";
-  import { onDestroy, onMount, tick } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
   import Wavesurfer from "wavesurfer.js";
   import Regions from "wavesurfer.js/dist/plugin/wavesurfer.regions";
   import SampleStore from "$lib/store";
@@ -14,7 +14,11 @@
     wavesurfer && wavesurfer.stop();
   }
 
-  const { title, audioBuffer } = SampleStore.getSample(id);
+  const dispatch = createEventDispatcher();
+
+  const sampleStore = SampleStore.getSample(id);
+
+  const { title, audioBuffer } = sampleStore;
 
   const editManager = new EditManager();
   const { audioBuffer: workingBuffer, undoable, redoable } = editManager;
@@ -46,6 +50,7 @@
       clearTimeout(debounceTimer);
     }
     updateTitle();
+    $workingBuffer && sampleStore.setAudioBuffer($workingBuffer);
   });
 
   const commonHandleStyles = {
@@ -190,7 +195,7 @@
   });
 </script>
 
-<div class="root" class:playing={!paused}>
+<div class="root fullWidth" class:playing={!paused}>
   <div class="topBar">
     <Textfield
       bind:value={currentTitleValue}
@@ -202,7 +207,7 @@
       input$autocapitalize="off"
     />
 
-    <CloseButton />
+    <CloseButton on:click={() => dispatch("close")} />
   </div>
   <div class="waveform" bind:this={waveformEl} />
   <div class="buttonPanel">

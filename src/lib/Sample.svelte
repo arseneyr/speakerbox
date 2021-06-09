@@ -44,8 +44,12 @@
   {startTime}
   {editMode}
   on:click={() => {
-    startTime = Date.now();
-    player && player.play();
+    if (editMode) {
+      dispatch("edit");
+    } else {
+      startTime = Date.now();
+      player && player.play();
+    }
   }}
   iconButton={editMode
     ? { icon: "delete", onClick: () => dispatch("delete") }

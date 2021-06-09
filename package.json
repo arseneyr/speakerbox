@@ -61,6 +61,7 @@
     "localforage": "^1.9.0",
     "normalize.css": "^8.0.1",
     "p-cancelable": "^3.0.0",
+    "p-queue": "https://github.com/arseneyr/p-queue#abortcontroller",
     "uuid": "^8.3.2",
     "wavesurfer.js": "^5.0.1"
   }
