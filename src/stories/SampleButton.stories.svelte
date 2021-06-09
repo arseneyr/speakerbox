@@ -43,3 +43,4 @@
 </Story>
 
 <Story name="Loading" args={{ title: "still loading", loading: true }} />
+<Story name="Edit Mode" args={{ title: "Hello edit me", editMode: true }} />

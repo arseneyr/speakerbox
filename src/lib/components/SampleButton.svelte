@@ -7,7 +7,8 @@
   export let title: string = "";
   export let startTime: number | null = null;
   export let duration: number | null = null;
-  export let loading;
+  export let loading = false;
+  export let editMode = false;
 
   export let iconButton:
     | { icon: string; onClick: () => void }
@@ -42,6 +43,9 @@
     <div class="title" class:loading>{title}</div>
     <div class="progressPlaceholder" />
   </button>
+  {#if editMode}
+    <div class="editMode title">EDIT</div>
+  {/if}
   {#if iconButton && iconButton.icon}
     <div
       in:scale={{ duration: 200, easing: backOut }}
@@ -88,7 +92,26 @@
     height: 100%;
     min-width: 0px; */
   }
-
+  .editMode {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    opacity: 0;
+    background-color: theme.$lighterColor;
+    transition: opacity 0.2s;
+    color: theme.$mainColor;
+    font: theme.$sampleFont;
+    font-weight: 900;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    align-items: center;
+  }
+  .editMode:hover {
+    opacity: 1;
+  }
   .iconButtonWrapper {
     position: absolute;
     top: -4px;

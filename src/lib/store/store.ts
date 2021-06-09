@@ -1,8 +1,9 @@
 import {
   derived,
+  get,
+  readable,
   Readable,
   Unsubscriber,
-  Writable,
   writable,
 } from "svelte/store";
 import { v4 } from "uuid";
@@ -54,6 +55,8 @@ interface Player {
   stop(): void;
 }
 
+export let anyPlaying: Readable<boolean> = (readable as any)(false);
+
 export default class SampleStore {
   public readonly title = writable<string | null>(null);
   public readonly playing = privateWritable(false);
@@ -68,11 +71,6 @@ export default class SampleStore {
   private readonly _destroyCbs: Unsubscriber[];
 
   private constructor(public readonly id: string) {
-    this._destroyCbs = [
-      this.title.subscribe((newTitle) =>
-        backend?.setSampleState({ id, title: newTitle ?? undefined })
-      ),
-    ];
     this.audioBuffer = derived(
       [this._encodedAudio, this._decodedAudio],
       this._setDecodedAudio.bind(this),
@@ -83,6 +81,12 @@ export default class SampleStore {
       this._createPlayer.bind(this),
       null
     );
+
+    this._destroyCbs = [
+      this.title.subscribe((newTitle) =>
+        backend?.setSampleState({ id, title: newTitle ?? undefined })
+      ),
+    ];
   }
 
   public destroy(): void {
@@ -113,47 +117,62 @@ export default class SampleStore {
     }
   }
 
-  private _createPlayer([encoded, decoded]: [
-    ArrayBuffer | null,
-    AudioBuffer | null
-  ]) {
-    if (encoded) {
-      const audio = new Audio(URL.createObjectURL(new Blob([encoded])));
-      audio.ondurationchange = () => this.duration._set(audio.duration);
-      audio.oncanplaythrough = () => this.loading._set(false);
-      audio.onpause = () => this.playing._set(false);
-      return {
-        play: () => {
-          audio.currentTime = 0;
-          audio.play();
-          this.playing._set(true);
-        },
-        stop: () => {
-          audio.pause();
-          audio.currentTime = 0;
-        },
-      };
-    } else if (decoded) {
-      let source: AudioBufferSourceNode;
-      this.loading._set(false);
-      return {
-        play: () => {
-          source = audioContext.createBufferSource();
-          source.buffer = decoded;
-          source.connect(audioContext.destination);
-          source.onended = () => this.playing._set(false);
-          this.playing._set(true);
-          source.start();
-        },
-        stop: () => {
+  // Ensures we only create one player at a time and don't clog up
+  // the main thread
+  private static _playerWaterfall = Promise.resolve();
+
+  private async _createPlayer(
+    [encoded, decoded]: [ArrayBuffer | null, AudioBuffer | null],
+    set: (val: Player) => void
+  ) {
+    SampleStore._playerWaterfall = SampleStore._playerWaterfall.then(
+      async () => {
+        if (encoded) {
+          const audio = new Audio(URL.createObjectURL(new Blob([encoded])));
+          audio.ondurationchange = () => this.duration._set(audio.duration);
+          audio.onpause = () => this.playing._set(false);
+          await new Promise<void>((res) => {
+            audio.oncanplaythrough = () => {
+              audio.oncanplaythrough = undefined;
+              res();
+            };
+          });
+          this.loading._set(false);
+          set({
+            play: () => {
+              audio.currentTime = 0;
+              audio.play();
+              this.playing._set(true);
+            },
+            stop: () => {
+              audio.pause();
+              audio.currentTime = 0;
+            },
+          });
+        } else if (decoded) {
+          let source: AudioBufferSourceNode;
+          this.loading._set(false);
+          set({
+            play: () => {
+              source = audioContext.createBufferSource();
+              source.buffer = decoded;
+              source.connect(audioContext.destination);
+              source.onended = () => this.playing._set(false);
+              this.playing._set(true);
+              source.start();
+            },
+            stop: () => {
+              this.playing._set(false);
+              source?.stop();
+            },
+          });
+        } else {
+          this.loading._set(true);
           this.playing._set(false);
-          source?.stop();
-        },
-      };
-    }
-    this.loading._set(true);
-    this.playing._set(false);
-    return null;
+          set(null);
+        }
+      }
+    );
   }
 
   private _decodePromise = null;
@@ -186,12 +205,32 @@ export default class SampleStore {
 
   private static readonly _sampleMap = new Map<string, SampleStore>();
 
+  private static _updateAnyPlaying() {
+    anyPlaying = derived(
+      Array.from(this._sampleMap.values(), (s) => s.playing) as any,
+      (playingArray: boolean[]) => {
+        return playingArray.includes(true);
+      }
+    );
+  }
+
+  private static _addToSampleMap(store: SampleStore) {
+    this._sampleMap.set(store.id, store);
+    this._updateAnyPlaying();
+  }
+
+  public static stopAll(): void {
+    for (const { player } of this._sampleMap.values()) {
+      get(player)?.stop();
+    }
+  }
+
   public static getSample(id: string): SampleStore {
     let store = SampleStore._sampleMap.get(id);
     if (!store) {
       store = new SampleStore(id);
       store._loadExisting();
-      SampleStore._sampleMap.set(id, store);
+      this._addToSampleMap(store);
     }
     return store;
   }
@@ -209,7 +248,7 @@ export default class SampleStore {
       }
     );
 
-    SampleStore._sampleMap.set(id, store);
+    this._addToSampleMap(store);
     return store;
   }
 }

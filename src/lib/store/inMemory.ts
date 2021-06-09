@@ -2,7 +2,7 @@ import type { MainSavedState, SampleSavedState } from "./store";
 
 let mainState: MainSavedState | null = null;
 const sampleState = new Map<string, SampleSavedState>();
-const sampleData = new Map<string, ArrayBuffer>();
+const sampleData = new Map<string, ArrayBuffer | AudioBuffer>();
 
 function getMainState() {
   return Promise.resolve(mainState);
@@ -26,7 +26,7 @@ function getSampleData(id: string) {
   return Promise.resolve(sampleData.get(id));
 }
 
-function setSampleData(id: string, data: ArrayBuffer) {
+function setSampleData(id: string, data: ArrayBuffer | AudioBuffer) {
   sampleData.set(id, data);
   return Promise.resolve();
 }

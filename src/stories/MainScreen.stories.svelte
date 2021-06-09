@@ -27,6 +27,6 @@
 <Story
   name="Of Sample buttons"
   args={{
-    items: Array.from({ length: 20 }, () => faker.lorem.sentence()),
+    items: Array.from({ length: 290 }, () => faker.lorem.sentence()),
   }}
 />

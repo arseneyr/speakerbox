@@ -1,4 +1,6 @@
 <script>
+  import SampleStore, { anyPlaying } from "$lib/store/store";
+
   import Button, { Icon } from "@smui/button/styled";
 
   export let volume = 1;
@@ -11,7 +13,7 @@
   </Button>
   <div class="visualizer" />
   <div class="bottomButtons">
-    <Button disabled>
+    <Button disabled={!$anyPlaying} on:click={() => SampleStore.stopAll()}>
       <Icon class="material-icons">stop</Icon>
       Stop
     </Button>

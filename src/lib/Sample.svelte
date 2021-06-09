@@ -14,16 +14,27 @@
   import { createEventDispatcher } from "svelte";
 
   export let id;
-  // export let iconButton: { icon: string; onClick: () => void };
   export let editMode = false;
 
   const dispatch = createEventDispatcher();
   let startTime;
 
-  const { playing, title, loading, player, duration } = SampleStore.getSample(
-    id
-  );
+  const {
+    playing,
+    title,
+    loading,
+    player: playerStore,
+    duration,
+  } = SampleStore.getSample(id);
+
+  // Important to keep a long running player subscription. Otherwise,
+  // the player gets destroyed and recreated on every click
+  $: player = $playerStore;
+
   $: durationMs = $duration && $duration * 1000;
+  $: if (!$playing) {
+    startTime = undefined;
+  }
 </script>
 
 <SampleButton
@@ -31,11 +42,10 @@
   duration={durationMs}
   loading={$loading}
   {startTime}
+  {editMode}
   on:click={() => {
     startTime = Date.now();
-    // We would rather do a bind:currentTime but it seems to skip
-    // activation sometimes. Perhaps a result of svelte batching?
-    $player && $player.play();
+    player && player.play();
   }}
   iconButton={editMode
     ? { icon: "delete", onClick: () => dispatch("delete") }
@@ -43,8 +53,7 @@
     ? {
         icon: "stop",
         onClick: () => {
-          $player && $player.stop();
-          startTime = undefined;
+          player && player.stop();
         },
       }
     : undefined}
