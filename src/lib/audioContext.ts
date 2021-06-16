@@ -1,2 +1,8 @@
-const audioContext = new AudioContext();
+import { browser } from "$app/env";
+
+let audioContext;
+
+if (browser) {
+  audioContext = new AudioContext();
+}
 export default audioContext;

@@ -1,18 +1,14 @@
 <script lang="ts">
-  import Counter from "$lib/Counter.svelte";
+  import MainScreen from "$lib/MainScreen.svelte";
+  import { initialize, mainStore } from "$lib/store";
+  import localForage from "$lib/store/localForage";
+
   navigator.storage.persist().then((done) => !done && alert("Not persistent!"));
+
+  initialize(localForage);
 </script>
 
-<main>
-  <h1>Hello world!</h1>
-
-  <Counter />
-
-  <p>
-    Visit <a href="https://svelte.dev">svelte.dev</a> to learn how to build Svelte
-    apps.
-  </p>
-</main>
+<MainScreen {mainStore} />
 
 <style lang="scss">
   main {

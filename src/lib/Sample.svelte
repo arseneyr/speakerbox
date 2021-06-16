@@ -1,11 +1,15 @@
 <svelte:options immutable={true} />
 
 <script context="module">
-  // Some dark magic here: Chromium will suspend audio elements
-  // after some time and trying to play results in a short delay.
-  // For some reason, creating audio contexts prevents this.
-  new AudioContext();
-  setInterval(() => new AudioContext(), 10000);
+  import { browser } from "$app/env";
+
+  if (browser) {
+    // Some dark magic here: Chromium will suspend audio elements
+    // after some time and trying to play results in a short delay.
+    // For some reason, creating audio contexts prevents this.
+    new AudioContext();
+    setInterval(() => new AudioContext(), 10000);
+  }
 </script>
 
 <script>

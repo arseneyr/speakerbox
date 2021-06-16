@@ -9,7 +9,7 @@
     "storybook": "start-storybook -p 6006",
     "build-storybook": "build-storybook",
     "prepare": "npm run vite-workaround",
-    "vite-workaround": "find node_modules/@material/ -name \"*.js.map\" -type f -delete",
+    "vite-workaround": "find node_modules/@material/ node_modules/wavesurfer.js/ -name \"*.js.map\" -type f -delete",
     "test": "jest"
   },
   "devDependencies": {
@@ -17,7 +17,7 @@
     "@storybook/addon-actions": "^6.2.9",
     "@storybook/addon-essentials": "^6.2.9",
     "@storybook/addon-links": "^6.2.9",
-    "@storybook/addon-svelte-csf": "^1.0.0",
+    "@storybook/addon-svelte-csf": "^1.1.0",
     "@storybook/preset-scss": "^1.0.3",
     "@storybook/svelte": "^6.2.9",
     "@sveltejs/adapter-node": "next",
@@ -39,10 +39,10 @@
     "svelte": "^3.38.2",
     "svelte-loader": "^3.1.0",
     "svelte-preprocess": "^4.7.3",
-    "ts-jest": "^27.0.2",
-    "tslib": "^2.0.0",
-    "typescript": "^4.0.0",
-    "vite": "^2.1.0",
+    "ts-jest": "^27.0.3",
+    "tslib": "^2.3.0",
+    "typescript": "^4.3.2",
+    "vite": "^2.3.7",
     "web-audio-test-api": "^0.5.2"
   },
   "type": "module",
@@ -55,14 +55,16 @@
     "@smui/slider": "^4.2.0",
     "@smui/textfield": "^4.2.0",
     "@smui/tooltip": "^4.2.0",
+    "@sveltejs/adapter-static": "^1.0.0-next.13",
     "@types/uuid": "^8.3.0",
     "browser-fs-access": "^0.17.0",
     "gridstack": "^4.1.0",
     "localforage": "^1.9.0",
     "normalize.css": "^8.0.1",
-    "p-cancelable": "^3.0.0",
-    "p-queue": "https://github.com/arseneyr/p-queue#abortcontroller",
+    "p-cancelable": "^2",
+    "p-queue": "^6",
     "uuid": "^8.3.2",
+    "wasm-media-encoders": "^0.6.3",
     "wavesurfer.js": "^5.0.1"
   }
 }

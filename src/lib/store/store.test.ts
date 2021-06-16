@@ -1,8 +1,8 @@
 import inMemory from "./inMemory";
 import SampleStore, { initialize } from "./store";
 import { get } from "svelte/store";
-import { waitForValue } from "./utils";
-import audioContext from "../audioContext";
+import { waitForValue } from "$lib/utils";
+import audioContext from "$lib/audioContext";
 
 jest.mock("./inMemory", () => {
   const original = jest.requireActual("./inMemory").default;

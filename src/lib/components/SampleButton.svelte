@@ -34,12 +34,7 @@
 </script>
 
 <div class="root">
-  <button
-    use:Ripple={!loading && { surface: true }}
-    on:click
-    on:mouseover
-    disabled={loading}
-  >
+  <button on:click on:mouseover disabled={loading}>
     {#if editMode}
       <div class="editMode">EDIT</div>
     {/if}

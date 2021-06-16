@@ -35,6 +35,12 @@ module.exports = {
     options.plugins = options.plugins.filter(
       excludePlugins(["@babel/plugin-transform-classes"])
     );
+
+    config.module.rules.splice(0, 0, {
+      test: /\.wasm$/,
+      type: "javascript/auto",
+      use: [{ loader: "file-loader" }],
+    });
     return config;
   },
 };

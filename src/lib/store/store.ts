@@ -7,7 +7,7 @@ import {
   writable,
 } from "svelte/store";
 import { v4 } from "uuid";
-import { persistantWritable, privateWritable } from "./utils";
+import { persistantWritable, privateWritable } from "$lib/utils";
 import audioContext from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";

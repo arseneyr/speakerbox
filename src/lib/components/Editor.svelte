@@ -4,14 +4,12 @@
   import Tooltip, { Wrapper } from "@smui/tooltip/styled";
   import CloseButton from "$lib/components/CloseButton.svelte";
   import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
-  import Wavesurfer from "wavesurfer.js";
-  import Regions from "wavesurfer.js/dist/plugin/wavesurfer.regions";
   import SampleStore from "$lib/store";
   import EditManager from "$lib/EditManager";
 
   export let id;
   export function stop() {
-    wavesurfer && wavesurfer.stop();
+    wavesurfer?.stop();
   }
 
   const dispatch = createEventDispatcher();
@@ -156,7 +154,11 @@
     editManager.redo();
   }
 
-  onMount(() => {
+  onMount(async () => {
+    const Wavesurfer = (await import("wavesurfer.js")).default;
+    const Regions = (
+      await import("wavesurfer.js/dist/plugin/wavesurfer.regions")
+    ).default;
     wavesurfer = Wavesurfer.create({
       container: waveformEl,
       responsive: true,
