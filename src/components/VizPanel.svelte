@@ -1,5 +1,5 @@
 <script>
-  import SampleStore, { anyPlaying } from "$lib/store/store";
+  import { SampleStore, anyPlaying } from "$lib/store/store";
 
   import Button, { Icon } from "@smui/button/styled";
 
@@ -40,7 +40,7 @@
   </div>
 </div>
 
-<style>
+<style lang="scss">
   @use 'smui-theme' as theme;
   .root {
     height: 100%;

@@ -1,7 +1,7 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import ControlPanel from "$lib/components/ControlPanel.svelte";
-  import Grid from "$lib/components/Grid.svelte";
+  import ControlPanel from "../components/ControlPanel.svelte";
+  import Grid from "../components/Grid.svelte";
 </script>
 
 <Meta title="Control Panel" component={ControlPanel} />

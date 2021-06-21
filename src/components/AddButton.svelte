@@ -1,7 +1,7 @@
-<script>
-  import Button, { Label, Group, GroupItem, Icon } from "@smui/button/styled";
+<script lang="ts">
+  import Button, { Label, Group, Icon } from "@smui/button/styled";
   import Menu from "@smui/menu/styled";
-  import List, { Item, Text, Graphic } from "@smui/list/styled";
+  import List, { Item, Graphic } from "@smui/list/styled";
   import { tick } from "svelte";
 
   interface Option {
@@ -31,7 +31,10 @@
 <div class="root">
   <Group variant="raised">
     <Button
-      on:click={mainButton.onClick}
+      on:click={() => {
+        menuOpen = false;
+        mainButton.onClick();
+      }}
       class={options.length > 1 && "mainButtonMulti"}
       variant="raised"
       color="secondary"
@@ -67,7 +70,13 @@
   >
     <List>
       {#each options.slice(1) as option (option.text)}
-        <Item class="text" on:SMUI:action={option.onClick}>
+        <Item
+          class="text"
+          on:SMUI:action={() => {
+            menuOpen = false;
+            option.onClick();
+          }}
+        >
           <Graphic class="material-icons">{option.icon}</Graphic>
           {option.text}
         </Item>
@@ -76,7 +85,7 @@
   </Menu>
 </div>
 
-<style>
+<style lang="scss">
   /* /* @use "../theme.scss"; */
   @use '@material/typography/index' as typography;
 

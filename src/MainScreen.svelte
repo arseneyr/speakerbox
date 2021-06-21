@@ -1,50 +1,16 @@
 <script lang="ts">
   import Button, { Icon, Label } from "@smui/button/styled";
-  import Grid from "$lib/components/Grid.svelte";
-  import AddButton from "$lib/components/AddButton.svelte";
-  import ControlPanel from "$lib/components/ControlPanel.svelte";
-  import Sample from "$lib/Sample.svelte";
-  import Editor from "$lib/components/Editor.svelte";
-  import {
-    NoAudioTracksError,
-    PermissionDeniedError,
-    startAudioRecording,
-  } from "$lib/recorder";
-  import SampleStore from "$lib/store";
-
-  export let mainStore;
+  import Grid from "./components/Grid.svelte";
+  import ControlPanel from "./components/ControlPanel.svelte";
+  import Sample from "./Sample.svelte";
+  import Editor from "./components/Editor.svelte";
+  import { mainStore } from "$lib/store";
+  import NewSampleButton from "./NewSampleButton.svelte";
 
   export let editing = [];
   export let editMode = false;
 
   $: noSamples = !$mainStore?.samples.length;
-
-  let stopRecording = null;
-
-  async function onRecord() {
-    const recorder = startAudioRecording();
-    stopRecording = recorder.stop;
-    recorder.buffer
-      .then((buf) => {
-        stopRecording = null;
-        if (buf === null) {
-          alert("ONLY SILENCE");
-        } else {
-          const { id } = SampleStore.createNewSample(buf, "whoa");
-          $mainStore.samples = $mainStore.samples.concat(id);
-        }
-      })
-      .catch((e) => {
-        stopRecording = null;
-        if (e instanceof PermissionDeniedError) {
-          alert("Permission DENIED");
-        } else if (e instanceof NoAudioTracksError) {
-          alert("NO AUDIO DAMMIT");
-        } else {
-          throw e;
-        }
-      });
-  }
 </script>
 
 <Grid>
@@ -52,15 +18,11 @@
     <a slot="link" href="javascript:;" on:click={() => alert("yo")}
       >Sync with Google Drive</a
     >
-
-    <AddButton
+    <NewSampleButton
       slot="addButton"
-      options={[
-        stopRecording
-          ? { text: "Stop", icon: "stop", onClick: stopRecording }
-          : { text: "Record Desktop", icon: "mic", onClick: onRecord },
-      ]}
+      on:newSamples={({ detail }) => (editing = detail.concat(editing))}
     />
+
     <Button
       slot="editButton"
       color={editMode ? "primary" : "secondary"}
@@ -97,7 +59,7 @@
   {/if}
 </Grid>
 
-<style>
+<style lang="scss">
   @use '@material/typography/index' as typography;
   a {
     @include typography.typography("subtitle2");

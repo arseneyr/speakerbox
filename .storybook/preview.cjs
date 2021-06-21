@@ -8,6 +8,6 @@ export const parameters = {
   },
 };
 
-import Layout from "../src/routes/__layout.svelte";
+import Layout from "../src/Layout.svelte";
 
 export const decorators = [() => Layout];

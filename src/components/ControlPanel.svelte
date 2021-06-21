@@ -1,6 +1,5 @@
 <script>
-  import Button, { Icon } from "@smui/button/styled";
-  import logo from "../../../static/logo.svg";
+  import logo from "../../static/logo.svg";
   import VizPanel from "./VizPanel.svelte";
 </script>
 
@@ -21,7 +20,7 @@
   </div>
 </div>
 
-<style>
+<style lang="scss">
   @use 'smui-theme' as theme;
   img {
     max-width: 100%;

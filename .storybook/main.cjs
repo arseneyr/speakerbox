@@ -12,23 +12,19 @@ module.exports = {
     "@storybook/addon-svelte-csf",
     "@storybook/preset-scss",
   ],
-  // svelteOptions: {
-  //   preprocess: require("../svelte.config.cjs").preprocess,
-  // },
   svelteOptions: {
-    preprocess: sveltePreprocess({
-      defaults: {
-        script: "typescript",
-        style: "scss",
-      },
-    }),
+    preprocess: sveltePreprocess(),
   },
   webpackFinal: (config) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
-    config.resolve.mainFields = config.resolve.mainFields || {};
-    config.resolve.mainFields.push("exports");
+    config.resolve.alias["wasm-media-encoders/esnext"] = path.resolve(
+      __dirname,
+      "../node_modules/wasm-media-encoders/dist/browser"
+    );
+    // config.resolve.mainFields = config.resolve.mainFields || {};
+    // config.resolve.mainFields.push("exports");
 
     // Storybook bug: https://github.com/storybookjs/storybook/issues/12019#issuecomment-702207045
     const { options } = config.module.rules[0].use[0];
@@ -37,7 +33,7 @@ module.exports = {
     );
 
     config.module.rules.splice(0, 0, {
-      test: /\.wasm$/,
+      test: [/\.wasm$/, /\?url$/],
       type: "javascript/auto",
       use: [{ loader: "file-loader" }],
     });

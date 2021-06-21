@@ -1,6 +1,6 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import SampleButton from "$lib/components/SampleButton.svelte";
+  import SampleButton from "../components/SampleButton.svelte";
   import SampleButtonWrapper from "./SampleButtonWrapper.svelte";
 
   let startTime = null;

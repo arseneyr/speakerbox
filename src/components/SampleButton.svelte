@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import Ripple from "@smui/ripple/styled";
   import IconButton from "@smui/icon-button/styled";
   import { fade, scale } from "svelte/transition";
@@ -79,7 +79,7 @@
   {/key}
 </div>
 
-<style>
+<style lang="scss">
   @use 'smui-theme' as theme;
   div.root {
     position: relative;

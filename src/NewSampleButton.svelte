@@ -1,0 +1,144 @@
+<script lang="ts">
+  import {
+    NoAudioTracksError,
+    PermissionDeniedError,
+    startAudioRecording,
+  } from "$lib/recorder";
+  import AddButton from "./components/AddButton.svelte";
+  import { SampleStore, mainStore, SampleAddTypes } from "$lib/store";
+  import Button, { Icon, Label } from "@smui/button/styled";
+  import Snackbar, { Actions } from "@smui/snackbar/styled";
+  import IconButton from "@smui/icon-button/styled";
+  import { fileOpen } from "browser-fs-access";
+  import { createEventDispatcher } from "svelte";
+
+  let stopRecording = null;
+
+  let snackbar;
+  let error;
+
+  let lastSampleAddType;
+
+  const dispatch = createEventDispatcher();
+
+  $: if (!lastSampleAddType && $mainStore) {
+    onSampleAdd($mainStore.settings.lastSampleAddType);
+  } else if (lastSampleAddType && $mainStore) {
+    $mainStore.settings.lastSampleAddType = lastSampleAddType;
+  }
+
+  function onSampleAdd(type: SampleAddTypes) {
+    lastSampleAddType = type;
+    const index = options.findIndex((o) => o.type === type);
+    if (index >= 0) {
+      // options = [options[index]].concat(options.splice(index, 1));
+      let r = options.splice(index, 1)[0];
+      options.unshift(r);
+      options = options;
+    }
+  }
+
+  let options = [
+    {
+      type: SampleAddTypes.RECORD_DESKTOP,
+      text: "Record Desktop",
+      icon: "mic",
+      onClick: onRecord,
+    },
+    {
+      type: SampleAddTypes.UPLOAD,
+      text: "Upload file",
+      icon: "file_upload",
+      onClick: onUpload,
+    },
+  ].map((o) => ({
+    ...o,
+    onClick: () => {
+      onSampleAdd(o.type);
+      o.onClick();
+    },
+  }));
+
+  async function onRecord() {
+    snackbar?.close();
+    try {
+      const recorder = await startAudioRecording();
+      stopRecording = recorder.stop;
+      recorder.buffer.then((buf) => {
+        stopRecording = null;
+        if (buf === null) {
+          error = "No audio detected. Did you mean to play something?";
+          snackbar?.open();
+        } else {
+          onNewSamples(
+            SampleStore.createNewSample(
+              buf,
+              `Recorded on ${new Date().toISOString().substring(0, 19)}`
+            ).id
+          );
+        }
+      });
+    } catch (e) {
+      stopRecording = null;
+      if (e instanceof PermissionDeniedError) {
+        // Do Nothing
+      } else if (e instanceof NoAudioTracksError) {
+        error = "Please select 'Share Audio'";
+        snackbar?.open();
+      } else {
+        error = "Unknown error :(";
+        snackbar?.open();
+        console.error(e);
+      }
+    }
+  }
+
+  async function onUpload() {
+    try {
+      const files = await fileOpen({
+        mimeTypes: ["audio/*", "video/*"],
+        multiple: true,
+        description: "Audio or video files",
+      });
+      const ids = files.map(
+        (file) => SampleStore.createNewSample(file, file.name).id
+      );
+
+      onNewSamples(ids);
+    } catch (e) {}
+  }
+
+  function onNewSamples(sampleIds: string | string[]) {
+    if (!(sampleIds instanceof Array)) {
+      sampleIds = [sampleIds];
+    }
+    $mainStore.samples = sampleIds.concat($mainStore.samples);
+    dispatch("newSamples", sampleIds);
+  }
+</script>
+
+{#if stopRecording}
+  <Button on:click={stopRecording} variant="raised" color="primary">
+    <Icon class="material-icons">stop</Icon>
+    <Label style="padding-top: 2px">Stop</Label>
+  </Button>
+{:else}
+  <AddButton {options} />
+{/if}
+
+<Snackbar bind:this={snackbar} timeoutMs={5000} surface$class="snackbarSurface">
+  <Label>{error}</Label>
+  <Actions>
+    <IconButton class="material-icons">close</IconButton>
+  </Actions>
+</Snackbar>
+
+<style lang="scss">
+  @use 'smui-theme' as theme;
+  :global(.snackbarSurface) {
+    background-color: theme.$mainColor;
+  }
+  :global(.snackbarSurface > span) {
+    color: white;
+  }
+</style>

@@ -1,7 +1,7 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import SampleButton from "$lib/components/SampleButton.svelte";
-  import Grid from "$lib/components/Grid.svelte";
+  import SampleButton from "../components/SampleButton.svelte";
+  import Grid from "../components/Grid.svelte";
   import faker from "faker";
 </script>
 

@@ -2,9 +2,9 @@
   import Textfield from "@smui/textfield/styled";
   import Button, { Group, Icon } from "@smui/button/styled";
   import Tooltip, { Wrapper } from "@smui/tooltip/styled";
-  import CloseButton from "$lib/components/CloseButton.svelte";
-  import { createEventDispatcher, onDestroy, onMount, tick } from "svelte";
-  import SampleStore from "$lib/store";
+  import CloseButton from "./CloseButton.svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
+  import { SampleStore } from "$lib/store";
   import EditManager from "$lib/EditManager";
 
   export let id;
@@ -154,44 +154,46 @@
     editManager.redo();
   }
 
-  onMount(async () => {
-    const Wavesurfer = (await import("wavesurfer.js")).default;
-    const Regions = (
-      await import("wavesurfer.js/dist/plugin/wavesurfer.regions")
-    ).default;
-    wavesurfer = Wavesurfer.create({
-      container: waveformEl,
-      responsive: true,
-      plugins: [Regions.create()],
-    });
-
-    // wavesurfer uses scrollWidth for progress calculations. Since the region
-    // is a child of the waveform, the region handles get included in scrollWidth
-    // even though there is no waveform past the end of the region
-    wavesurfer.drawer.wrapper = new Proxy(wavesurfer.drawer.wrapper, {
-      get(target, prop) {
-        if (prop === "scrollWidth") {
-          return target.clientWidth;
-        }
-        return target[prop];
-      },
-    });
-
-    wavesurfer.on("ready", () => {
-      ready = true;
-      wavesurfer.enableDragSelection(regionConfig);
-      wavesurfer.on("region-created", () =>
-        wavesurfer.on("region-update-end", (r) => {
-          wavesurfer.un("region-update-end");
-          onNewRegion(r);
-        })
-      );
-      wavesurfer.on("finish", () => {
-        paused = true;
-        wavesurfer.stop();
+  onMount(() => {
+    (async () => {
+      const Wavesurfer = (await import("wavesurfer.js")).default;
+      const Regions = (
+        await import("wavesurfer.js/dist/plugin/wavesurfer.regions")
+      ).default;
+      wavesurfer = Wavesurfer.create({
+        container: waveformEl,
+        responsive: true,
+        plugins: [Regions.create()],
       });
-      wavesurfer.un("ready");
-    });
+
+      // wavesurfer uses scrollWidth for progress calculations. Since the region
+      // is a child of the waveform, the region handles get included in scrollWidth
+      // even though there is no waveform past the end of the region
+      wavesurfer.drawer.wrapper = new Proxy(wavesurfer.drawer.wrapper, {
+        get(target, prop) {
+          if (prop === "scrollWidth") {
+            return target.clientWidth;
+          }
+          return target[prop];
+        },
+      });
+
+      wavesurfer.on("ready", () => {
+        ready = true;
+        wavesurfer.enableDragSelection(regionConfig);
+        wavesurfer.on("region-created", () =>
+          wavesurfer.on("region-update-end", (r) => {
+            wavesurfer.un("region-update-end");
+            onNewRegion(r);
+          })
+        );
+        wavesurfer.on("finish", () => {
+          paused = true;
+          wavesurfer.stop();
+        });
+        wavesurfer.un("ready");
+      });
+    })();
 
     return () => wavesurfer.destroy();
   });

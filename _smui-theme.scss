@@ -1,10 +1,10 @@
 @use 'sass:color';
 @use '@material/theme/color-palette';
 
-$background: #1c2524;
 $accent: #ff6bf9;
 
 $darkColor: #1c2524;
+$darkerColor: #111111;
 $mainColor: #2f4541;
 $lightTextColor: #ebeee7;
 $lightAccent: #749d85;
@@ -26,7 +26,7 @@ $onSurface: #ebeee7;
 
 html,
 body {
-  background-color: $background;
+  background-color: $darkColor;
   color: theme.$on-surface;
 }
 

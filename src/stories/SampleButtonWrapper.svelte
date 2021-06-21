@@ -1,5 +1,5 @@
 <script>
-  import SampleButton from "$lib/components/SampleButton.svelte";
+  import SampleButton from "../components/SampleButton.svelte";
 
   let startTime = null;
   let iconButton = null;

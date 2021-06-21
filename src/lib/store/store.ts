@@ -25,18 +25,23 @@ export interface StorageBackend {
   setSampleData(id: string, data: ArrayBuffer | AudioBuffer): Promise<unknown>;
 }
 
+export enum SampleAddTypes {
+  UPLOAD = "UPLOAD",
+  RECORD_DESKTOP = "RECORD_DESKTOP",
+}
+
 export interface MainSavedState {
   version: string;
   samples: string[];
+  settings: {
+    lastSampleAddType?: SampleAddTypes;
+  };
 }
 
 export interface SampleSavedState {
   id: string;
   title?: string;
 }
-
-const mainStateWritable = (init: MainSavedState) =>
-  persistantWritable(init, (v) => backend.setMainState(v));
 
 let backend: StorageBackend | null = null;
 
@@ -46,7 +51,7 @@ export async function initialize(newBackend: StorageBackend): Promise<void> {
   backend = newBackend;
   let mainSavedState = await backend.getMainState();
   if (!mainSavedState) {
-    mainSavedState = { version: VERSION, samples: [] };
+    mainSavedState = { version: VERSION, samples: [], settings: {} };
   }
   mainStore.set(mainSavedState);
 }
@@ -58,7 +63,7 @@ interface Player {
 
 export let anyPlaying: Readable<boolean> = (readable as any)(false);
 
-export default class SampleStore {
+export class SampleStore {
   public readonly title = writable<string | null>(null);
   public readonly playing = privateWritable(false);
   public readonly audioBuffer: Readable<AudioBuffer | null>;

@@ -40,7 +40,7 @@ class MyWorkletProcessor extends AudioWorkletProcessor {
   }
 
   private onInstantiate = (encoder: WasmMediaEncoder<"audio/ogg">) => {
-    debugger;
+    // debugger;
     encoder.configure({
       sampleRate,
       channels: 2,

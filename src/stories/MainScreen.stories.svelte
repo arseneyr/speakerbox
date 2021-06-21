@@ -1,9 +1,9 @@
 <script lang="ts">
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import MainScreen from "$lib/MainScreen.svelte";
+  import MainScreen from "../MainScreen.svelte";
   import faker from "faker";
   import wav from "./sample.wav";
-  import SampleStore, { initialize, mainStore } from "$lib/store";
+  import { SampleStore, initialize, mainStore } from "$lib/store";
   import inMemory from "$lib/store/inMemory";
 
   const mainStorePromise = initialize(inMemory);
@@ -20,7 +20,7 @@
 
 <Template let:args>
   {#await loadMainStore(args.items) then _}
-    <MainScreen {mainStore} />
+    <MainScreen />
   {/await}
 </Template>
 

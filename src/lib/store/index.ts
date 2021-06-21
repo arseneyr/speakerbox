@@ -1,1 +1,1 @@
-export { default, initialize, mainStore } from "./store";
+export { SampleStore, initialize, mainStore, SampleAddTypes } from "./store";

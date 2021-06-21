@@ -23,6 +23,7 @@ async function getStream() {
     throw new PermissionDeniedError();
   }
   if (stream.getAudioTracks().length === 0) {
+    stream.getTracks().forEach((t) => t.stop());
     throw new NoAudioTracksError();
   }
   return stream;
@@ -33,14 +34,14 @@ interface Recorder {
   stop: () => void;
 }
 
-function startAudioRecording(): Recorder {
+async function startAudioRecording(): Promise<Recorder> {
   const recorder = new AudioRecorder();
-  const stream = getStream();
+  const stream = await getStream();
   return {
-    buffer: stream.then((s) => recorder.startRecording(s)),
+    buffer: recorder.startRecording(stream),
     stop: () => {
       recorder.stopRecording();
-      stream.then((s) => s.getVideoTracks().forEach((t) => t.stop()));
+      stream.getTracks().forEach((t) => t.stop());
     },
   };
 }
