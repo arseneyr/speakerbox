@@ -23,16 +23,16 @@
     "@storybook/svelte": "^6.2.9",
     "@types/jest": "^26.0.23",
     "@types/uuid": "^8.3.0",
-    "@types/wavesurfer.js": "^5.0.2",
-    "@typescript-eslint/eslint-plugin": "^4.27.0",
-    "@typescript-eslint/parser": "^4.27.0",
+    "@types/wavesurfer.js": "^5.0.3",
+    "@typescript-eslint/eslint-plugin": "^4.28.0",
+    "@typescript-eslint/parser": "^4.28.0",
     "babel-loader": "^8.2.2",
     "css-loader": "^5.2.6",
-    "eslint": "^7.28.0",
+    "eslint": "^7.29.0",
     "eslint-plugin-svelte3": "^3.2.0",
     "faker": "^5.5.3",
     "jest": "^27.0.4",
-    "prettier-plugin-svelte": "^2.2.0",
+    "prettier-plugin-svelte": "^2.3.1",
     "sass": "^1.35.1",
     "sass-loader": "^10",
     "style-loader": "^2.0.0",
@@ -41,8 +41,8 @@
     "svelte-preprocess": "^4.7.3",
     "ts-jest": "^27.0.3",
     "tslib": "^2.3.0",
-    "typescript": "^4.3.2",
-    "vite": "^2.3.7",
+    "typescript": "^4.3.4",
+    "vite": "^2.3.8",
     "web-audio-test-api": "^0.5.2"
   },
   "type": "module",
@@ -64,8 +64,9 @@
     "normalize.css": "^8.0.1",
     "p-cancelable": "^2",
     "p-queue": "^6",
+    "rxjs": "^7.1.0",
     "uuid": "^8.3.2",
     "wasm-media-encoders": "^0.6.3",
-    "wavesurfer.js": "^5.0.1"
+    "wavesurfer.js": "^5.1.0"
   }
 }

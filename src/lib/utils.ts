@@ -1,4 +1,20 @@
 import {
+  EMPTY,
+  firstValueFrom,
+  iif,
+  Observable,
+  ReplaySubject,
+  Subject,
+} from "rxjs";
+import {
+  catchError,
+  first,
+  mergeAll,
+  share,
+  take,
+  takeUntil,
+} from "rxjs/operators";
+import {
   Readable,
   readable,
   StartStopNotifier,
@@ -106,16 +122,51 @@ export function privateReadable<T>(init?: T) {
   return Object.assign(ret, newReadable);
 }
 
+function isTruthy<T>(val: T): val is NonNullable<T> {
+  return Boolean(val);
+}
+
 export function waitForValue<T>(
-  store: Readable<T>
-  // predicate?: (val: T) => boolean
+  store: Readable<T> | Observable<T>,
+  predicate = isTruthy
 ): Promise<NonNullable<T>> {
+  if (store instanceof Observable) {
+    return firstValueFrom(store.pipe(first(predicate)));
+  }
   return new Promise((resolve) => {
     const unsub = store.subscribe((val) => {
-      if (val) {
+      if (predicate(val)) {
         unsub();
-        resolve(val as NonNullable<T>);
+        resolve(val);
       }
     });
   });
+}
+
+export class ObservableQueue {
+  private readonly _queue = new Subject();
+
+  constructor(concurrency = 1) {
+    this._queue.pipe(mergeAll(concurrency)).subscribe();
+  }
+
+  public add<T>(
+    input$: Observable<T>,
+    cancel$: Observable<unknown> = EMPTY
+  ): Observable<T> {
+    let cancelled = false;
+    const subject = new ReplaySubject<T>();
+
+    cancel$.pipe(take(1)).subscribe(() => {
+      cancelled = true;
+    });
+
+    this._queue.next(
+      iif(() => cancelled, EMPTY, input$.pipe(takeUntil(cancel$))).pipe(
+        share({ connector: () => subject }),
+        catchError(() => EMPTY)
+      )
+    );
+    return subject;
+  }
 }

@@ -1,13 +1,12 @@
 import {
   derived,
   get,
-  readable,
   Readable,
   Unsubscriber,
   writable,
 } from "svelte/store";
 import { v4 } from "uuid";
-import { persistantWritable, privateWritable } from "$lib/utils";
+import { privateWritable } from "$lib/utils";
 import audioContext from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
@@ -61,7 +60,6 @@ interface Player {
   stop(): void;
 }
 
-export let anyPlaying: Readable<boolean> = (readable as any)(false);
 
 export class SampleStore {
   public readonly title = writable<string | null>(null);
@@ -97,7 +95,7 @@ export class SampleStore {
 
   public destroy(): void {
     this._destroyCbs.forEach((stop) => stop());
-    SampleStore._sampleMap.delete(this.id);
+    SampleStore._sampleMap.update(map => { map.delete(this.id); return map })
   }
 
   public setAudioBuffer(buffer: AudioBuffer): void {
@@ -226,30 +224,23 @@ export class SampleStore {
     audioContext.decodeAudioData(arrayBuffer.slice(0))
   );
 
-  private static readonly _sampleMap = new Map<string, SampleStore>();
+  private static readonly _sampleMap = writable(new Map<string, SampleStore>());
 
-  private static _updateAnyPlaying() {
-    anyPlaying = derived(
-      Array.from(this._sampleMap.values(), (s) => s.playing) as any,
-      (playingArray: boolean[]) => {
-        return playingArray.includes(true);
-      }
-    );
-  }
+  public static anyPlaying = anyPlayingStore(this._sampleMap);
 
   private static _addToSampleMap(store: SampleStore) {
-    this._sampleMap.set(store.id, store);
-    this._updateAnyPlaying();
+    this._sampleMap.update(map => map.set(store.id, store))
   }
 
   public static stopAll(): void {
-    for (const { player } of this._sampleMap.values()) {
+    for (const { player } of get(this._sampleMap).values()) {
       get(player)?.stop();
     }
   }
 
   public static getSample(id: string): SampleStore {
-    let store = SampleStore._sampleMap.get(id);
+    const map = get(SampleStore._sampleMap);
+    let store = map.get(id);
     if (!store) {
       store = new SampleStore(id);
       store._loadExisting();
@@ -275,3 +266,14 @@ export class SampleStore {
     return store;
   }
 }
+
+function anyPlayingStore(sampleMapStore: Readable<Map<unknown, { playing: Readable<boolean> }>>): Readable<boolean> {
+  const onSub = () => derived(sampleMapStore, map =>
+    derived(Array.from(map.values(), s => s.playing) as any, (playingArray: boolean[]) => playingArray.includes(true))
+  ).subscribe(playingStore => playingStore.subscribe(playing => ret._set(playing)))
+
+  const ret = privateWritable(false, onSub);
+  return ret;
+}
+
+export const anyPlaying = SampleStore.anyPlaying;
