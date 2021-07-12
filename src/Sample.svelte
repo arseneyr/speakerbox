@@ -8,7 +8,7 @@
   setInterval(() => new AudioContext(), 10000);
 </script>
 
-<script>
+<script lang="ts">
   import SampleButton from "./components/SampleButton.svelte";
   import { SampleStore } from "$lib/store";
   import { createEventDispatcher } from "svelte";

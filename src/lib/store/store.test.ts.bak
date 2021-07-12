@@ -1,10 +1,10 @@
 import inMemory from "./inMemory";
-import { initialize, SampleStore } from "./sampleStore";
+import { SampleStore, initialize } from "./store";
+// import { SampleStore } from "./store_rxjs";
+// import { initialize } from "./store";
 import { get } from "svelte/store";
 import { waitForValue } from "$lib/utils";
 import audioContext from "$lib/audioContext";
-import { firstValueFrom, of } from "rxjs";
-import { shareReplay } from "rxjs/operators";
 
 jest.mock("./inMemory", () => {
   const original = jest.requireActual("./inMemory").default;
@@ -26,10 +26,10 @@ test("main saved data loaded", () => {
   expect(inMemory.getMainState).toHaveBeenCalledTimes(1);
 });
 
-test("creating new sample from arraybuffer", async () => {
-  const [encoded] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = SampleStore.createNewSample(encoded, "test title");
-  await expect(waitForValue(sample.title)).resolves.toBe("test title");
+test("creating new sample from arraybuffer", () => {
+  const sample = SampleStore.createNewSample(new ArrayBuffer(0), "test title");
+  expect(get(sample.title)).toBe("test title");
+  expect(get(sample.player)).toBe(null);
 });
 
 test("audioBuffer decoding works", async () => {
@@ -47,46 +47,36 @@ test("creating new sample from blob", async () => {
 test("audioBuffer decoding is cancelled properly", async () => {
   const [encodedFirst] = WebAudioTestAPI.createEncodedBuffer();
   const sample = SampleStore.createNewSample(encodedFirst);
+  await expect(waitForValue(sample["_encodedAudio"])).resolves.toBe(
+    encodedFirst
+  );
 
-  const allAudioBuffers = sample.audioBuffer.pipe(shareReplay(2));
-  allAudioBuffers.subscribe();
+  expect(audioContext.decodeAudioData).not.toHaveBeenCalled();
+  const decodePromise = waitForValue(sample.audioBuffer);
+  expect(audioContext.decodeAudioData).toHaveBeenCalledTimes(1);
 
   const [encodedSecond, decodedSecond] = WebAudioTestAPI.createEncodedBuffer();
 
-  sample["_setEncodedData"](of(encodedSecond));
-  await expect(firstValueFrom(allAudioBuffers)).resolves.toBe(decodedSecond);
+  sample["_encodedAudio"].set(encodedSecond);
+  await expect(decodePromise).resolves.toBe(decodedSecond);
 });
 
-test("setting audiobuffer does not cause decoding", async () => {
-  const [encoded] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = SampleStore.createNewSample(encoded);
-  audioContext.decodeAudioData.mockClear();
+test("setting audiobuffer does not cause decoding", () => {
+  const sample = SampleStore.createNewSample(new ArrayBuffer(0));
   const newAudioBuffer = audioContext.createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);
 
   expect(audioContext.decodeAudioData).not.toHaveBeenCalled();
-  await expect(firstValueFrom(sample.audioBuffer)).resolves.toBe(
-    newAudioBuffer
-  );
+  expect(get(sample.audioBuffer)).toBe(newAudioBuffer);
 });
 
-test("setting audiobuffer cancels decoding properly", async () => {
-  const [encoded] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = SampleStore.createNewSample(encoded);
-
-  const allAudioBuffers = sample.audioBuffer.pipe(shareReplay(2));
-  allAudioBuffers.subscribe();
-
+test("setting audiobuffer cancels properly", async () => {
+  const sample = SampleStore.createNewSample(new ArrayBuffer(0));
+  await waitForValue(sample["_encodedAudio"]);
+  const audioBufferPromise = waitForValue(sample.audioBuffer);
   const newAudioBuffer = audioContext.createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);
 
-  await expect(firstValueFrom(allAudioBuffers)).resolves.toBe(newAudioBuffer);
-});
-
-test("audio decoding doesn't happen if not subscribed", async () => {
-  const [encoded] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = SampleStore.createNewSample(new Blob([encoded]));
-  await expect(firstValueFrom(sample.player)).resolves.toBeDefined();
-
-  expect(audioContext.decodeAudioData).not.toHaveBeenCalled();
+  expect(audioContext.decodeAudioData).toHaveBeenCalledTimes(1);
+  await expect(audioBufferPromise).resolves.toBe(newAudioBuffer);
 });

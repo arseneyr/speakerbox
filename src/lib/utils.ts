@@ -1,18 +1,32 @@
 import {
+  BehaviorSubject,
   EMPTY,
   firstValueFrom,
-  iif,
+  from,
+  MonoTypeOperatorFunction,
   Observable,
+  ObservableInput,
+  ObservedValueOf,
+  pipe,
   ReplaySubject,
   Subject,
+  SubjectLike,
 } from "rxjs";
+import type { ConnectableObservableLike } from "rxjs/internal/observable/connectable";
 import {
   catchError,
+  distinctUntilChanged,
+  finalize,
   first,
+  map,
   mergeAll,
   share,
+  shareReplay,
+  switchAll,
   take,
+  takeLast,
   takeUntil,
+  window,
 } from "rxjs/operators";
 import {
   Readable,
@@ -152,21 +166,89 @@ export class ObservableQueue {
 
   public add<T>(
     input$: Observable<T>,
-    cancel$: Observable<unknown> = EMPTY
+    cancel$?: Observable<unknown>
   ): Observable<T> {
-    let cancelled = false;
-    const subject = new ReplaySubject<T>();
+    const outputSubject = new ReplaySubject<T>();
+    // const cancelSubject = new ReplaySubject<unknown>(1);
 
-    cancel$.pipe(take(1)).subscribe(() => {
-      cancelled = true;
-    });
+    const cancelSignal$ = cancel$
+      ? cancel$.pipe(take(1), shareReplay(1))
+      : EMPTY;
 
     this._queue.next(
-      iif(() => cancelled, EMPTY, input$.pipe(takeUntil(cancel$))).pipe(
-        share({ connector: () => subject }),
+      input$.pipe(
+        takeUntil(cancelSignal$),
+        share({ connector: () => outputSubject }),
         catchError(() => EMPTY)
       )
     );
-    return subject;
+    return outputSubject.pipe(takeUntil(cancelSignal$));
+  }
+}
+
+export function toggleEmit<T>(
+  notifier: Observable<unknown>
+): MonoTypeOperatorFunction<T> {
+  return pipe(
+    window(notifier),
+    map((window$, i) => (i % 2 === 0 ? window$.pipe(takeLast(1)) : window$)),
+    mergeAll()
+  );
+}
+
+export function rxWritable<T>(
+  subject: BehaviorSubject<T>,
+  transform?: MonoTypeOperatorFunction<T>
+): Writable<T> {
+  const obs = transform ? subject.pipe(transform) : subject;
+  return {
+    subscribe: obs.subscribe.bind(obs),
+    set: subject.next.bind(subject),
+    update: (cb) => subject.next(cb(subject.value)),
+  };
+}
+
+export function lazySharedSwitch<O extends ObservableInput<any>>(
+  connector: () => SubjectLike<ObservedValueOf<O>> = () => new Subject()
+): (input: Observable<O>) => ConnectableObservableLike<ObservedValueOf<O>> {
+  return (observable) => {
+    const resettableSubject$ = new BehaviorSubject<
+      ObservableInput<ObservedValueOf<O>>
+    >(EMPTY);
+    let outputSubject$;
+
+    const connect = () => {
+      outputSubject$ = connector();
+      return observable.subscribe(resettableSubject$);
+    };
+
+    return Object.assign(
+      resettableSubject$.pipe(
+        finalize(() => resettableSubject$.next(EMPTY)),
+        switchAll(),
+        distinctUntilChanged(),
+        share({
+          connector: () => outputSubject$,
+        })
+      ),
+      { connect }
+    );
+  };
+}
+
+// export function memoizeInner<T>(): MonoTypeOperatorFunction<Observable<T>> {
+//   return pipe(map((inner$) => inner$.pipe(shareReplay<T>())));
+// }
+
+export class MemoizedInnerSubject<
+  T extends Observable<unknown>
+> extends ReplaySubject<T> {
+  constructor() {
+    super(1);
+
+    return Object.assign(
+      this,
+      this.pipe(map((inner$) => inner$.pipe(shareReplay())))
+    );
   }
 }

@@ -1,3 +1,5 @@
+import faker from "faker";
+
 declare global {
   const WebAudioTestAPI: {
     createEncodedBuffer: () => [ArrayBuffer, AudioBuffer];
@@ -33,7 +35,11 @@ WebAudioTestAPI.setState({
 const decodeMap = new Map();
 WebAudioTestAPI.createEncodedBuffer = () => {
   const encodedData = Float32Array.from({ length: 4 }, () => Math.random());
-  const decodedData = new AudioContext().createBuffer(2, 44100, 44100);
+  const decodedData = new AudioContext().createBuffer(
+    2,
+    faker.datatype.number({ min: 1, max: 441000 }),
+    44100
+  );
 
   decodeMap.set(encodedData, decodedData);
   return [encodedData, decodedData];
