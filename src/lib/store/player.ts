@@ -7,6 +7,7 @@ import {
   Observable,
   ObservableInput,
   of,
+  Subscribable,
 } from "rxjs";
 import type { ConnectableObservableLike } from "rxjs/internal/observable/connectable";
 import {

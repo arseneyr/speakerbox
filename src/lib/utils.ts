@@ -1,18 +1,25 @@
 import {
   BehaviorSubject,
+  defer,
   EMPTY,
   firstValueFrom,
   from,
   MonoTypeOperatorFunction,
   Observable,
   ObservableInput,
+  ObservableLike,
   ObservedValueOf,
+  Observer,
   pipe,
   ReplaySubject,
   Subject,
   SubjectLike,
+  Subscribable,
+  Subscription,
 } from "rxjs";
 import type { ConnectableObservableLike } from "rxjs/internal/observable/connectable";
+import type { ShareConfig } from "rxjs/internal/operators/share";
+import type { ShareReplayConfig } from "rxjs/internal/operators/shareReplay";
 import {
   catchError,
   distinctUntilChanged,
@@ -33,6 +40,7 @@ import {
   readable,
   StartStopNotifier,
   Subscriber,
+  Unsubscriber,
   Writable,
   writable,
 } from "svelte/store";
@@ -169,11 +177,12 @@ export class ObservableQueue {
     cancel$?: Observable<unknown>
   ): Observable<T> {
     const outputSubject = new ReplaySubject<T>();
-    // const cancelSubject = new ReplaySubject<unknown>(1);
 
     const cancelSignal$ = cancel$
       ? cancel$.pipe(take(1), shareReplay(1))
       : EMPTY;
+
+    const cancelSub = cancelSignal$.subscribe();
 
     this._queue.next(
       input$.pipe(
@@ -182,7 +191,10 @@ export class ObservableQueue {
         catchError(() => EMPTY)
       )
     );
-    return outputSubject.pipe(takeUntil(cancelSignal$));
+    return outputSubject.pipe(
+      takeUntil(cancelSignal$),
+      finalize(() => cancelSub.unsubscribe())
+    );
   }
 }
 
@@ -236,19 +248,67 @@ export function lazySharedSwitch<O extends ObservableInput<any>>(
   };
 }
 
-// export function memoizeInner<T>(): MonoTypeOperatorFunction<Observable<T>> {
-//   return pipe(map((inner$) => inner$.pipe(shareReplay<T>())));
+export function memoizeInner<T>(): MonoTypeOperatorFunction<Observable<T>> {
+  return pipe(map((inner$) => inner$.pipe(shareReplay<T>())));
+}
+
+/**
+ * Creates a higher-order replay subject that only constructs the inner
+ * observable when it is subscribed to, and saves the results to be replayed on
+ * an further subscription. The outer observable is a ReplaySubject(1) and will
+ * save the most recent memoized inner observable.
+ */
+// export class MemoizedDeferredSubject<T> extends Observable<Observable<T>> {
+//   private readonly _subject = new Subject<Observable<T>>();
+//   // private readonly _output$;
+
+//   constructor(...args: Parameters<typeof shareReplay>) {
+//     super();
+//     return Object.assign(
+//       this._subject.pipe(
+//         map((inner$) => inner$.pipe(shareReplay())),
+//         shareReplay(...args)
+//       ),
+//       this
+//     );
+//   }
+//   // public subscribe(
+//   //   ...args: Parameters<Subscribable<Observable<T>>["subscribe"]>
+//   // ): Subscription {
+//   //   return this._output$.subscribe(...args);
+//   // }
+//   public next(factory: () => ObservableInput<T>): void {
+//     this._subject.next(defer(factory));
+//   }
+//   public complete(): void {
+//     this._subject.complete();
+//   }
+//   public error(err: unknown): void {
+//     this._subject.error(err);
+//   }
 // }
 
-export class MemoizedInnerSubject<
-  T extends Observable<unknown>
-> extends ReplaySubject<T> {
-  constructor() {
-    super(1);
+export type DeferredReplaySubject<T> = Observer<() => ObservableInput<T>> &
+  Observable<Observable<T>>;
 
-    return Object.assign(
-      this,
-      this.pipe(map((inner$) => inner$.pipe(shareReplay())))
-    );
-  }
-}
+// export function MemoizedDeferredSubject<T>(this: MemoizedDeferredSubject<T>) {
+//   return new Subject().pipe(
+//     map((factory: () => ObservableInput<T>) => shareReplay()(defer(factory))),
+
+//     shareReplay(1)
+//   ) as MemoizedDeferredSubject<T>;
+// }
+
+export const DeferredReplaySubject = (function <T>(
+  this: DeferredReplaySubject<T>,
+  ...args: Parameters<typeof shareReplay>
+) {
+  return new Subject().pipe(
+    map((factory: () => ObservableInput<T>) => shareReplay()(defer(factory))),
+    shareReplay(...((args.length ? args : [1]) as any))
+  );
+} as unknown) as new <T>(
+  ...args: Parameters<typeof shareReplay>
+) => DeferredReplaySubject<T>;
+
+// const p = new MemoizedDeferredSubject();

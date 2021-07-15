@@ -1,5 +1,5 @@
 <script>
-  import { SampleStore, anyPlaying } from "$lib/store/store";
+  import { SampleStore, anyPlaying } from "$lib/store/sampleStore";
 
   import Button, { Icon } from "@smui/button/styled";
 

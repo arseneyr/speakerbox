@@ -1,9 +1,7 @@
 import audioContext from "$lib/audioContext";
-import { lazySharedSwitch, rxWritable } from "$lib/utils";
+import { lazySharedSwitch, DeferredReplaySubject } from "$lib/utils";
 import {
   BehaviorSubject,
-  defer,
-  firstValueFrom,
   merge,
   Observable,
   ObservableInput,
@@ -12,13 +10,7 @@ import {
   Subject,
 } from "rxjs";
 import type { ConnectableObservableLike } from "rxjs/internal/observable/connectable";
-import {
-  distinctUntilChanged,
-  first,
-  map,
-  share,
-  switchAll,
-} from "rxjs/operators";
+import { first, map } from "rxjs/operators";
 import { writable } from "svelte/store";
 import { v4 } from "uuid";
 import { Player, playerGenerator } from "./player";
@@ -68,7 +60,7 @@ export async function initialize(newBackend: StorageBackend): Promise<void> {
 }
 
 export class SampleStore {
-  private readonly _encodedAudio$ = new Subject<Observable<ArrayBuffer>>();
+  private readonly _encodedAudio$ = new DeferredReplaySubject<ArrayBuffer>(1);
   private readonly _decodedAudio$ = new Subject<AudioBuffer>();
   private readonly _title$ = new Subject<ObservableInput<string | null>>();
 
@@ -110,9 +102,9 @@ export class SampleStore {
     return lazySharedSwitch(() => new ReplaySubject(1))(this._title$);
   }
 
-  private _setEncodedData(data$: Observable<ArrayBuffer>): void {
-    this._encodedAudio$.next(data$);
-  }
+  // private _setEncodedData(data$: Observable<ArrayBuffer>): void {
+  //   this._encodedAudio$.next(data$);
+  // }
 
   private static _sampleMap = new Map<string, SampleStore>();
   private static _sampleMap$ = new BehaviorSubject(this._sampleMap);
@@ -129,8 +121,8 @@ export class SampleStore {
     const id = v4();
     const store = new SampleStore(id);
     store._title$.next(of(title ?? null));
-    store._setEncodedData(
-      defer(() => (data instanceof Blob ? data.arrayBuffer() : of(data)))
+    store._encodedAudio$.next(() =>
+      data instanceof Blob ? data.arrayBuffer() : of(data)
     );
 
     this._addToSampleMap(store);

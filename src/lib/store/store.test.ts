@@ -53,7 +53,7 @@ test("audioBuffer decoding is cancelled properly", async () => {
 
   const [encodedSecond, decodedSecond] = WebAudioTestAPI.createEncodedBuffer();
 
-  sample["_setEncodedData"](of(encodedSecond));
+  sample["_encodedAudio$"].next(() => of(encodedSecond));
   await expect(firstValueFrom(allAudioBuffers)).resolves.toBe(decodedSecond);
 });
 

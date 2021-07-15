@@ -1,9 +1,9 @@
-import { defer, firstValueFrom, Observable, of } from "rxjs";
-import { mapTo, mergeAll } from "rxjs/operators";
+import { defer, firstValueFrom, Observable, of, OperatorFunction } from "rxjs";
+import { mergeAll, share } from "rxjs/operators";
 import { TestScheduler } from "rxjs/testing";
 import {
   lazySharedSwitch,
-  MemoizedInnerSubject,
+  DeferredReplaySubject,
   ObservableQueue,
   toggleEmit,
 } from "./utils";
@@ -73,6 +73,27 @@ describe("observable queue", () => {
       const q1 = queue.add(o1);
 
       expectObservable(q1, q1subs).toBe(q1expected);
+    });
+  });
+
+  test("emitting cancel before subscribing to queued observable", () => {
+    testScheduler.run((helpers) => {
+      const { cold, expectObservable, expectSubscriptions } = helpers;
+      const queue = new ObservableQueue();
+
+      const o1 = cold("--a--b-c|");
+      const o2 = cold("        -xy--z----|");
+      const q2subs = " -------^-----";
+      const q2e = "    -------|";
+
+      const c2 = cold("---c");
+      const c2e = "    ^--!";
+
+      queue.add(o1);
+      const q2 = queue.add(o2, c2);
+
+      expectObservable(q2, q2subs).toBe(q2e);
+      expectSubscriptions(c2.subscriptions).toBe(c2e);
     });
   });
 
@@ -272,7 +293,10 @@ describe("MemoizedInnerSubject", () => {
       const inner = "-b";
       const innerMock = jest.fn(() => cold(inner));
 
-      const input = cold("--a", { a: defer(innerMock) }).pipe(mergeAll());
+      const input = cold("--a", { a: defer(innerMock) }).pipe(
+        share(),
+        mergeAll()
+      );
       const expected = "  ---b";
 
       expectObservable(input).toBe(expected);
@@ -289,13 +313,19 @@ describe("MemoizedInnerSubject", () => {
       const inner = "-b";
       const innerMock = jest.fn(() => cold(inner));
 
-      const subject = new MemoizedInnerSubject();
+      const subject = new DeferredReplaySubject();
 
-      cold("--a", { a: defer(innerMock) }).subscribe(subject);
+      const input = cold("--a", { a: innerMock }).pipe(
+        share({ connector: () => subject as any }) as OperatorFunction<
+          typeof innerMock,
+          string
+        >,
+        mergeAll()
+      );
       const expected = "  ---b";
 
-      expectObservable(subject.pipe(mergeAll())).toBe(expected);
-      // expectObservable(subject).toBe(expected);
+      expectObservable(input).toBe(expected);
+      expectObservable(input).toBe(expected);
       flush();
 
       expect(innerMock).toBeCalledTimes(1);
