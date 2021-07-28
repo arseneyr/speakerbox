@@ -13,7 +13,8 @@ import type { ConnectableObservableLike } from "rxjs/internal/observable/connect
 import { first, map } from "rxjs/operators";
 import { writable } from "svelte/store";
 import { v4 } from "uuid";
-import { Player, playerGenerator } from "./player";
+import { playerGenerator } from "./player";
+import type { ISampleStore, IPlayer } from "./types";
 
 const VERSION = "1.0";
 
@@ -59,14 +60,14 @@ export async function initialize(newBackend: StorageBackend): Promise<void> {
   mainStore.set(mainSavedState);
 }
 
-export class SampleStore {
-  private readonly _encodedAudio$ = new DeferredReplaySubject<ArrayBuffer>(1);
+export class SampleStore implements ISampleStore {
+  private readonly _encodedAudio$ = new DeferredReplaySubject<ArrayBuffer>();
   private readonly _decodedAudio$ = new Subject<AudioBuffer>();
   private readonly _title$ = new Subject<ObservableInput<string | null>>();
 
   public readonly title = this._createTitleObservable();
 
-  public readonly player: ConnectableObservableLike<Player | null> = playerGenerator(
+  public readonly player: ConnectableObservableLike<IPlayer | null> = playerGenerator(
     this._encodedAudio$,
     this._decodedAudio$
   );
@@ -78,8 +79,12 @@ export class SampleStore {
     this.title.connect();
   }
 
-  public setAudioBuffer(audioBuffer: AudioBuffer): void {
+  public setDecodedAudio(audioBuffer: AudioBuffer): void {
     this._decodedAudio$.next(audioBuffer);
+  }
+
+  public setTitle(title: string): void {
+    this._title$.next(title);
   }
 
   private _createAudioBufferObservable(): ConnectableObservableLike<AudioBuffer> {
@@ -87,10 +92,7 @@ export class SampleStore {
       this._decodedAudio$.pipe(map<AudioBuffer, Observable<AudioBuffer>>(of)),
       this._encodedAudio$.pipe(
         map((buf$) =>
-          buf$.pipe(
-            first(),
-            map((buf) => audioContext.decodeAudioData(buf))
-          )
+          buf$.pipe(map((buf) => audioContext.decodeAudioData(buf)))
         )
       )
     );
@@ -133,7 +135,14 @@ export class SampleStore {
     let store = this._sampleMap.get(id);
     if (!store) {
       store = new SampleStore(id);
-      // store._setEncodedData(defer(() => backend.getSampleData(id)));
+      Promise.all([backend.getSampleData(id), backend.getSampleState(id)]).then(
+        ([buf, state]) => {
+          buf instanceof AudioBuffer
+            ? store._decodedAudio$.next(buf)
+            : store._encodedAudio$.next(() => of(buf));
+          store._title$.next(state.title);
+        }
+      );
       this._addToSampleMap(store);
     }
     return store;

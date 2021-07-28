@@ -1,6 +1,5 @@
 import inMemory from "./inMemory";
 import { initialize, SampleStore } from "./sampleStore";
-import { get } from "svelte/store";
 import { waitForValue } from "$lib/utils";
 import audioContext from "$lib/audioContext";
 import { firstValueFrom, of } from "rxjs";

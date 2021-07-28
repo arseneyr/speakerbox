@@ -7,25 +7,12 @@ import {
   Observable,
   ObservableInput,
   of,
-  Subscribable,
 } from "rxjs";
 import type { ConnectableObservableLike } from "rxjs/internal/observable/connectable";
-import {
-  distinctUntilChanged,
-  map,
-  share,
-  startWith,
-  switchAll,
-} from "rxjs/operators";
+import { map, startWith, switchAll } from "rxjs/operators";
+import type { IPlayer } from "./types";
 
-export interface Player {
-  play(): void;
-  stop(): void;
-  playing: Observable<boolean>;
-  duration: number;
-}
-
-function createDecodedPlayer(decoded: AudioBuffer): Observable<Player> {
+function createDecodedPlayer(decoded: AudioBuffer): Observable<IPlayer> {
   return defer(() => {
     let source: AudioBufferSourceNode;
     const playing = new BehaviorSubject(false);
@@ -53,7 +40,7 @@ function createDecodedPlayer(decoded: AudioBuffer): Observable<Player> {
   });
 }
 
-function createEncodedPlayer(encoded: ArrayBuffer): Observable<Player> {
+function createEncodedPlayer(encoded: ArrayBuffer): Observable<IPlayer> {
   return new Observable((subscriber) => {
     const playing = new BehaviorSubject(false);
     const audio = new Audio(URL.createObjectURL(new Blob([encoded])));
@@ -89,7 +76,7 @@ const encodedPlayerQueue = new ObservableQueue();
 export function playerGenerator(
   encodedSources$: Observable<ObservableInput<ArrayBuffer>>,
   decodedSources$: Observable<AudioBuffer>
-): ConnectableObservableLike<Player | null> {
+): ConnectableObservableLike<IPlayer | null> {
   const cancelPlayerCreate$ = merge(decodedSources$, encodedSources$);
 
   const encodedPlayers$ = encodedSources$.pipe(
