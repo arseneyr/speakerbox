@@ -1,15 +1,18 @@
 import {
   derived,
   get,
+  readable,
   Readable,
   Unsubscriber,
   writable,
 } from "svelte/store";
 import { v4 } from "uuid";
-import { privateWritable } from "$lib/utils";
-import audioContext from "$lib/audioContext";
+import { createAnyPlayingStore, privateWritable } from "$lib/utils";
+import { getAudioContext } from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
+import type { Player } from "$lib/types";
+import { createDecodedPlayer, createEncodedPlayer } from "./player";
 
 const VERSION = "1.0";
 
@@ -55,24 +58,15 @@ export async function initialize(newBackend: StorageBackend): Promise<void> {
   mainStore.set(mainSavedState);
 }
 
-interface Player {
-  play(): void;
-  stop(): void;
-}
-
-
 export class SampleStore {
   public readonly title = writable<string | null>(null);
-  public readonly playing = privateWritable(false);
   public readonly audioBuffer: Readable<AudioBuffer | null>;
-  public readonly loading = privateWritable(true);
   public readonly error = privateWritable<string | null>(null);
   public readonly player: Readable<Player | null>;
-  public readonly duration = privateWritable<number | null>(null);
 
   private readonly _encodedAudio = writable<ArrayBuffer | null>(null);
   private readonly _decodedAudio = writable<AudioBuffer | null>(null);
-  private readonly _destroyCbs: Unsubscriber[];
+  private readonly _destroyCbs: Unsubscriber[] = [];
 
   private constructor(public readonly id: string) {
     this.audioBuffer = derived(
@@ -86,6 +80,8 @@ export class SampleStore {
       null
     );
 
+    SampleStore.anyPlaying.add(this.player);
+
     this._destroyCbs = [
       this.title.subscribe((newTitle) =>
         backend?.setSampleState({ id, title: newTitle ?? undefined })
@@ -95,7 +91,11 @@ export class SampleStore {
 
   public destroy(): void {
     this._destroyCbs.forEach((stop) => stop());
-    SampleStore._sampleMap.update(map => { map.delete(this.id); return map })
+    SampleStore.anyPlaying.delete(this.player);
+    SampleStore._sampleMap.update((map) => {
+      map.delete(this.id);
+      return map;
+    });
   }
 
   public setAudioBuffer(buffer: AudioBuffer): void {
@@ -104,7 +104,6 @@ export class SampleStore {
   }
 
   private async _loadExisting() {
-    this.loading._set(true);
     const [state, data] = await Promise.all([
       backend?.getSampleState(this.id),
       backend?.getSampleData(this.id),
@@ -132,66 +131,23 @@ export class SampleStore {
     set: (val: Player) => void
   ) {
     this._playerCreateAbort?.abort();
+    this._playerCreateAbort = null;
     if (encoded) {
       try {
         this._playerCreateAbort = new AbortController();
-        const audio = await SampleStore._playerCreateQueue.add(
-          () =>
-            new Promise<HTMLAudioElement>((res) => {
-              const audio = new Audio(URL.createObjectURL(new Blob([encoded])));
-              audio.ondurationchange = () => this.duration._set(audio.duration);
-              audio.onpause = () => this.playing._set(false);
-              audio.oncanplaythrough = () => res(audio);
-              this._playerCreateAbort.signal.addEventListener("abort", () => {
-                audio.oncanplaythrough = undefined;
-                audio.removeAttribute("src");
-              });
-            }),
+        const player = await SampleStore._playerCreateQueue.add(
+          () => createEncodedPlayer(encoded, this._playerCreateAbort.signal),
           { signal: this._playerCreateAbort.signal }
         );
-        this.loading._set(false);
-
-        set({
-          play: () => {
-            audio.currentTime = 0;
-            audio.play();
-            this.playing._set(true);
-          },
-          stop: () => {
-            audio.pause();
-            audio.currentTime = 0;
-          },
-        });
+        set(player);
       } catch (e) {
         if (e.name !== "AbortError") {
           throw e;
         }
       }
     } else if (decoded) {
-      let source: AudioBufferSourceNode;
-      this.loading._set(false);
-      this.duration._set(decoded.duration);
-      set({
-        play: () => {
-          if (source) {
-            source.onended = undefined;
-            source.stop();
-          }
-          source = audioContext.createBufferSource();
-          source.buffer = decoded;
-          source.connect(audioContext.destination);
-          source.onended = () => this.playing._set(false);
-          this.playing._set(true);
-          source.start();
-        },
-        stop: () => {
-          this.playing._set(false);
-          source?.stop();
-        },
-      });
+      set(createDecodedPlayer(decoded));
     } else {
-      this.loading._set(true);
-      this.playing._set(false);
       set(null);
     }
   }
@@ -221,15 +177,14 @@ export class SampleStore {
   }
 
   private readonly _decodeAudio = PCancelable.fn((arrayBuffer: ArrayBuffer) =>
-    audioContext.decodeAudioData(arrayBuffer.slice(0))
+    getAudioContext().decodeAudioData(arrayBuffer.slice(0))
   );
+  public static anyPlaying = createAnyPlayingStore();
 
   private static readonly _sampleMap = writable(new Map<string, SampleStore>());
 
-  public static anyPlaying = anyPlayingStore(this._sampleMap);
-
   private static _addToSampleMap(store: SampleStore) {
-    this._sampleMap.update(map => map.set(store.id, store))
+    this._sampleMap.update((map) => map.set(store.id, store));
   }
 
   public static stopAll(): void {
@@ -265,15 +220,6 @@ export class SampleStore {
     this._addToSampleMap(store);
     return store;
   }
-}
-
-function anyPlayingStore(sampleMapStore: Readable<Map<unknown, { playing: Readable<boolean> }>>): Readable<boolean> {
-  const onSub = () => derived(sampleMapStore, map =>
-    derived(Array.from(map.values(), s => s.playing) as any, (playingArray: boolean[]) => playingArray.includes(true))
-  ).subscribe(playingStore => playingStore.subscribe(playing => ret._set(playing)))
-
-  const ret = privateWritable(false, onSub);
-  return ret;
 }
 
 export const anyPlaying = SampleStore.anyPlaying;

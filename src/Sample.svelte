@@ -19,19 +19,14 @@
   const dispatch = createEventDispatcher();
   let startTime;
 
-  const {
-    playing,
-    title,
-    loading,
-    player: playerStore,
-    duration,
-  } = SampleStore.getSample(id);
+  const { title, player } = SampleStore.getSample(id);
+  $: playing = $player?.playing;
 
   // Important to keep a long running player subscription. Otherwise,
   // the player gets destroyed and recreated on every click
-  $: player = $playerStore;
+  // $: player = $playerStore;
 
-  $: durationMs = $duration && $duration * 1000;
+  $: durationMs = $player && $player.duration * 1000;
   $: if (!$playing) {
     startTime = undefined;
   }
@@ -40,7 +35,7 @@
 <SampleButton
   title={$title}
   duration={durationMs}
-  loading={$loading}
+  loading={!$player}
   {startTime}
   {editMode}
   on:click={() => {
@@ -48,7 +43,7 @@
       dispatch("edit");
     } else {
       startTime = Date.now();
-      player && player.play();
+      $player?.play();
     }
   }}
   iconButton={editMode
@@ -56,9 +51,7 @@
     : $playing
     ? {
         icon: "stop",
-        onClick: () => {
-          player && player.stop();
-        },
+        onClick: () => $player?.stop(),
       }
     : undefined}
 />

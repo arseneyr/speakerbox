@@ -13,12 +13,17 @@
      */
 		"allowJs": true,
 		"checkJs": true,
+		// "strict": true,
 		"paths": {
 			"$lib/*": [
 				"src/lib/*"
 			],
 			"wasm-media-encoders/esnext": [
 				"node_modules/wasm-media-encoders/dist/esnext"
+			],
+			"*": [
+				"src/*",
+				"declarations/*"
 			]
 		}
 	},

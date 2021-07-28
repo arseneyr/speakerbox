@@ -1,4 +1,4 @@
-import type { MainSavedState, SampleSavedState } from "./store";
+import type { MainSavedState, SampleSavedState } from "./sampleStore";
 
 let mainState: MainSavedState | null = null;
 const sampleState = new Map<string, SampleSavedState>();

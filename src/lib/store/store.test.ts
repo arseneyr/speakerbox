@@ -1,8 +1,8 @@
 import inMemory from "./inMemory";
-import { SampleStore, initialize } from "./store";
+import { SampleStore, initialize } from "./sampleStore";
 import { get } from "svelte/store";
 import { waitForValue } from "$lib/utils";
-import audioContext from "$lib/audioContext";
+import { getAudioContext } from "$lib/audioContext";
 
 jest.mock("./inMemory", () => {
   const original = jest.requireActual("./inMemory").default;
@@ -15,7 +15,7 @@ jest.mock("./inMemory", () => {
 });
 
 beforeEach(() => {
-  audioContext.decodeAudioData.mockClear();
+  getAudioContext().decodeAudioData.mockClear();
 });
 
 beforeAll(() => initialize(inMemory));
@@ -49,9 +49,9 @@ test("audioBuffer decoding is cancelled properly", async () => {
     encodedFirst
   );
 
-  expect(audioContext.decodeAudioData).not.toHaveBeenCalled();
+  expect(getAudioContext().decodeAudioData).not.toHaveBeenCalled();
   const decodePromise = waitForValue(sample.audioBuffer);
-  expect(audioContext.decodeAudioData).toHaveBeenCalledTimes(1);
+  expect(getAudioContext().decodeAudioData).toHaveBeenCalledTimes(1);
 
   const [encodedSecond, decodedSecond] = WebAudioTestAPI.createEncodedBuffer();
 
@@ -61,10 +61,10 @@ test("audioBuffer decoding is cancelled properly", async () => {
 
 test("setting audiobuffer does not cause decoding", () => {
   const sample = SampleStore.createNewSample(new ArrayBuffer(0));
-  const newAudioBuffer = audioContext.createBuffer(2, 44100 * 5, 44100);
+  const newAudioBuffer = getAudioContext().createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);
 
-  expect(audioContext.decodeAudioData).not.toHaveBeenCalled();
+  expect(getAudioContext().decodeAudioData).not.toHaveBeenCalled();
   expect(get(sample.audioBuffer)).toBe(newAudioBuffer);
 });
 
@@ -72,9 +72,9 @@ test("setting audiobuffer cancels properly", async () => {
   const sample = SampleStore.createNewSample(new ArrayBuffer(0));
   await waitForValue(sample["_encodedAudio"]);
   const audioBufferPromise = waitForValue(sample.audioBuffer);
-  const newAudioBuffer = audioContext.createBuffer(2, 44100 * 5, 44100);
+  const newAudioBuffer = getAudioContext().createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);
 
-  expect(audioContext.decodeAudioData).toHaveBeenCalledTimes(1);
+  expect(getAudioContext().decodeAudioData).toHaveBeenCalledTimes(1);
   await expect(audioBufferPromise).resolves.toBe(newAudioBuffer);
 });

@@ -1,1 +1,7 @@
-export { SampleStore, initialize, mainStore, SampleAddTypes } from "./store";
+export {
+  SampleStore,
+  anyPlaying,
+  initialize,
+  mainStore,
+  SampleAddTypes,
+} from "./sampleStore";

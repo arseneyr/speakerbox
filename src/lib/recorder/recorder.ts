@@ -1,7 +1,7 @@
 import workletUrl from "./worklet.ts?url";
 import wasmUrl from "../../../node_modules/wasm-media-encoders/wasm/ogg.wasm?url";
 import { Deferred } from "$lib/utils";
-import audioContext from "$lib/audioContext";
+import { getAudioContext } from "$lib/audioContext";
 
 export class AudioRecorder {
   private static worklet: Promise<void>;
@@ -13,7 +13,9 @@ export class AudioRecorder {
 
   public constructor() {
     if (!AudioRecorder.worklet) {
-      AudioRecorder.worklet = audioContext.audioWorklet.addModule(workletUrl);
+      AudioRecorder.worklet = getAudioContext().audioWorklet.addModule(
+        workletUrl
+      );
     }
     if (!AudioRecorder.wasmModule) {
       AudioRecorder.wasmModule = WebAssembly.compileStreaming(fetch(wasmUrl));
@@ -36,7 +38,7 @@ export class AudioRecorder {
     await AudioRecorder.worklet;
 
     this.nodeReady = new Deferred();
-    this.node = new AudioWorkletNode(audioContext, "audio_scraper", {
+    this.node = new AudioWorkletNode(getAudioContext(), "audio_scraper", {
       numberOfOutputs: 0,
       processorOptions: {
         wasmModule: await AudioRecorder.wasmModule,
@@ -49,7 +51,7 @@ export class AudioRecorder {
     stream
       .getVideoTracks()?.[0]
       .addEventListener("ended", this.stopRecording.bind(this));
-    audioContext.createMediaStreamSource(stream).connect(this.node);
+    getAudioContext().createMediaStreamSource(stream).connect(this.node);
     return this.deferred.promise;
   }
 

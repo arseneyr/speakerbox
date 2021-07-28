@@ -1,5 +1,9 @@
 import localForage from "localforage";
-import type { MainSavedState, SampleSavedState, StorageBackend } from "./store";
+import type {
+  MainSavedState,
+  SampleSavedState,
+  StorageBackend,
+} from "./sampleStore";
 
 const MAIN_STATE_KEY = "speakerbox";
 
