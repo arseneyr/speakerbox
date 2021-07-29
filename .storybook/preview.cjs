@@ -10,4 +10,12 @@ export const parameters = {
 
 import Layout from "../src/Layout.svelte";
 
-export const decorators = [() => Layout];
+// export const decorators = [
+//   () => {
+//     debugger;
+//     return Layout;
+//   },
+// ];
+new Layout({
+  target: document.body,
+});

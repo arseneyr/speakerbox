@@ -15,28 +15,13 @@ module.exports = {
   svelteOptions: {
     preprocess: sveltePreprocess(),
   },
-  webpackFinal: (config) => {
-    config.resolve = config.resolve || {};
-    config.resolve.alias = config.resolve.alias || {};
+  core: {
+    builder: "storybook-builder-vite",
+  },
+  async viteFinal(config) {
+    config.resolve = config.resolve ?? {};
+    config.resolve.alias = config.resolve.alias ?? {};
     config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
-    config.resolve.alias["wasm-media-encoders/esnext"] = path.resolve(
-      __dirname,
-      "../node_modules/wasm-media-encoders/dist/browser"
-    );
-    // config.resolve.mainFields = config.resolve.mainFields || {};
-    // config.resolve.mainFields.push("exports");
-
-    // Storybook bug: https://github.com/storybookjs/storybook/issues/12019#issuecomment-702207045
-    const { options } = config.module.rules[0].use[0];
-    options.plugins = options.plugins.filter(
-      excludePlugins(["@babel/plugin-transform-classes"])
-    );
-
-    config.module.rules.splice(0, 0, {
-      test: [/\.wasm$/, /\?url$/],
-      type: "javascript/auto",
-      use: [{ loader: "file-loader" }],
-    });
     return config;
   },
 };
