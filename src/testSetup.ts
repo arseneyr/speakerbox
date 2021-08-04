@@ -15,7 +15,7 @@ type TypedArray =
     }
   | ArrayBuffer;
 
-function equal(buf1: TypedArray, buf2: TypedArray) {
+function bufferEqual(buf1: TypedArray, buf2: TypedArray) {
   if (buf1.byteLength != buf2.byteLength) return false;
   const ta1 = new Int8Array(buf1 instanceof ArrayBuffer ? buf1 : buf1.buffer);
   const ta2 = new Int8Array(buf2 instanceof ArrayBuffer ? buf2 : buf2.buffer);
@@ -24,6 +24,42 @@ function equal(buf1: TypedArray, buf2: TypedArray) {
   }
   return true;
 }
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace jest {
+    interface Matchers<R> {
+      toEqualAudioBuffer(expected: AudioBuffer): R;
+    }
+  }
+}
+
+expect.extend({
+  toEqualAudioBuffer(received: AudioBuffer, expected: AudioBuffer) {
+    if (!this.equals(received, expected)) {
+      return {
+        pass: false,
+        message: () => `Expected ${expected}, got ${received}`,
+      };
+    }
+
+    for (let i = 0; i < expected.numberOfChannels; ++i) {
+      if (
+        !bufferEqual(expected.getChannelData(i), received.getChannelData(i))
+      ) {
+        return {
+          pass: false,
+          message: () => `Mismatch in channel ${i} data`,
+        };
+      }
+    }
+
+    return {
+      pass: true,
+      message: () => `Expected ${expected} and ${received} not to match`,
+    };
+  },
+});
 
 WebAudioTestAPI.setState({
   "AudioBuffer#copyToChannel": "enabled",
@@ -40,12 +76,22 @@ WebAudioTestAPI.createEncodedBuffer = () => {
 };
 
 const OriginalAudioContext = AudioContext;
+const OriginalAudioBuffer = AudioBuffer;
+
+global.AudioBuffer = function (options: AudioBufferOptions) {
+  return new AudioContext().createBuffer(
+    options.numberOfChannels,
+    options.length,
+    options.sampleRate
+  );
+} as any;
+global.AudioBuffer.prototype = OriginalAudioBuffer.prototype;
 
 (global as any).AudioContext = function (...args) {
   const ret = new OriginalAudioContext(...args);
   ret.decodeAudioData = jest.fn((arrayBuffer) => {
     for (const [encoded, decoded] of decodeMap.entries()) {
-      if (equal(encoded, arrayBuffer)) {
+      if (bufferEqual(encoded, arrayBuffer)) {
         return Promise.resolve(decoded);
       }
     }

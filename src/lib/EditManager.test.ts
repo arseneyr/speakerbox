@@ -30,17 +30,22 @@ beforeEach(async () => {
   await manager.loadData(testBuffer);
 });
 
-// test("decodes properly", () => {
-//   const decodedBuffer = get(manager.audioBuffer);
-//   expect(decodedBuffer.length).toBe(testBuffer.length);
-//   expect(decodedBuffer.numberOfChannels).toBe(testBuffer.numberOfChannels);
-//   expect(decodedBuffer.sampleRate).toBe(testBuffer.sampleRate);
-//   expect(decodedBuffer.duration).toBe(testBuffer.duration);
-//   for (let i = 0; i < decodedBuffer.numberOfChannels; ++i) {
-//     expect(decodedBuffer.getChannelData(i)).toEqual(
-//       globalContext.DECODE_AUDIO_DATA_RESULT.getChannelData(i)
-//     );
-//   }
-// });
+test("undoable/redoable updates", () => {
+  expect(get(manager.undoable)).toBe(false);
+  expect(get(manager.redoable)).toBe(false);
 
-test.skip("yo", () => {});
+  manager.cut(1, 5);
+  expect(get(manager.undoable)).toBe(true);
+  expect(get(manager.redoable)).toBe(false);
+
+  manager.undo();
+  expect(get(manager.undoable)).toBe(false);
+  expect(get(manager.redoable)).toBe(true);
+});
+
+test("undo returns state", () => {
+  manager.cut(1, 5);
+  expect(get(manager.audioBuffer)).not.toEqualAudioBuffer(testBuffer);
+  manager.undo();
+  expect(get(manager.audioBuffer)).toEqualAudioBuffer(testBuffer);
+});
