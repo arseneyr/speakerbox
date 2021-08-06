@@ -1,4 +1,5 @@
 import { derived, readable, Subscriber, writable } from "svelte/store";
+import { privateWritable } from "./utils";
 
 interface Action {
   type: "cut" | "crop";
@@ -17,8 +18,6 @@ interface GatherItem {
 }
 
 class EditManager {
-  private _setAudioBuffer: Subscriber<AudioBuffer> | null = null;
-  private _audioBufferBackend: AudioBuffer;
   private _originalAudioBuffer;
   private _undoStack = writable<PrivateAction[]>([]);
   private _redoStack = writable<PrivateAction[]>([]);
@@ -26,27 +25,24 @@ class EditManager {
   public undoable = derived(this._undoStack, (v) => v.length > 0);
   public redoable = derived(this._redoStack, (v) => v.length > 0);
 
-  public audioBuffer = readable<AudioBuffer | null>(null, (set) => {
-    this._setAudioBuffer = set;
-    this._setAudioBuffer(this._audioBufferBackend);
-    return () => (this._setAudioBuffer = null);
-  });
+  public audioBuffer = privateWritable<AudioBuffer | null>(null);
 
-  async loadData(audioBuffer: AudioBuffer): Promise<void> {
+  loadData(audioBuffer: AudioBuffer): void {
     this._originalAudioBuffer = audioBuffer;
     this._audioBuffer = audioBuffer;
   }
 
+  private _audioBufferBackend: AudioBuffer;
   private set _audioBuffer(newVal: AudioBuffer) {
     this._audioBufferBackend = newVal;
-    this._setAudioBuffer?.(newVal);
+    this.audioBuffer._set(newVal);
   }
   private get _audioBuffer() {
     return this._audioBufferBackend;
   }
 
   private normalize(start: number, end: number): Omit<PrivateAction, "type"> {
-    start = Math.max(start, 0);
+    start = Math.min(Math.max(start, 0), this._audioBuffer.duration);
     end = Math.min(this._audioBuffer.duration, end);
     return {
       start,
@@ -107,11 +103,13 @@ class EditManager {
   undo(): Action | null {
     let action: PrivateAction | null = null;
     let gatherList: GatherItem[];
+    let stackEmpty = false;
     this._undoStack.update((stack) => {
       action = stack.pop() ?? null;
       if (action) {
         gatherList = this.buildGatherList(stack);
       }
+      stackEmpty = stack.length === 0;
       return stack;
     });
     if (action) {
@@ -164,29 +162,23 @@ class EditManager {
     // action.
     return actions.reduce(
       (gatherList, action) => {
-        let totalSamples = 0;
+        let curStart = 0;
         let startSample, endSample, startIndex, endIndex;
         for (const [i, gatherItem] of gatherList.entries()) {
-          const curSamples = gatherItem.endSample - gatherItem.startSample;
-          if (
-            action.startSample >= totalSamples &&
-            action.startSample < totalSamples + curSamples
-          ) {
+          const curEnd =
+            curStart + (gatherItem.endSample - gatherItem.startSample);
+          if (action.startSample >= curStart && action.startSample < curEnd) {
             startSample =
-              action.startSample - totalSamples + gatherItem.startSample;
+              action.startSample - curStart + gatherItem.startSample;
             startIndex = i;
           }
-          if (
-            action.endSample >= totalSamples &&
-            action.endSample < totalSamples + curSamples
-          ) {
-            endSample =
-              action.endSample - totalSamples + gatherItem.startSample;
+          if (action.endSample >= curStart && action.endSample <= curEnd) {
+            endSample = action.endSample - curStart + gatherItem.startSample;
             endIndex = i;
             break;
           }
 
-          totalSamples += curSamples;
+          curStart = curEnd;
         }
 
         if (action.type === "crop") {
