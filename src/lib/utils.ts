@@ -1,20 +1,4 @@
 import {
-  EMPTY,
-  firstValueFrom,
-  iif,
-  Observable,
-  ReplaySubject,
-  Subject,
-} from "rxjs";
-import {
-  catchError,
-  first,
-  mergeAll,
-  share,
-  take,
-  takeUntil,
-} from "rxjs/operators";
-import {
   derived,
   Readable,
   readable,
@@ -23,7 +7,7 @@ import {
   Writable,
   writable,
 } from "svelte/store";
-import type { Player } from "./types";
+import externalAssert from "assert";
 
 export function persistantWritable<T>(
   init: T,
@@ -129,12 +113,9 @@ function isTruthy<T>(val: T): val is NonNullable<T> {
 }
 
 export function waitForValue<T>(
-  store: Readable<T> | Observable<T>,
+  store: Readable<T>,
   predicate = isTruthy
 ): Promise<NonNullable<T>> {
-  if (store instanceof Observable) {
-    return firstValueFrom(store.pipe(first(predicate)));
-  }
   return new Promise((resolve) => {
     const unsub = store.subscribe((val) => {
       if (predicate(val)) {
@@ -143,34 +124,6 @@ export function waitForValue<T>(
       }
     });
   });
-}
-
-export class ObservableQueue {
-  private readonly _queue = new Subject();
-
-  constructor(concurrency = 1) {
-    this._queue.pipe(mergeAll(concurrency)).subscribe();
-  }
-
-  public add<T>(
-    input$: Observable<T>,
-    cancel$: Observable<unknown> = EMPTY
-  ): Observable<T> {
-    let cancelled = false;
-    const subject = new ReplaySubject<T>();
-
-    cancel$.pipe(take(1)).subscribe(() => {
-      cancelled = true;
-    });
-
-    this._queue.next(
-      iif(() => cancelled, EMPTY, input$.pipe(takeUntil(cancel$))).pipe(
-        share({ connector: () => subject }),
-        catchError(() => EMPTY)
-      )
-    );
-    return subject;
-  }
 }
 
 interface SimplePlayer {
@@ -205,4 +158,19 @@ export function createAnyPlayingStore(): Readable<boolean> & {
       },
     }
   );
+}
+
+export function assert(
+  condition: unknown,
+  message?: string
+): asserts condition {
+  if (
+    process.env.NODE_ENV === "development" ||
+    process.env.NODE_ENV === "test"
+  ) {
+    externalAssert(condition, message);
+  } else {
+    console.error(`Assertion failed: ${message ?? ""}`);
+    console.trace();
+  }
 }

@@ -53,17 +53,25 @@ test("undo returns state", () => {
 type Operation = ["cut" | "crop", number, number];
 
 test.concurrent.each([
-  // [
-  //   [
-  //     ["cut", 4, 5],
-  //     ["crop", 1, 9],
-  //     ["cut", 0, 4],
-  //   ],
-  // ],
+  [
+    [
+      ["cut", 4, 5],
+      ["crop", 1, 9],
+      ["cut", 0, 4],
+    ],
+  ],
   [
     [
       ["crop", 1, 2],
       ["crop", 3, 4],
+    ],
+  ],
+  [[["cut", 1, 1]]],
+  [[["crop", 5, 5]]],
+  [
+    [
+      ["cut", -1, 2],
+      ["crop", 0, 11],
     ],
   ],
 ])("%p", (operations: Operation[]) => {

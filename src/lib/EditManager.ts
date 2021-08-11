@@ -1,10 +1,10 @@
-import { derived, readable, Subscriber, writable } from "svelte/store";
-import { privateWritable } from "./utils";
+import { derived, writable } from "svelte/store";
+import { assert, privateWritable } from "./utils";
 
 interface Action {
   type: "cut" | "crop";
-  start: number;
-  end: number;
+  startTime: number;
+  endTime: number;
 }
 
 interface PrivateAction extends Action {
@@ -15,6 +15,87 @@ interface PrivateAction extends Action {
 interface GatherItem {
   startSample: number;
   endSample: number;
+}
+
+function applyAction(
+  gatherList: GatherItem[],
+  action: PrivateAction
+): GatherItem[] {
+  if (action.startSample === action.endSample) {
+    if (action.type === "cut") {
+      return gatherList;
+    } else if (action.type === "crop") {
+      return [];
+    }
+  }
+  let curStart = 0;
+  let startSample, endSample, startIndex, endIndex;
+  for (const [i, gatherItem] of gatherList.entries()) {
+    const curEnd = curStart + (gatherItem.endSample - gatherItem.startSample);
+
+    if (action.startSample >= curStart && action.startSample < curEnd) {
+      assert(startIndex === undefined);
+      startSample = action.startSample - curStart + gatherItem.startSample;
+      startIndex = i;
+    }
+
+    if (action.endSample >= curStart && action.endSample <= curEnd) {
+      endSample = action.endSample - curStart + gatherItem.startSample;
+      endIndex = i;
+      break;
+    }
+
+    curStart = curEnd;
+  }
+
+  if (action.type === "crop") {
+    gatherList[startIndex].startSample = startSample;
+    gatherList[endIndex].endSample = endSample;
+  } else if (action.type === "cut") {
+    if (startIndex === endIndex) {
+      // [           ] cut with    [   ]     becomes
+      // [  ]   [    ]
+      gatherList.splice(endIndex + 1, 0, { ...gatherList[startIndex] });
+      endIndex += 1;
+    }
+    gatherList[endIndex].startSample = endSample;
+    gatherList[startIndex].endSample = startSample;
+    gatherList.splice(startIndex, endIndex - startIndex - 1);
+  }
+
+  return gatherList;
+}
+
+function applyActions(
+  buffer: AudioBuffer,
+  actions: PrivateAction[]
+): AudioBuffer {
+  const gatherList = actions.reduce(applyAction, [
+    { startSample: 0, endSample: buffer.length },
+  ]);
+  const outputSize = gatherList.reduce(
+    (acc, cur) => acc + (cur.endSample - cur.startSample),
+    0
+  );
+  const newAudioBuffer = new AudioBuffer({
+    length: outputSize,
+    numberOfChannels: buffer.numberOfChannels,
+    sampleRate: buffer.sampleRate,
+  });
+  for (let i = 0; i < buffer.numberOfChannels; ++i) {
+    let offset = 0;
+    const channelData = buffer.getChannelData(i);
+    for (const { startSample, endSample } of gatherList) {
+      endSample > startSample &&
+        newAudioBuffer.copyToChannel(
+          channelData.subarray(startSample, endSample),
+          i,
+          offset
+        );
+      offset += endSample - startSample;
+    }
+  }
+  return newAudioBuffer;
 }
 
 class EditManager {
@@ -41,105 +122,58 @@ class EditManager {
     return this._audioBufferBackend;
   }
 
-  private normalize(start: number, end: number): Omit<PrivateAction, "type"> {
-    start = Math.min(Math.max(start, 0), this._audioBuffer.duration);
-    end = Math.min(this._audioBuffer.duration, end);
+  private normalize(action: Action): PrivateAction {
+    const startTime = Math.min(
+      Math.max(action.startTime, 0),
+      this._audioBuffer.duration
+    );
+    const endTime = Math.min(
+      this._audioBuffer.duration,
+      Math.max(action.endTime, startTime)
+    );
     return {
-      start,
-      end,
-      startSample: Math.floor(start * this._audioBuffer.sampleRate),
-      endSample: Math.floor(end * this._audioBuffer.sampleRate),
+      ...action,
+      startTime,
+      endTime,
+      startSample: Math.floor(startTime * this._audioBuffer.sampleRate),
+      endSample: Math.floor(endTime * this._audioBuffer.sampleRate),
     };
   }
 
-  private _cut(action: PrivateAction): void {
+  private _doAction(action: PrivateAction): void {
     this._undoStack.update((undos) => undos.concat(action));
-
-    const newBuffer = new AudioBuffer({
-      numberOfChannels: this._audioBuffer.numberOfChannels,
-      sampleRate: this._audioBuffer.sampleRate,
-      length: this._audioBuffer.length - action.endSample + action.startSample,
-    });
-
-    for (let i = 0; i < newBuffer.numberOfChannels; ++i) {
-      const channelData = this._audioBuffer.getChannelData(i);
-      newBuffer.copyToChannel(channelData.subarray(0, action.startSample), i);
-      newBuffer.copyToChannel(
-        channelData.subarray(action.endSample),
-        i,
-        action.startSample
-      );
-    }
-    this._audioBuffer = newBuffer;
-  }
-  private _crop(action: PrivateAction): void {
-    this._undoStack.update((undos) => undos.concat(action));
-
-    const newBuffer = new AudioBuffer({
-      numberOfChannels: this._audioBuffer.numberOfChannels,
-      sampleRate: this._audioBuffer.sampleRate,
-      length: action.endSample - action.startSample,
-    });
-
-    for (let i = 0; i < newBuffer.numberOfChannels; ++i) {
-      newBuffer.copyToChannel(
-        this._audioBuffer
-          .getChannelData(i)
-          .subarray(action.startSample, action.endSample),
-        i
-      );
-    }
-    this._audioBuffer = newBuffer;
+    this._audioBuffer = applyActions(this._audioBuffer, [action]);
   }
 
   cut(start: number, end: number): void {
     this._redoStack.set([]);
-    this._cut({ type: "cut", ...this.normalize(start, end) });
+    this._doAction(
+      this.normalize({ type: "cut", startTime: start, endTime: end })
+    );
   }
   crop(start: number, end: number): void {
     this._redoStack.set([]);
-    this._crop({ type: "crop" as const, ...this.normalize(start, end) });
+    this._doAction(
+      this.normalize({ type: "crop", startTime: start, endTime: end })
+    );
   }
   undo(): Action | null {
     let action: PrivateAction | null = null;
-    let gatherList: GatherItem[];
-    let stackEmpty = false;
     this._undoStack.update((stack) => {
       action = stack.pop() ?? null;
       if (action) {
-        gatherList = this.buildGatherList(stack);
+        this._redoStack.update((redoStack) => {
+          redoStack.push(action);
+          return redoStack;
+        });
+
+        this._audioBuffer =
+          stack.length === 0
+            ? this._originalAudioBuffer
+            : applyActions(this._originalAudioBuffer, stack);
       }
-      stackEmpty = stack.length === 0;
       return stack;
     });
-    if (action) {
-      this._redoStack.update((stack) => {
-        stack.push(action);
-        return stack;
-      });
-      const outputSize = gatherList.reduce(
-        (acc, cur) => acc + (cur.endSample - cur.startSample),
-        0
-      );
-      const newAudioBuffer = new AudioBuffer({
-        length: outputSize,
-        numberOfChannels: this._originalAudioBuffer.numberOfChannels,
-        sampleRate: this._originalAudioBuffer.sampleRate,
-      });
-      for (let i = 0; i < this._originalAudioBuffer.numberOfChannels; ++i) {
-        let offset = 0;
-        const channelData = this._originalAudioBuffer.getChannelData(i);
-        for (const { startSample, endSample } of gatherList) {
-          newAudioBuffer.copyToChannel(
-            channelData.subarray(startSample, endSample),
-            i,
-            offset
-          );
-          offset += endSample - startSample;
-        }
-      }
-      this._audioBuffer = newAudioBuffer;
-    }
     return action;
   }
 
@@ -149,57 +183,9 @@ class EditManager {
       action = stack.pop();
       return stack;
     });
-    if (action?.type === "cut") {
-      this._cut(action);
-    } else if (action?.type === "crop") {
-      this._crop(action);
+    if (action) {
+      this._doAction(action);
     }
-  }
-
-  private buildGatherList(actions: PrivateAction[]): GatherItem[] {
-    // Note that the gather list is in original buffer sample units. The actions
-    // are in sample units relative to the modified buffer at the time of the
-    // action.
-    return actions.reduce(
-      (gatherList, action) => {
-        let curStart = 0;
-        let startSample, endSample, startIndex, endIndex;
-        for (const [i, gatherItem] of gatherList.entries()) {
-          const curEnd =
-            curStart + (gatherItem.endSample - gatherItem.startSample);
-          if (action.startSample >= curStart && action.startSample < curEnd) {
-            startSample =
-              action.startSample - curStart + gatherItem.startSample;
-            startIndex = i;
-          }
-          if (action.endSample >= curStart && action.endSample <= curEnd) {
-            endSample = action.endSample - curStart + gatherItem.startSample;
-            endIndex = i;
-            break;
-          }
-
-          curStart = curEnd;
-        }
-
-        if (action.type === "crop") {
-          gatherList[startIndex].startSample = startSample;
-          gatherList[endIndex].endSample = endSample;
-        } else if (action.type === "cut") {
-          if (startIndex === endIndex) {
-            // [           ] cut with    [   ]     becomes
-            // [  ]   [    ]
-            gatherList.splice(endIndex + 1, 0, { ...gatherList[startIndex] });
-            endIndex += 1;
-          }
-          gatherList[endIndex].startSample = endSample;
-          gatherList[startIndex].endSample = startSample;
-          gatherList.splice(startIndex, endIndex - startIndex - 1);
-        }
-
-        return gatherList;
-      },
-      [{ startSample: 0, endSample: this._originalAudioBuffer.length }]
-    );
   }
 }
 
