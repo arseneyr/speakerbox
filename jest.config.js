@@ -10,4 +10,9 @@ export default {
   transformIgnorePatterns: [
     "node_modules/(?!(p-cancelable|p-queue|p-timeout)/)",
   ],
+  globals: {
+    "ts-jest": {
+      babelConfig: true,
+    },
+  },
 };

@@ -134,14 +134,14 @@
     // await tick();
     if (action) {
       if (region) {
-        region.start = action.start;
-        region.end = action.end;
+        region.start = action.startTime;
+        region.end = action.endTime;
       } else {
         onNewRegion(
           wavesurfer.addRegion({
             ...regionConfig,
-            start: action.start,
-            end: action.end,
+            start: action.startTime,
+            end: action.endTime,
           })
         );
       }

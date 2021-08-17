@@ -17,7 +17,7 @@ interface GatherItem {
   endSample: number;
 }
 
-function applyAction(
+function updateGatherList(
   gatherList: GatherItem[],
   action: PrivateAction
 ): GatherItem[] {
@@ -70,7 +70,7 @@ function applyActions(
   buffer: AudioBuffer,
   actions: PrivateAction[]
 ): AudioBuffer {
-  const gatherList = actions.reduce(applyAction, [
+  const gatherList = actions.reduce(updateGatherList, [
     { startSample: 0, endSample: buffer.length },
   ]);
   const outputSize = gatherList.reduce(
@@ -161,6 +161,9 @@ class EditManager {
     let action: PrivateAction | null = null;
     this._undoStack.update((stack) => {
       action = stack.pop() ?? null;
+
+      assert(action);
+
       if (action) {
         this._redoStack.update((redoStack) => {
           redoStack.push(action);
@@ -183,6 +186,9 @@ class EditManager {
       action = stack.pop();
       return stack;
     });
+
+    assert(action);
+
     if (action) {
       this._doAction(action);
     }

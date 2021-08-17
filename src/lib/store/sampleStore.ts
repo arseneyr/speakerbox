@@ -1,18 +1,12 @@
-import {
-  derived,
-  get,
-  readable,
-  Readable,
-  Unsubscriber,
-  writable,
-} from "svelte/store";
+import { derived, get, Readable, Unsubscriber, writable } from "svelte/store";
 import { v4 } from "uuid";
-import { createAnyPlayingStore, privateWritable } from "$lib/utils";
+import { privateWritable } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
 import type { Player } from "$lib/types";
 import { createDecodedPlayer, createEncodedPlayer } from "./player";
+import { createAnyPlayingStore } from "./mainStore";
 
 const VERSION = "1.0";
 
