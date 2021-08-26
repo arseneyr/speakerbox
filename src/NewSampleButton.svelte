@@ -5,12 +5,13 @@
     startAudioRecording,
   } from "$lib/recorder";
   import AddButton from "./components/AddButton.svelte";
-  import { SampleStore, mainStore, SampleAddTypes } from "$lib/store";
+  import { SampleStore, mainStore } from "$lib/store";
   import Button, { Icon, Label } from "@smui/button/styled";
   import Snackbar, { Actions } from "@smui/snackbar/styled";
   import IconButton from "@smui/icon-button/styled";
   import { fileOpen } from "browser-fs-access";
   import { createEventDispatcher } from "svelte";
+  import { SampleAddTypes } from "$lib/types";
 
   let stopRecording = null;
 

@@ -4,7 +4,7 @@
   import faker from "faker";
   import wav from "./sample.wav";
   import { SampleStore, initialize, mainStore } from "$lib/store";
-  import inMemory from "$lib/store/inMemory";
+  import { inMemory } from "$lib/backend";
 
   const mainStorePromise = initialize(inMemory);
   const fetchPromise = fetch(wav).then((b) => b.arrayBuffer());

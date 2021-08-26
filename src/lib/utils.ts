@@ -1,5 +1,4 @@
 import {
-  derived,
   Readable,
   readable,
   StartStopNotifier,
@@ -117,12 +116,21 @@ export function waitForValue<T>(
   predicate = isTruthy
 ): Promise<NonNullable<T>> {
   return new Promise((resolve) => {
+    let firstTime = true;
     const unsub = store.subscribe((val) => {
       if (predicate(val)) {
-        unsub();
+        if (firstTime) {
+          firstTime = false;
+        } else {
+          unsub();
+        }
         resolve(val);
       }
     });
+    if (!firstTime) {
+      unsub();
+    }
+    firstTime = false;
   });
 }
 

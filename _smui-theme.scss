@@ -23,16 +23,3 @@ $onSurface: #ebeee7;
   $error: color-palette.$red-900,
   $on-surface: $onSurface
 );
-
-html,
-body {
-  background-color: $darkColor;
-  color: theme.$on-surface;
-}
-
-a {
-  color: #40b3ff;
-}
-a:visited {
-  color: color.scale(#40b3ff, $lightness: -35%);
-}

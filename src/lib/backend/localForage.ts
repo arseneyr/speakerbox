@@ -3,7 +3,7 @@ import type {
   MainSavedState,
   SampleSavedState,
   StorageBackend,
-} from "./sampleStore";
+} from "$lib/types";
 
 const MAIN_STATE_KEY = "speakerbox";
 

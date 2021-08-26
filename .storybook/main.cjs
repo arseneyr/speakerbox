@@ -24,7 +24,7 @@ module.exports = {
     config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
 
     config.define = config.define ?? {};
-    // config.define["process.env"] = process.env;
+    config.define["process.env"] = process.env;
     config.define["global"] = "window";
 
     return config;

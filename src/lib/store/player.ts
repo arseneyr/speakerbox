@@ -14,7 +14,8 @@ export function createEncodedPlayer(
     const audio = new Audio(URL.createObjectURL(new Blob([buffer])));
     function onAbort() {
       audio.oncanplaythrough = undefined;
-      audio.removeAttribute("src");
+      audio.src = "";
+      // audio.removeAttribute("src");
       reject(new AbortError());
     }
     abort?.addEventListener("abort", onAbort);
@@ -30,6 +31,10 @@ export function createEncodedPlayer(
       },
       playing: privateWritable(false),
       duration: 0,
+      destroy() {
+        this.stop();
+        audio.src = "";
+      },
     };
     audio.ondurationchange = () => {
       player.duration = audio.duration;
@@ -63,5 +68,9 @@ export function createDecodedPlayer(buffer: AudioBuffer): Player {
     },
     duration: buffer.duration,
     playing: privateWritable(false),
+    destroy() {
+      this.stop();
+      source.disconnect();
+    },
   };
 }

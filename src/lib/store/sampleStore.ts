@@ -4,40 +4,11 @@ import { privateWritable } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
-import type { Player } from "$lib/types";
+import type { MainSavedState, Player, StorageBackend } from "$lib/types";
 import { createDecodedPlayer, createEncodedPlayer } from "./player";
 import { createAnyPlayingStore } from "./mainStore";
 
 const VERSION = "1.0";
-
-export interface StorageBackend {
-  getMainState(): Promise<MainSavedState | null>;
-  setMainState(state: MainSavedState): Promise<unknown>;
-
-  getSampleState(id: string): Promise<SampleSavedState | null>;
-  setSampleState(state: SampleSavedState): Promise<unknown>;
-
-  getSampleData(id: string): Promise<ArrayBuffer | AudioBuffer | null>;
-  setSampleData(id: string, data: ArrayBuffer | AudioBuffer): Promise<unknown>;
-}
-
-export enum SampleAddTypes {
-  UPLOAD = "UPLOAD",
-  RECORD_DESKTOP = "RECORD_DESKTOP",
-}
-
-export interface MainSavedState {
-  version: string;
-  samples: string[];
-  settings: {
-    lastSampleAddType?: SampleAddTypes;
-  };
-}
-
-export interface SampleSavedState {
-  id: string;
-  title?: string;
-}
 
 let backend: StorageBackend | null = null;
 
@@ -116,7 +87,7 @@ export class SampleStore {
 
   // Ensures we only create one player at a time and don't clog up
   // the main thread
-  private static _playerCreateQueue = new PQueue({ concurrency: 1 });
+  private static _playerCreateQueue = new PQueue({ concurrency: 2 });
 
   private _playerCreateAbort: AbortController | null = null;
 
@@ -199,17 +170,19 @@ export class SampleStore {
   }
 
   public static createNewSample(
-    data: ArrayBuffer | Blob,
+    data: ArrayBuffer | Blob | AudioBuffer,
     title?: string
   ): SampleStore {
     const id = v4();
     const store = new SampleStore(id);
     store.title.set(title ?? null);
-    (data instanceof Blob ? data.arrayBuffer() : Promise.resolve(data)).then(
-      (buf) => {
-        store._encodedAudio.set(buf);
-      }
-    );
+    if (data instanceof AudioBuffer) {
+      store._decodedAudio.set(data);
+    } else if (data instanceof Blob) {
+      data.arrayBuffer().then((buf) => store._encodedAudio.set(buf));
+    } else {
+      store._encodedAudio.set(data);
+    }
 
     this._addToSampleMap(store);
     return store;

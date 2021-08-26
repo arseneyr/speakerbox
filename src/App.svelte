@@ -1,7 +1,7 @@
 <script>
   import MainScreen from "./MainScreen.svelte";
   import { initialize, mainStore, SampleStore } from "$lib/store";
-  import localForage from "$lib/store/localForage";
+  import { localForage } from "$lib/backend";
   import Layout from "./Layout.svelte";
   import longSample from "./stories/long_sample.mp3";
   import { waitForValue } from "$lib/utils";

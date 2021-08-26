@@ -8,7 +8,7 @@
 
 <Template let:args>
   <Grid>
-    <ControlPanel slot="panel" {...args} />
+    <ControlPanel {...args} />
   </Grid>
 </Template>
 

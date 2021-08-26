@@ -1,14 +1,14 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import Sample from "../Sample.svelte";
-  import InMemory from "$lib/store/inMemory";
+  import { inMemory } from "$lib/backend";
   import { SampleStore, initialize } from "$lib/store";
   import wav from "./sample.wav";
 
   let store;
   let staticStore;
 
-  initialize(InMemory);
+  initialize(inMemory);
   fetch(wav)
     .then((b) => b.arrayBuffer())
     .then((buf) => (staticStore = SampleStore.createNewSample(buf, "static")));

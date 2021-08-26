@@ -8,7 +8,6 @@ export function createAnyPlayingStore(): Readable<boolean> & {
   add(player: Readable<SimplePlayer | null>);
   delete(player: Readable<SimplePlayer>);
 } {
-  // setStore: Readable<Set<Readable<{ playing: Readable<boolean> } | null>>>
   const setStore = writable(
     new Set<Readable<{ playing: Readable<boolean> } | null>>()
   );
