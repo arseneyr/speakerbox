@@ -11,7 +11,8 @@
     "build-storybook": "build-storybook",
     "prepare": "npm run vite-workaround",
     "vite-workaround": "find node_modules/@material/ node_modules/wavesurfer.js/ -name \"*.js.map\" -type f -delete",
-    "test": "jest"
+    "test": "jest",
+    "postinstall": "patch-package"
   },
   "resolutions": {
     "@smui/**/@material/animation": "^12",
@@ -95,6 +96,8 @@
     "normalize.css": "^8.0.1",
     "p-cancelable": "^2",
     "p-queue": "https://github.com/arseneyr/p-queue#abortcontroller",
+    "patch-package": "^6.4.7",
+    "postinstall-postinstall": "^2.1.0",
     "uuid": "^8.3.2",
     "wasm-media-encoders": "^0.6.3",
     "wavesurfer.js": "^5.1.0"

@@ -1,0 +1,12 @@
+diff --git a/node_modules/browser-fs-access/package.json b/node_modules/browser-fs-access/package.json
+index b4193da..c1959ed 100644
+--- a/node_modules/browser-fs-access/package.json
++++ b/node_modules/browser-fs-access/package.json
+@@ -11,6 +11,7 @@
+   "module": "./dist/index.js",
+   "type": "module",
+   "types": "./index.d.ts",
++  "sideEffects": false,
+   "scripts": {
+     "start": "npx http-server -o /demo/",
+     "clean": "shx rm -rf ./dist",
