@@ -1,7 +1,7 @@
 import { readable, writable } from "svelte/store";
 import { createAnyPlayingStore } from "./mainStore";
 
-describe("deriveAnyPlaying", () => {
+describe("createAnyPlayingStore", () => {
   let setStore: ReturnType<typeof createAnyPlayingStore>;
 
   beforeEach(() => {
@@ -24,6 +24,7 @@ describe("deriveAnyPlaying", () => {
   test("adding true player", () => {
     const subscriber = jest.fn();
     setStore.subscribe(subscriber);
+    expect(subscriber).toHaveBeenLastCalledWith(false);
     setStore.add(readable({ playing: readable(true) }));
     expect(subscriber).toHaveBeenLastCalledWith(true);
     expect(subscriber).toHaveBeenCalledTimes(2);

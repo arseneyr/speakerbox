@@ -1,4 +1,5 @@
 import {
+  derived,
   Readable,
   readable,
   StartStopNotifier,
@@ -25,26 +26,34 @@ interface HandlerElement {
 
 type PrivateWritable<T> = Readable<T> & {
   _set: Writable<T>["set"];
+  _update: Writable<T>["update"];
+  _val: T;
 };
 
-export function privateWritable<T>(
+function privateWritable<T>(
   value: T,
   start?: StartStopNotifier<T>
 ): PrivateWritable<T> {
-  const ret = writable(value, start) as Writable<T> & {
-    _set: Writable<T>["set"];
-  };
+  const ret = writable(value, start);
 
-  Object.defineProperty(
-    ret,
-    "_set",
-    Object.getOwnPropertyDescriptor(ret, "set")
-  );
+  Object.defineProperties(ret, {
+    _set: Object.getOwnPropertyDescriptor(ret, "set"),
+    _update: Object.getOwnPropertyDescriptor(ret, "update"),
+    _val: {
+      get: () => {
+        let val;
+        ret.update((v) => (val = v));
+        return val;
+      },
+    },
+  });
+
   delete ret["set"];
-  return ret;
+  delete ret["update"];
+  return (ret as unknown) as PrivateWritable<T>;
 }
 
-export class Deferred<T> {
+class Deferred<T> {
   private readonly _promise: Promise<T>;
   private _resolve!: (value?: T | PromiseLike<T>) => void;
   private _reject!: (reason?: any) => void;
@@ -69,49 +78,59 @@ export class Deferred<T> {
   };
 }
 
-export function privateReadable<T>(init?: T) {
-  const ret = {
-    _val: init,
-    _setter: null as null | Subscriber<T | undefined>,
-    get val() {
-      return this._val;
-    },
-    set val(newVal) {
-      this._val = newVal;
-      this._setter?.(newVal);
-    },
-    _handlers: new Set<HandlerElement>(),
-    onSubscribe(handler: () => void | (() => void)) {
-      const h: HandlerElement = { handler, unsub: undefined };
-      this._handlers.add(h);
-      if (this._setter) {
-        h.unsub = handler() || undefined;
-      }
-      return () => this._handlers.delete(h);
-    },
+type SpiedStore<
+  T,
+  S extends Readable<T> | Writable<T> | PrivateWritable<T>
+> = S & { _val: T };
+
+function spyOnStore<
+  T,
+  S extends Readable<T> | Writable<T> | PrivateWritable<T>
+>(initialValue: T, store: S): SpiedStore<T, S> {
+  let val = initialValue;
+  const oldSubscribe = store.subscribe.bind(store);
+  const newSubscribe = {
+    subscribe: { value: (fn) => oldSubscribe((v) => ((val = v), fn(v))) },
   };
-  const newReadable = readable<T | undefined>(init, (set) => {
-    ret._setter = set;
-    set(ret._val);
-    ret._handlers.forEach((h) => {
-      h.unsub = h.handler() || undefined;
-    });
-    return () => {
-      ret._setter = null;
-      ret._handlers.forEach((h) => {
-        h.unsub?.();
-        delete h.unsub;
-      });
-    };
-  });
-  return Object.assign(ret, newReadable);
+  const oldUpdate =
+    "update" in store
+      ? store.update.bind(store)
+      : "_update" in store
+      ? store._update.bind(store)
+      : null;
+  const newUpdate =
+    "update" in store
+      ? { update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
+      : "_update" in store
+      ? { _update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
+      : false;
+
+  const oldSet =
+    "set" in store
+      ? store.set.bind(store)
+      : "_set" in store
+      ? store._set.bind(store)
+      : null;
+  const newSet =
+    "set" in store
+      ? { set: { value: (v) => ((val = v), oldSet(v)) } }
+      : "_set" in store
+      ? { _set: { value: (v) => ((val = v), oldSet(v)) } }
+      : false;
+
+  return Object.defineProperties(store, {
+    _val: { get: () => val },
+    ...newSubscribe,
+    ...newUpdate,
+    ...newSet,
+  }) as S & { _val: T };
 }
 
 function isTruthy<T>(val: T): val is NonNullable<T> {
   return Boolean(val);
 }
 
-export function waitForValue<T>(
+function waitForValue<T>(
   store: Readable<T>,
   predicate = isTruthy
 ): Promise<NonNullable<T>> {
@@ -134,10 +153,7 @@ export function waitForValue<T>(
   });
 }
 
-export function assert(
-  condition: unknown,
-  message?: string
-): asserts condition {
+function assert(condition: unknown, message?: string): asserts condition {
   if (
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
@@ -149,3 +165,6 @@ export function assert(
     console.trace();
   }
 }
+
+export { privateWritable, Deferred, spyOnStore, waitForValue, assert };
+export type { SpiedStore };

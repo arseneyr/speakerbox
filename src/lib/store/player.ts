@@ -2,7 +2,7 @@ import { getAudioContext } from "$lib/audioContext";
 import { AbortError, Player } from "$lib/types";
 import { privateWritable } from "$lib/utils";
 
-export function createEncodedPlayer(
+function createEncodedPlayer(
   buffer: ArrayBuffer,
   abort?: AbortSignal
 ): Promise<Player> {
@@ -47,7 +47,7 @@ export function createEncodedPlayer(
   });
 }
 
-export function createDecodedPlayer(buffer: AudioBuffer): Player {
+function createDecodedPlayer(buffer: AudioBuffer): Player {
   let source: AudioBufferSourceNode;
   return {
     play() {
@@ -74,3 +74,5 @@ export function createDecodedPlayer(buffer: AudioBuffer): Player {
     },
   };
 }
+
+export { createEncodedPlayer, createDecodedPlayer };

@@ -1,12 +1,11 @@
-import { derived, get, Readable, Unsubscriber, writable } from "svelte/store";
+import { derived, Readable, Unsubscriber, writable } from "svelte/store";
 import { v4 } from "uuid";
-import { privateWritable } from "$lib/utils";
+import { privateWritable, spyOnStore } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
 import type { MainSavedState, Player, StorageBackend } from "$lib/types";
 import { createDecodedPlayer, createEncodedPlayer } from "./player";
-import { createAnyPlayingStore } from "./mainStore";
 
 const VERSION = "1.0";
 
@@ -23,30 +22,30 @@ export async function initialize(newBackend: StorageBackend): Promise<void> {
   mainStore.set(mainSavedState);
 }
 
-export class SampleStore {
+class SampleStore {
   public readonly title = writable<string | null>(null);
-  public readonly audioBuffer: Readable<AudioBuffer | null>;
   public readonly error = privateWritable<string | null>(null);
-  public readonly player: Readable<Player | null>;
 
   private readonly _encodedAudio = writable<ArrayBuffer | null>(null);
   private readonly _decodedAudio = writable<AudioBuffer | null>(null);
   private readonly _destroyCbs: Unsubscriber[] = [];
 
-  private constructor(public readonly id: string) {
-    this.audioBuffer = derived(
-      [this._encodedAudio, this._decodedAudio],
-      this._setDecodedAudio.bind(this),
-      null
-    );
-    this.player = derived(
+  public readonly player = spyOnStore<Player | null, Readable<Player | null>>(
+    null,
+    derived(
       [this._encodedAudio, this._decodedAudio],
       this._createPlayer.bind(this),
       null
-    );
+    )
+  );
 
-    SampleStore.anyPlaying.add(this.player);
+  public readonly audioBuffer = derived(
+    [this._encodedAudio, this._decodedAudio],
+    this._setDecodedAudio.bind(this),
+    null
+  );
 
+  private constructor(public readonly id: string) {
     this._destroyCbs = [
       this.title.subscribe((newTitle) =>
         backend?.setSampleState({ id, title: newTitle ?? undefined })
@@ -55,12 +54,8 @@ export class SampleStore {
   }
 
   public destroy(): void {
+    this.player._val?.destroy();
     this._destroyCbs.forEach((stop) => stop());
-    SampleStore.anyPlaying.delete(this.player);
-    SampleStore._sampleMap.update((map) => {
-      map.delete(this.id);
-      return map;
-    });
   }
 
   public setAudioBuffer(buffer: AudioBuffer): void {
@@ -144,30 +139,6 @@ export class SampleStore {
   private readonly _decodeAudio = PCancelable.fn((arrayBuffer: ArrayBuffer) =>
     getAudioContext().decodeAudioData(arrayBuffer.slice(0))
   );
-  public static anyPlaying = createAnyPlayingStore();
-
-  private static readonly _sampleMap = writable(new Map<string, SampleStore>());
-
-  private static _addToSampleMap(store: SampleStore) {
-    this._sampleMap.update((map) => map.set(store.id, store));
-  }
-
-  public static stopAll(): void {
-    for (const { player } of get(this._sampleMap).values()) {
-      get(player)?.stop();
-    }
-  }
-
-  public static getSample(id: string): SampleStore {
-    const map = get(SampleStore._sampleMap);
-    let store = map.get(id);
-    if (!store) {
-      store = new SampleStore(id);
-      store._loadExisting();
-      this._addToSampleMap(store);
-    }
-    return store;
-  }
 
   public static createNewSample(
     data: ArrayBuffer | Blob | AudioBuffer,
@@ -184,9 +155,8 @@ export class SampleStore {
       store._encodedAudio.set(data);
     }
 
-    this._addToSampleMap(store);
     return store;
   }
 }
 
-export const anyPlaying = SampleStore.anyPlaying;
+export { SampleStore };
