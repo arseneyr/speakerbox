@@ -1,18 +1,17 @@
-import { inMemory } from "$lib/backend";
-import { SampleStore, initialize } from "./sampleStore";
+import { SampleStore } from "./sampleStore";
 import { get } from "svelte/store";
 import { waitForValue } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
 
-jest.mock("../backend", () => {
-  const original = jest.requireActual("../backend").inMemory;
-  const ret = {};
-  Object.entries(original).forEach(
-    ([key, prop]) =>
-      typeof prop === "function" && (ret[key] = jest.fn(original[key]))
-  );
-  return { inMemory: ret };
-});
+// jest.mock("../backend", () => {
+//   const original = jest.requireActual("../backend").inMemory;
+//   const ret = {};
+//   Object.entries(original).forEach(
+//     ([key, prop]) =>
+//       typeof prop === "function" && (ret[key] = jest.fn(original[key]))
+//   );
+//   return { inMemory: ret };
+// });
 
 jest.mock("./player", () => ({
   ...jest.requireActual<any>("./player"),
@@ -24,33 +23,27 @@ beforeEach(() => {
   getAudioContext().decodeAudioData.mockClear();
 });
 
-beforeAll(() => initialize(inMemory));
-
-test("main saved data loaded", () => {
-  expect(inMemory.getMainState).toHaveBeenCalledTimes(1);
-});
-
 test("creating new sample from arraybuffer", () => {
-  const sample = SampleStore.createNewSample(new ArrayBuffer(0), "test title");
+  const sample = new SampleStore(new ArrayBuffer(0), undefined, "test title");
   expect(get(sample.title)).toBe("test title");
   expect(get(sample.player)).toBeDefined();
 });
 
 test("audioBuffer decoding works", async () => {
   const [encoded, decoded] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = SampleStore.createNewSample(encoded);
+  const sample = new SampleStore(encoded);
   await expect(waitForValue(sample.audioBuffer)).resolves.toBe(decoded);
 });
 
 test("creating new sample from blob", async () => {
   const [encoded, decoded] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = SampleStore.createNewSample(new Blob([encoded]));
+  const sample = new SampleStore(new Blob([encoded]));
   await expect(waitForValue(sample.audioBuffer)).resolves.toBe(decoded);
 });
 
 test("audioBuffer decoding is cancelled properly", async () => {
   const [encodedFirst] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = SampleStore.createNewSample(encodedFirst);
+  const sample = new SampleStore(encodedFirst);
   await expect(waitForValue(sample["_encodedAudio"])).resolves.toBe(
     encodedFirst
   );
@@ -66,7 +59,7 @@ test("audioBuffer decoding is cancelled properly", async () => {
 });
 
 test("setting audiobuffer does not cause decoding", () => {
-  const sample = SampleStore.createNewSample(new ArrayBuffer(0));
+  const sample = new SampleStore(new ArrayBuffer(0));
   const newAudioBuffer = getAudioContext().createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);
 
@@ -75,7 +68,7 @@ test("setting audiobuffer does not cause decoding", () => {
 });
 
 test("setting audiobuffer cancels properly", async () => {
-  const sample = SampleStore.createNewSample(new ArrayBuffer(0));
+  const sample = new SampleStore(new ArrayBuffer(0));
   await waitForValue(sample["_encodedAudio"]);
   const audioBufferPromise = waitForValue(sample.audioBuffer);
   const newAudioBuffer = getAudioContext().createBuffer(2, 44100 * 5, 44100);

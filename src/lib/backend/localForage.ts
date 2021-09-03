@@ -39,13 +39,17 @@ async function setSampleData(id: string, data: ArrayBuffer) {
   return localForage.setItem(getSampleDataKey(id), data);
 }
 
-export default {
-  getMainState,
-  setMainState,
+function create(): StorageBackend {
+  return {
+    getMainState,
+    setMainState,
 
-  getSampleState,
-  setSampleState,
+    getSampleState,
+    setSampleState,
 
-  getSampleData,
-  setSampleData,
-} as StorageBackend;
+    getSampleData,
+    setSampleData,
+  };
+}
+
+export default create;

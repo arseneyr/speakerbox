@@ -1,4 +1,8 @@
-import type { MainSavedState, SampleSavedState } from "$lib/types";
+import type {
+  MainSavedState,
+  SampleSavedState,
+  StorageBackend,
+} from "$lib/types";
 
 let mainState: MainSavedState | null = null;
 const sampleState = new Map<string, SampleSavedState>();
@@ -31,11 +35,15 @@ function setSampleData(id: string, data: ArrayBuffer | AudioBuffer) {
   return Promise.resolve();
 }
 
-export default {
-  getMainState,
-  setMainState,
-  getSampleState,
-  setSampleState,
-  getSampleData,
-  setSampleData,
-};
+function create(): StorageBackend {
+  return {
+    getMainState,
+    setMainState,
+    getSampleState,
+    setSampleState,
+    getSampleData,
+    setSampleData,
+  };
+}
+
+export default create;

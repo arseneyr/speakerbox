@@ -1,1 +1,1 @@
-export { SampleStore, initialize, mainStore } from "./sampleStore";
+export { SampleStore } from "./sampleStore";

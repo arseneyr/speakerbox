@@ -11,9 +11,9 @@ const VERSION = "1.0";
 
 let backend: StorageBackend | null = null;
 
-export const mainStore = writable<MainSavedState | null>(null);
+const mainStore = writable<MainSavedState | null>(null);
 
-export async function initialize(newBackend: StorageBackend): Promise<void> {
+async function initialize(newBackend: StorageBackend): Promise<void> {
   backend = newBackend;
   let mainSavedState = await backend.getMainState();
   if (!mainSavedState) {
@@ -22,13 +22,15 @@ export async function initialize(newBackend: StorageBackend): Promise<void> {
   mainStore.set(mainSavedState);
 }
 
+const PLAYER_CREATE_QUEUE_DEPTH = 2;
+
 class SampleStore {
   public readonly title = writable<string | null>(null);
   public readonly error = privateWritable<string | null>(null);
+  public readonly id: string;
 
   private readonly _encodedAudio = writable<ArrayBuffer | null>(null);
   private readonly _decodedAudio = writable<AudioBuffer | null>(null);
-  private readonly _destroyCbs: Unsubscriber[] = [];
 
   public readonly player = spyOnStore<Player | null, Readable<Player | null>>(
     null,
@@ -45,17 +47,25 @@ class SampleStore {
     null
   );
 
-  private constructor(public readonly id: string) {
-    this._destroyCbs = [
-      this.title.subscribe((newTitle) =>
-        backend?.setSampleState({ id, title: newTitle ?? undefined })
-      ),
-    ];
+  public constructor(
+    data: ArrayBuffer | Blob | AudioBuffer,
+    id?: string,
+    title?: string
+  ) {
+    this.id = id ?? v4();
+    this.title.set(title ?? null);
+
+    if (data instanceof AudioBuffer) {
+      this._decodedAudio.set(data);
+    } else if (data instanceof Blob) {
+      data.arrayBuffer().then((buf) => this._encodedAudio.set(buf));
+    } else {
+      this._encodedAudio.set(data);
+    }
   }
 
   public destroy(): void {
     this.player._val?.destroy();
-    this._destroyCbs.forEach((stop) => stop());
   }
 
   public setAudioBuffer(buffer: AudioBuffer): void {
@@ -63,26 +73,11 @@ class SampleStore {
     this._encodedAudio.set(null);
   }
 
-  private async _loadExisting() {
-    const [state, data] = await Promise.all([
-      backend?.getSampleState(this.id),
-      backend?.getSampleData(this.id),
-    ]);
-    if (!state) {
-      this.error._set("Sample could not be loaded");
-    } else if (!data) {
-      this.error._set("Sample audio data could not be loaded");
-    } else {
-      data instanceof AudioBuffer
-        ? this.setAudioBuffer(data)
-        : this._encodedAudio.set(data);
-      this.title.set(state.title ?? null);
-    }
-  }
-
-  // Ensures we only create one player at a time and don't clog up
+  // Ensures we only create two players at a time and don't clog up
   // the main thread
-  private static _playerCreateQueue = new PQueue({ concurrency: 2 });
+  private static _playerCreateQueue = new PQueue({
+    concurrency: PLAYER_CREATE_QUEUE_DEPTH,
+  });
 
   private _playerCreateAbort: AbortController | null = null;
 
@@ -139,24 +134,6 @@ class SampleStore {
   private readonly _decodeAudio = PCancelable.fn((arrayBuffer: ArrayBuffer) =>
     getAudioContext().decodeAudioData(arrayBuffer.slice(0))
   );
-
-  public static createNewSample(
-    data: ArrayBuffer | Blob | AudioBuffer,
-    title?: string
-  ): SampleStore {
-    const id = v4();
-    const store = new SampleStore(id);
-    store.title.set(title ?? null);
-    if (data instanceof AudioBuffer) {
-      store._decodedAudio.set(data);
-    } else if (data instanceof Blob) {
-      data.arrayBuffer().then((buf) => store._encodedAudio.set(buf));
-    } else {
-      store._encodedAudio.set(data);
-    }
-
-    return store;
-  }
 }
 
 export { SampleStore };
