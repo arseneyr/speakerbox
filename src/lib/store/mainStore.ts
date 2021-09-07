@@ -1,5 +1,6 @@
 import type { MainSavedState, StorageBackend } from "$lib/types";
-import { privateWritable } from "$lib/utils";
+import { assert } from "$lib/utils";
+import PQueue from "p-queue";
 import { derived, Readable, writable } from "svelte/store";
 import { SampleStore } from "./sampleStore";
 
@@ -16,17 +17,10 @@ class MainStore {
   );
 
   constructor(private readonly _backend: StorageBackend) {
-    _backend.getMainState().then((s) => {
-      this._mainState.set(s);
-      this._mainState.subscribe(this._onMainStateUpdate.bind(this));
-    });
+    this._loadMainState();
   }
 
-  // public append(sample: SampleStore) {
-  // this.samples._update((samples) => samples.concat(sample));
-  // }
-  public prepend(sample: SampleStore) {
-    // this.samples._update((samples) => [sample].concat(samples));
+  public prepend(sample: SampleStore): void {
     this._sampleMap.set(sample.id, sample);
     this._mainState.update((state) => ({
       ...state,
@@ -34,21 +28,53 @@ class MainStore {
     }));
   }
 
-  public delete(id: string) {
-    this._sampleMap.delete(id);
+  public remove(id: string): void {
+    const deleted = this._sampleMap.delete(id);
+    assert(deleted, "delete called on non-existing sample");
+
     this._mainState.update((state) => ({
       ...state,
       samples: state.samples.filter((s) => s !== id),
     }));
   }
 
-  public update(ids: string[]) {
+  public update(ids: string[]): void {
     this._mainState.update((state) => ({ ...state, samples: ids }));
   }
 
+  private _saveQueue = new PQueue({ concurrency: 1 });
   private _onMainStateUpdate(mainState: MainSavedState) {
-    this._backend.setMainState(mainState);
+    this._saveQueue.add(() => this._backend.setMainState(mainState));
   }
+
+  private async _loadMainState() {
+    const state = await this._backend.getMainState();
+    await Promise.all(
+      state.samples.map(async (id) => {
+        const [sampleState, sampleData] = await Promise.all([
+          this._backend.getSampleState(id),
+          this._backend.getSampleData(id),
+        ]);
+        this._sampleMap.set(
+          id,
+          new SampleStore(sampleData, id, sampleState.title)
+        );
+      })
+    );
+    this._mainState.set(state);
+    this._mainState.subscribe(this._onMainStateUpdate.bind(this));
+  }
+
+  public anyPlaying = derived(this._mainState, (_, s1) =>
+    derived(
+      Array.from(this._sampleMap.values(), (sample) => sample.player),
+      (players, s2) =>
+        derived(
+          players.filter(Boolean).map((p) => p.playing),
+          (playing) => playing.some(Boolean)
+        ).subscribe(s2)
+    ).subscribe(s1)
+  );
 }
 
 function createAnyPlayingStore(): Readable<boolean> & {

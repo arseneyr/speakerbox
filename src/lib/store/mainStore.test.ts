@@ -1,5 +1,16 @@
 import { readable, writable } from "svelte/store";
-import { createAnyPlayingStore } from "./mainStore";
+import { createAnyPlayingStore, MainStore } from "./mainStore";
+import testBackend from "../backend/test";
+
+const backend = testBackend();
+let store;
+beforeEach(() => {
+  store = new MainStore(backend);
+});
+
+test("loading saved data", async () => {
+  await backend.setMainState({ samples: [] });
+});
 
 describe("createAnyPlayingStore", () => {
   let setStore: ReturnType<typeof createAnyPlayingStore>;

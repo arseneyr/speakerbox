@@ -166,5 +166,45 @@ function assert(condition: unknown, message?: string): asserts condition {
   }
 }
 
+type StoreOrStores<T> = Readable<T> | Array<Readable<T>>;
+
+type UnwrapStore<T> = T extends Readable<infer U>
+  ? U
+  : T extends Array<Readable<infer V>>
+  ? Array<V>
+  : never;
+declare type Stores =
+  | Readable<any>
+  | [Readable<any>, ...Array<Readable<any>>]
+  | Array<Readable<any>>;
+/** One or more values from `Readable` stores. */
+declare type StoresValues<T> = T extends Readable<infer U>
+  ? U
+  : {
+      [K in keyof T]: T[K] extends Readable<infer U> ? U : never;
+    };
+
+type Func<P, R> = (s: StoresValues<P>) => R;
+
+function flattenStore<A extends Stores, B extends Stores, R>(
+  store: A,
+  f1: Func<A, B>,
+  f2: Func<B, R>
+): Readable<R>;
+function flattenStore<A extends Stores, B extends Stores, C extends Stores, R>(
+  store: A,
+  f1: Func<A, B>,
+  f2: Func<B, C>,
+  f3: Func<C, R>
+): Readable<R>;
+function flattenStore<A extends Stores>(
+  store: A,
+  ...fns: [Func<any, any>, ...Func<any, any>[]]
+): any {
+  // return derived(store, (v1, s1) => derived(f1(v1), f2).subscribe(s1));
+  // return fns.reduce((fn,curStore) => {
+  // }, store)
+}
+
 export { privateWritable, Deferred, spyOnStore, waitForValue, assert };
 export type { SpiedStore };
