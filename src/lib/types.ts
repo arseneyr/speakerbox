@@ -51,36 +51,38 @@ export interface StorageBackend {
 
   getSampleData(id: string): Promise<ArrayBuffer | AudioBuffer | null>;
   setSampleData(id: string, data: ArrayBuffer | AudioBuffer): Promise<unknown>;
+
+  saveInvalidMainState?(state: unknown): Promise<unknown>;
 }
 
 type GConstructor<T> = new (...args: any[]) => T;
 
-export function TypedEventTarget<
-  TBase extends GConstructor<EventTarget>,
-  EventMap extends { [key: string]: any }
->(Base: TBase) {
-  return class TypedEventTarget extends Base {
-    public addEventListener<K extends Extract<keyof EventMap, string>>(
-      type: K,
-      listener: (ev: CustomEvent<EventMap[K]>) => void
-    ) {
-      return super.addEventListener(type, listener);
-    }
+// export function TypedEventTarget<
+//   TBase extends GConstructor<EventTarget>,
+//   EventMap extends { [key: string]: any }
+// >(Base: TBase) {
+//   return class TypedEventTarget extends Base {
+//     public addEventListener<K extends Extract<keyof EventMap, string>>(
+//       type: K,
+//       listener: (ev: CustomEvent<EventMap[K]>) => void
+//     ) {
+//       return super.addEventListener(type, listener);
+//     }
 
-    public dispatchEvent<V extends EventMap[keyof EventMap]>(
-      event: CustomEvent<V>
-    ) {
-      return super.dispatchEvent(event);
-    }
+//     public dispatchEvent<V extends EventMap[keyof EventMap]>(
+//       event: CustomEvent<V>
+//     ) {
+//       return super.dispatchEvent(event);
+//     }
 
-    public removeEventListener<K extends Extract<keyof EventMap, string>>(
-      type: K,
-      listener: (ev: CustomEvent<EventMap[K]>) => void
-    ) {
-      return super.removeEventListener(type, listener);
-    }
-  };
-}
+//     public removeEventListener<K extends Extract<keyof EventMap, string>>(
+//       type: K,
+//       listener: (ev: CustomEvent<EventMap[K]>) => void
+//     ) {
+//       return super.removeEventListener(type, listener);
+//     }
+//   };
+// }
 
 export enum SampleAddTypes {
   UPLOAD = "UPLOAD",

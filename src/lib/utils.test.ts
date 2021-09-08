@@ -1,5 +1,4 @@
-import { derived, readable, Readable, writable } from "svelte/store";
-import { spyOnStore } from "./utils";
+import { derived, Readable, writable } from "svelte/store";
 
 test("high order stores", () => {
   const setStore = writable(new Set<Readable<{ inner: Readable<boolean> }>>());
@@ -25,43 +24,43 @@ test("high order stores", () => {
   expect(subscriber).toHaveBeenCalledTimes(3);
 });
 
-describe("spyOnStore", () => {
-  test("spy on readable", () => {
-    const subscriber = jest.fn();
-    let setter;
-    const store = spyOnStore(
-      null,
-      readable("contents", (set) => {
-        setter = set;
-      })
-    );
-    expect(store._val).toBeNull();
+// describe("spyOnStore", () => {
+//   test("spy on readable", () => {
+//     const subscriber = jest.fn();
+//     let setter;
+//     const store = spyOnStore(
+//       null,
+//       readable("contents", (set) => {
+//         setter = set;
+//       })
+//     );
+//     expect(store._val).toBeNull();
 
-    store.subscribe(subscriber);
-    expect(subscriber).toHaveBeenCalledWith("contents");
-    expect(store._val).toBe("contents");
+//     store.subscribe(subscriber);
+//     expect(subscriber).toHaveBeenCalledWith("contents");
+//     expect(store._val).toBe("contents");
 
-    setter("new contents");
-    expect(store._val).toBe("new contents");
-  });
-  test("spied readable cannot be written to", () => {
-    const store = spyOnStore(null, readable(null));
+//     setter("new contents");
+//     expect(store._val).toBe("new contents");
+//   });
+//   test("spied readable cannot be written to", () => {
+//     const store = spyOnStore(null, readable(null));
 
-    expect(store["set"]).toBeUndefined();
-    expect(store["update"]).toBeUndefined();
-  });
+//     expect(store["set"]).toBeUndefined();
+//     expect(store["update"]).toBeUndefined();
+//   });
 
-  test("spy on writable", () => {
-    const subscriber = jest.fn();
-    const store = spyOnStore(null, writable("contents"));
-    expect(store._val).toBeNull();
+//   test("spy on writable", () => {
+//     const subscriber = jest.fn();
+//     const store = spyOnStore(null, writable("contents"));
+//     expect(store._val).toBeNull();
 
-    store.set("set contents");
-    expect(store._val).toBe("set contents");
-    store.update(() => "update contents");
-    expect(store._val).toBe("update contents");
+//     store.set("set contents");
+//     expect(store._val).toBe("set contents");
+//     store.update(() => "update contents");
+//     expect(store._val).toBe("update contents");
 
-    store.subscribe(subscriber);
-    expect(subscriber).toHaveBeenCalledWith("update contents");
-  });
-});
+//     store.subscribe(subscriber);
+//     expect(subscriber).toHaveBeenCalledWith("update contents");
+//   });
+// });

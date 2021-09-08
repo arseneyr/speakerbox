@@ -1,4 +1,4 @@
-let audioContext: AudioContext = null;
+let audioContext: AudioContext | null = null;
 
 function getAudioContext(): AudioContext {
   if (!audioContext) {

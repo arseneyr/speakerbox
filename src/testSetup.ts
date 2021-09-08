@@ -78,7 +78,7 @@ WebAudioTestAPI.createEncodedBuffer = () => {
 const OriginalAudioContext = AudioContext;
 const OriginalAudioBuffer = AudioBuffer;
 
-global.AudioBuffer = function (options: AudioBufferOptions) {
+global.AudioBuffer = function (options: Required<AudioBufferOptions>) {
   return new AudioContext().createBuffer(
     options.numberOfChannels,
     options.length,
@@ -87,7 +87,9 @@ global.AudioBuffer = function (options: AudioBufferOptions) {
 } as any;
 global.AudioBuffer.prototype = OriginalAudioBuffer.prototype;
 
-(global as any).AudioContext = function (...args) {
+(global as any).AudioContext = function (
+  ...args: ConstructorParameters<typeof AudioContext>
+) {
   const ret = new OriginalAudioContext(...args);
   ret.decodeAudioData = jest.fn((arrayBuffer) => {
     for (const [encoded, decoded] of decodeMap.entries()) {
@@ -101,15 +103,18 @@ global.AudioBuffer.prototype = OriginalAudioBuffer.prototype;
 };
 
 const OriginalBlob = Blob;
-(global as any).Blob = function (...args) {
-  const ret = new OriginalBlob(...args) as any;
-  if (
-    args.length >= 1 &&
-    args[0].length >= 1 &&
-    args[0][0] instanceof Float32Array
-  ) {
+(global as any).Blob = function (
+  blobParts: BlobPart[],
+  options?: BlobPropertyBag
+) {
+  const ret = new OriginalBlob(blobParts, options) as Blob & {
+    _buf: ArrayBuffer;
+  };
+  if (blobParts && blobParts[0] instanceof Float32Array) {
     ret._buf = Uint8Array.from(
-      Buffer.concat(args[0].map((a) => Buffer.from(a.buffer)))
+      Buffer.concat(
+        (blobParts as Float32Array[]).map((a) => Buffer.from(a.buffer))
+      )
     ).buffer;
   }
   return ret;
@@ -117,7 +122,7 @@ const OriginalBlob = Blob;
 Blob.prototype = OriginalBlob.prototype;
 
 Blob.prototype.arrayBuffer = function () {
-  return Promise.resolve(this._buf);
+  return Promise.resolve((this as any)._buf);
 };
 
 export {};

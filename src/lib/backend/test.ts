@@ -1,7 +1,7 @@
 import inMemory from "./inMemory";
 
 export default jest.fn(() => {
-  const ret = inMemory();
+  const ret = inMemory() as any;
   for (const key of Object.keys(ret)) {
     ret[key] = jest.fn(ret[key]);
   }

@@ -29,7 +29,10 @@ function updateGatherList(
     }
   }
   let curStart = 0;
-  let startSample, endSample, startIndex, endIndex;
+  let startSample: number | undefined,
+    endSample: number | undefined,
+    startIndex: number | undefined,
+    endIndex: number | undefined = undefined;
   for (const [i, gatherItem] of gatherList.entries()) {
     const curEnd = curStart + (gatherItem.endSample - gatherItem.startSample);
 
@@ -48,6 +51,10 @@ function updateGatherList(
     curStart = curEnd;
   }
 
+  assert(startIndex !== undefined);
+  assert(startSample !== undefined);
+  assert(endIndex !== undefined);
+  assert(endSample !== undefined);
   if (action.type === "crop") {
     gatherList[startIndex].startSample = startSample;
     gatherList[endIndex].endSample = endSample;
@@ -99,7 +106,7 @@ function applyActions(
 }
 
 class EditManager {
-  private _originalAudioBuffer;
+  private _originalAudioBuffer!: AudioBuffer;
   private _undoStack = writable<PrivateAction[]>([]);
   private _redoStack = writable<PrivateAction[]>([]);
 
@@ -113,7 +120,7 @@ class EditManager {
     this._audioBuffer = audioBuffer;
   }
 
-  private _audioBufferBackend: AudioBuffer;
+  private _audioBufferBackend!: AudioBuffer;
   private set _audioBuffer(newVal: AudioBuffer) {
     this._audioBufferBackend = newVal;
     this.audioBuffer._set(newVal);
@@ -166,7 +173,7 @@ class EditManager {
 
       if (action) {
         this._redoStack.update((redoStack) => {
-          redoStack.push(action);
+          redoStack.push(action!);
           return redoStack;
         });
 

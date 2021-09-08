@@ -1,12 +1,4 @@
-import {
-  derived,
-  Readable,
-  readable,
-  StartStopNotifier,
-  Subscriber,
-  Writable,
-  writable,
-} from "svelte/store";
+import { Readable, StartStopNotifier, Writable, writable } from "svelte/store";
 import externalAssert from "assert";
 
 export function persistantWritable<T>(
@@ -19,11 +11,6 @@ export function persistantWritable<T>(
   return store;
 }
 
-interface HandlerElement {
-  handler: () => void | (() => void);
-  unsub?: () => void;
-}
-
 type PrivateWritable<T> = Readable<T> & {
   _set: Writable<T>["set"];
   _update: Writable<T>["update"];
@@ -34,15 +21,15 @@ function privateWritable<T>(
   value: T,
   start?: StartStopNotifier<T>
 ): PrivateWritable<T> {
-  const ret = writable(value, start);
+  const ret = writable(value, start) as Partial<Writable<T>>;
 
   Object.defineProperties(ret, {
-    _set: Object.getOwnPropertyDescriptor(ret, "set"),
-    _update: Object.getOwnPropertyDescriptor(ret, "update"),
+    _set: Object.getOwnPropertyDescriptor(ret, "set")!,
+    _update: Object.getOwnPropertyDescriptor(ret, "update")!,
     _val: {
       get: () => {
         let val;
-        ret.update((v) => (val = v));
+        ret.update!((v) => (val = v));
         return val;
       },
     },
@@ -55,7 +42,7 @@ function privateWritable<T>(
 
 class Deferred<T> {
   private readonly _promise: Promise<T>;
-  private _resolve!: (value?: T | PromiseLike<T>) => void;
+  private _resolve!: (value: T | PromiseLike<T>) => void;
   private _reject!: (reason?: any) => void;
 
   constructor() {
@@ -69,11 +56,11 @@ class Deferred<T> {
     return this._promise;
   }
 
-  resolve = (value?: T | PromiseLike<T>): void => {
+  resolve = (value: T | PromiseLike<T>): void => {
     this._resolve(value);
   };
 
-  reject = (reason?: any): void => {
+  reject = (reason?: unknown): void => {
     this._reject(reason);
   };
 }
@@ -83,48 +70,48 @@ type SpiedStore<
   S extends Readable<T> | Writable<T> | PrivateWritable<T>
 > = S & { _val: T };
 
-function spyOnStore<
-  T,
-  S extends Readable<T> | Writable<T> | PrivateWritable<T>
->(initialValue: T, store: S): SpiedStore<T, S> {
-  let val = initialValue;
-  const oldSubscribe = store.subscribe.bind(store);
-  const newSubscribe = {
-    subscribe: { value: (fn) => oldSubscribe((v) => ((val = v), fn(v))) },
-  };
-  const oldUpdate =
-    "update" in store
-      ? store.update.bind(store)
-      : "_update" in store
-      ? store._update.bind(store)
-      : null;
-  const newUpdate =
-    "update" in store
-      ? { update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
-      : "_update" in store
-      ? { _update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
-      : false;
+// function spyOnStore<
+//   T,
+//   S extends Readable<T> | Writable<T> | PrivateWritable<T>
+// >(initialValue: T, store: S): SpiedStore<T, S> {
+//   let val = initialValue;
+//   const oldSubscribe = store.subscribe.bind(store);
+//   const newSubscribe = {
+//     subscribe: { value: (fn) => oldSubscribe((v) => ((val = v), fn(v))) },
+//   };
+//   const oldUpdate =
+//     "update" in store
+//       ? store.update.bind(store)
+//       : "_update" in store
+//       ? store._update.bind(store)
+//       : null;
+//   const newUpdate =
+//     "update" in store
+//       ? { update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
+//       : "_update" in store
+//       ? { _update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
+//       : false;
 
-  const oldSet =
-    "set" in store
-      ? store.set.bind(store)
-      : "_set" in store
-      ? store._set.bind(store)
-      : null;
-  const newSet =
-    "set" in store
-      ? { set: { value: (v) => ((val = v), oldSet(v)) } }
-      : "_set" in store
-      ? { _set: { value: (v) => ((val = v), oldSet(v)) } }
-      : false;
+//   const oldSet =
+//     "set" in store
+//       ? store.set.bind(store)
+//       : "_set" in store
+//       ? store._set.bind(store)
+//       : null;
+//   const newSet =
+//     "set" in store
+//       ? { set: { value: (v) => ((val = v), oldSet(v)) } }
+//       : "_set" in store
+//       ? { _set: { value: (v) => ((val = v), oldSet(v)) } }
+//       : false;
 
-  return Object.defineProperties(store, {
-    _val: { get: () => val },
-    ...newSubscribe,
-    ...newUpdate,
-    ...newSet,
-  }) as S & { _val: T };
-}
+//   return Object.defineProperties(store, {
+//     _val: { get: () => val },
+//     ...newSubscribe,
+//     ...newUpdate,
+//     ...newSet,
+//   }) as S & { _val: T };
+// }
 
 function isTruthy<T>(val: T): val is NonNullable<T> {
   return Boolean(val);
@@ -166,45 +153,5 @@ function assert(condition: unknown, message?: string): asserts condition {
   }
 }
 
-type StoreOrStores<T> = Readable<T> | Array<Readable<T>>;
-
-type UnwrapStore<T> = T extends Readable<infer U>
-  ? U
-  : T extends Array<Readable<infer V>>
-  ? Array<V>
-  : never;
-declare type Stores =
-  | Readable<any>
-  | [Readable<any>, ...Array<Readable<any>>]
-  | Array<Readable<any>>;
-/** One or more values from `Readable` stores. */
-declare type StoresValues<T> = T extends Readable<infer U>
-  ? U
-  : {
-      [K in keyof T]: T[K] extends Readable<infer U> ? U : never;
-    };
-
-type Func<P, R> = (s: StoresValues<P>) => R;
-
-function flattenStore<A extends Stores, B extends Stores, R>(
-  store: A,
-  f1: Func<A, B>,
-  f2: Func<B, R>
-): Readable<R>;
-function flattenStore<A extends Stores, B extends Stores, C extends Stores, R>(
-  store: A,
-  f1: Func<A, B>,
-  f2: Func<B, C>,
-  f3: Func<C, R>
-): Readable<R>;
-function flattenStore<A extends Stores>(
-  store: A,
-  ...fns: [Func<any, any>, ...Func<any, any>[]]
-): any {
-  // return derived(store, (v1, s1) => derived(f1(v1), f2).subscribe(s1));
-  // return fns.reduce((fn,curStore) => {
-  // }, store)
-}
-
-export { privateWritable, Deferred, spyOnStore, waitForValue, assert };
+export { privateWritable, Deferred, waitForValue, assert };
 export type { SpiedStore };

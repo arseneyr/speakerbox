@@ -1,68 +1,43 @@
-import { readable, writable } from "svelte/store";
-import { createAnyPlayingStore, MainStore } from "./mainStore";
+import { MainStore } from "./mainStore";
 import testBackend from "../backend/test";
+import { waitForValue } from "$lib/utils";
+import { SampleStore } from "./sampleStore";
+
+jest.mock("./player");
 
 const backend = testBackend();
-let store;
-beforeEach(() => {
+let store: MainStore;
+
+beforeEach(async () => {
+  await backend.setMainState({ version: "0", settings: {}, samples: [] });
   store = new MainStore(backend);
+  await store.init();
 });
 
-test("loading saved data", async () => {
-  await backend.setMainState({ samples: [] });
-});
-
-describe("createAnyPlayingStore", () => {
-  let setStore: ReturnType<typeof createAnyPlayingStore>;
-
-  beforeEach(() => {
-    setStore = createAnyPlayingStore();
-  });
-
+describe("anyPlaying store", () => {
   test("empty set", () => {
     const subscriber = jest.fn();
-    setStore.subscribe(subscriber);
+    store.anyPlaying.subscribe(subscriber);
     expect(subscriber).toHaveBeenLastCalledWith(false);
     expect(subscriber).toHaveBeenCalledTimes(1);
   });
   test("adding false player", () => {
     const subscriber = jest.fn();
-    setStore.subscribe(subscriber);
-    setStore.add(readable({ playing: readable(false) }));
+    store.anyPlaying.subscribe(subscriber);
+    store.prepend(new SampleStore({ data: new ArrayBuffer(0) }));
     expect(subscriber).toHaveBeenLastCalledWith(false);
     expect(subscriber).toHaveBeenCalledTimes(1);
   });
-  test("adding true player", () => {
+  test("adding true player", async () => {
     const subscriber = jest.fn();
-    setStore.subscribe(subscriber);
+    store.anyPlaying.subscribe(subscriber);
+    const sample = new SampleStore({ data: new ArrayBuffer(0) });
+    store.prepend(sample);
+    const player = await waitForValue(sample.player);
+
     expect(subscriber).toHaveBeenLastCalledWith(false);
-    setStore.add(readable({ playing: readable(true) }));
+    player.play();
     expect(subscriber).toHaveBeenLastCalledWith(true);
     expect(subscriber).toHaveBeenCalledTimes(2);
-  });
-  test("adding null player", () => {
-    const subscriber = jest.fn();
-    setStore.subscribe(subscriber);
-    expect(subscriber).toHaveBeenLastCalledWith(false);
-    const fullPlayer = writable({ playing: readable(true) });
-    setStore.add(fullPlayer);
-    setStore.add(readable(null));
-    expect(subscriber).toHaveBeenLastCalledWith(true);
-    expect(subscriber).toHaveBeenCalledTimes(2);
-    fullPlayer.set(null);
-    expect(subscriber).toHaveBeenLastCalledWith(false);
-  });
-  test("unsubbing", () => {
-    const subscriber = jest.fn();
-    const onUnsub = jest.fn();
-    const onSub = jest.fn(() => onUnsub);
-    setStore.add(readable({ playing: readable(true, onSub) }));
-    expect(onSub).not.toHaveBeenCalled();
-    const unsub = setStore.subscribe(subscriber);
-    expect(subscriber).toHaveBeenLastCalledWith(true);
-    expect(onSub).toBeCalledTimes(1);
-    expect(onUnsub).not.toHaveBeenCalled();
-    unsub();
-    expect(onUnsub).toHaveBeenCalledTimes(1);
   });
 });

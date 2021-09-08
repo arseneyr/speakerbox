@@ -52,7 +52,7 @@ test("undo returns state", () => {
 
 type Operation = ["cut" | "crop", number, number];
 
-test.concurrent.each([
+test.concurrent.each<Operation[][]>([
   [
     [
       ["cut", 4, 5],
@@ -74,7 +74,7 @@ test.concurrent.each([
       ["crop", 0, 11],
     ],
   ],
-])("%p", (operations: Operation[]) => {
+])("%p", (operations) => {
   const manager = new EditManager();
   manager.loadData(testBuffer);
 
@@ -83,8 +83,8 @@ test.concurrent.each([
     manager[type](start, end);
     const newBuffer = get(manager.audioBuffer);
     manager.undo();
-    expect(get(manager.audioBuffer)).toEqualAudioBuffer(oldBuffer);
+    expect(get(manager.audioBuffer)).toEqualAudioBuffer(oldBuffer!);
     manager.redo();
-    expect(get(manager.audioBuffer)).toEqualAudioBuffer(newBuffer);
+    expect(get(manager.audioBuffer)).toEqualAudioBuffer(newBuffer!);
   }
 });

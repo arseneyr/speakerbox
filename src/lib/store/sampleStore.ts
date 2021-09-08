@@ -1,28 +1,19 @@
-import { derived, Readable, Unsubscriber, writable } from "svelte/store";
+import { derived, Readable, writable } from "svelte/store";
 import { v4 } from "uuid";
-import { privateWritable, spyOnStore } from "$lib/utils";
+import { assert, privateWritable } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
-import type { MainSavedState, Player, StorageBackend } from "$lib/types";
 import { createDecodedPlayer, createEncodedPlayer } from "./player";
-
-const VERSION = "1.0";
-
-let backend: StorageBackend | null = null;
-
-const mainStore = writable<MainSavedState | null>(null);
-
-async function initialize(newBackend: StorageBackend): Promise<void> {
-  backend = newBackend;
-  let mainSavedState = await backend.getMainState();
-  if (!mainSavedState) {
-    mainSavedState = { version: VERSION, samples: [], settings: {} };
-  }
-  mainStore.set(mainSavedState);
-}
+import type { Player } from "$lib/types";
 
 const PLAYER_CREATE_QUEUE_DEPTH = 2;
+
+interface SampleStoreOpts {
+  readonly data: ArrayBuffer | Blob | AudioBuffer;
+  readonly id?: string;
+  readonly title?: string;
+}
 
 class SampleStore {
   public readonly title = writable<string | null>(null);
@@ -32,13 +23,15 @@ class SampleStore {
   private readonly _encodedAudio = writable<ArrayBuffer | null>(null);
   private readonly _decodedAudio = writable<AudioBuffer | null>(null);
 
-  public readonly player = spyOnStore<Player | null, Readable<Player | null>>(
-    null,
-    derived(
-      [this._encodedAudio, this._decodedAudio],
-      this._createPlayer.bind(this),
-      null
-    )
+  public readonly player = derived<
+    [Readable<ArrayBuffer | null>, Readable<AudioBuffer | null>],
+    Player | null
+  >(
+    [this._encodedAudio, this._decodedAudio],
+    (...args) => {
+      this._createPlayer(...args);
+    },
+    null
   );
 
   public readonly audioBuffer = derived(
@@ -47,11 +40,7 @@ class SampleStore {
     null
   );
 
-  public constructor(
-    data: ArrayBuffer | Blob | AudioBuffer,
-    id?: string,
-    title?: string
-  ) {
+  public constructor({ data, id, title }: SampleStoreOpts) {
     this.id = id ?? v4();
     this.title.set(title ?? null);
 
@@ -64,9 +53,7 @@ class SampleStore {
     }
   }
 
-  public destroy(): void {
-    this.player._val?.destroy();
-  }
+  // public destroy(): void {}
 
   public setAudioBuffer(buffer: AudioBuffer): void {
     this._decodedAudio.set(buffer);
@@ -83,31 +70,36 @@ class SampleStore {
 
   private async _createPlayer(
     [encoded, decoded]: [ArrayBuffer | null, AudioBuffer | null],
-    set: (val: Player) => void
+    set: (val: Player | null) => void
   ) {
     this._playerCreateAbort?.abort();
     this._playerCreateAbort = null;
+    let player: Player | null = null;
     if (encoded) {
       try {
         this._playerCreateAbort = new AbortController();
-        const player = await SampleStore._playerCreateQueue.add(
-          () => createEncodedPlayer(encoded, this._playerCreateAbort.signal),
+        player = await SampleStore._playerCreateQueue.add(
+          () => (
+            assert(this._playerCreateAbort?.signal, "abort signal is null"),
+            createEncodedPlayer(encoded, this._playerCreateAbort.signal)
+          ),
           { signal: this._playerCreateAbort.signal }
         );
-        set(player);
       } catch (e) {
         if (e.name !== "AbortError") {
           throw e;
         }
       }
     } else if (decoded) {
-      set(createDecodedPlayer(decoded));
-    } else {
-      set(null);
+      player = createDecodedPlayer(decoded);
+    }
+    set(player);
+    if (player) {
+      return player.destroy.bind(player);
     }
   }
 
-  private _decodePromise = null;
+  private _decodePromise: PCancelable<AudioBuffer> | null = null;
   private _setDecodedAudio(
     [encoded, decoded]: [ArrayBuffer | null, AudioBuffer | null],
     set: (val: AudioBuffer | null) => void

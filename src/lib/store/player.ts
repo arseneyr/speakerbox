@@ -13,7 +13,7 @@ function createEncodedPlayer(
   return new Promise((resolve, reject) => {
     const audio = new Audio(URL.createObjectURL(new Blob([buffer])));
     function onAbort() {
-      audio.oncanplaythrough = undefined;
+      audio.oncanplaythrough = null;
       audio.src = "";
       // audio.removeAttribute("src");
       reject(new AbortError());
@@ -49,6 +49,7 @@ function createEncodedPlayer(
 
 function createDecodedPlayer(buffer: AudioBuffer): Player {
   let source: AudioBufferSourceNode;
+  const playing = privateWritable(false);
   return {
     play() {
       if (source) {
@@ -58,16 +59,16 @@ function createDecodedPlayer(buffer: AudioBuffer): Player {
       source = getAudioContext().createBufferSource();
       source.buffer = buffer;
       source.connect(getAudioContext().destination);
-      source.onended = () => this.playing._set(false);
-      this.playing._set(true);
+      source.onended = () => playing._set(false);
+      playing._set(true);
       source.start();
     },
     stop() {
-      this.playing._set(false);
+      playing._set(false);
       source?.stop();
     },
     duration: buffer.duration,
-    playing: privateWritable(false),
+    playing,
     destroy() {
       this.stop();
       source.disconnect();

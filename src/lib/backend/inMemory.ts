@@ -18,7 +18,7 @@ function setMainState(state: MainSavedState) {
 }
 
 function getSampleState(id: string) {
-  return Promise.resolve(sampleState.get(id));
+  return Promise.resolve(sampleState.get(id) ?? null);
 }
 
 function setSampleState(state: SampleSavedState) {
@@ -27,7 +27,7 @@ function setSampleState(state: SampleSavedState) {
 }
 
 function getSampleData(id: string) {
-  return Promise.resolve(sampleData.get(id));
+  return Promise.resolve(sampleData.get(id) ?? null);
 }
 
 function setSampleData(id: string, data: ArrayBuffer | AudioBuffer) {
