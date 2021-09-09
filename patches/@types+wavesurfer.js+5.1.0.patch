@@ -1,0 +1,44 @@
+diff --git a/node_modules/@types/wavesurfer.js/src/plugin/regions.d.ts b/node_modules/@types/wavesurfer.js/src/plugin/regions.d.ts
+index b919189..19bdfb2 100755
+--- a/node_modules/@types/wavesurfer.js/src/plugin/regions.d.ts
++++ b/node_modules/@types/wavesurfer.js/src/plugin/regions.d.ts
+@@ -62,7 +62,7 @@ export class Region extends Observer {
+     getWidth(): number;
+     onDrag(delta: number): void;
+     onResize(delta: number, direction: "start" | "end"): void;
+-    play(start: number): void;
++    play(start?: number): void;
+     playLoop(start: number): void;
+     remove(): void;
+     render(): void;
+@@ -77,7 +77,7 @@ export class Region extends Observer {
+     readonly drag: boolean;
+     readonly edgeScrollWidth?: number | undefined;
+     readonly element: HTMLElement;
+-    readonly end: number;
++    end: number;
+     readonly firedIn: boolean;
+     readonly firedOut: boolean;
+     readonly formatTimeCallback?: ((start: number, end: number) => string) | undefined;
+@@ -98,7 +98,7 @@ export class Region extends Observer {
+     readonly scroll: boolean;
+     readonly scrollSpeed: number;
+     readonly scrollThreshold: number;
+-    readonly start: number;
++    start: number;
+     readonly style: WaveSurfer["util"]["style"];
+     readonly util: WaveSurfer["util"];
+     readonly wavesurfer: WaveSurfer;
+diff --git a/node_modules/@types/wavesurfer.js/src/util/observer.d.ts b/node_modules/@types/wavesurfer.js/src/util/observer.d.ts
+index 5e4ce52..afdaee3 100755
+--- a/node_modules/@types/wavesurfer.js/src/util/observer.d.ts
++++ b/node_modules/@types/wavesurfer.js/src/util/observer.d.ts
+@@ -11,7 +11,7 @@ export default class Observer {
+     /** Disable firing a list of events by name. */
+     setDisabledEventEmissions(eventNames: string[]): void;
+     /** Remove an event handler. */
+-    un(eventName: string, callback: EventHandler): void;
++    un(eventName: string, callback?: EventHandler): void;
+     /** Remove all event handlers. */
+     unAll(): void;
+ 
