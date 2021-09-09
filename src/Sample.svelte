@@ -8,19 +8,20 @@
   // setInterval(() => new AudioContext(), 10000);
 </script>
 
-<script>
+<script lang="ts">
   import SampleButton from "./components/SampleButton.svelte";
-  import { SampleStore } from "$lib/store";
+  import type { SampleStore } from "$lib/store";
   import { createEventDispatcher } from "svelte";
+  import { readable } from "svelte/store";
 
-  export let id;
+  export let sampleStore: SampleStore;
   export let editMode = false;
 
   const dispatch = createEventDispatcher();
-  let startTime;
+  let startTime: number | null = null;
 
-  const { title, player } = SampleStore.getSample(id);
-  $: playing = $player?.playing;
+  const { title, player } = sampleStore;
+  $: playing = $player?.playing ? $player.playing : readable(false);
 
   // Important to keep a long running player subscription. Otherwise,
   // the player gets destroyed and recreated on every click
@@ -28,12 +29,12 @@
 
   $: durationMs = $player && $player.duration * 1000;
   $: if (!$playing) {
-    startTime = undefined;
+    startTime = null;
   }
 </script>
 
 <SampleButton
-  title={$title}
+  title={$title ?? undefined}
   duration={durationMs}
   loading={!$player}
   {startTime}

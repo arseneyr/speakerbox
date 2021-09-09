@@ -5,7 +5,7 @@
     startAudioRecording,
   } from "$lib/recorder";
   import AddButton from "./components/AddButton.svelte";
-  import { SampleStore, mainStore } from "$lib/store";
+  import { getMainStore, SampleStore } from "$lib/store";
   import Button, { Icon, Label } from "@smui/button/styled";
   import Snackbar, { Actions } from "@smui/snackbar/styled";
   import IconButton from "@smui/icon-button/styled";
@@ -13,19 +13,22 @@
   import { createEventDispatcher } from "svelte";
   import { SampleAddTypes } from "$lib/types";
 
-  let stopRecording = null;
+  let stopRecording: (() => void) | null = null;
 
-  let snackbar;
-  let error;
+  let snackbar: any;
+  let error: string;
 
-  let lastSampleAddType;
+  const mainStore = getMainStore()!;
+  const { settings } = mainStore;
+
+  let lastSampleAddType: SampleAddTypes | undefined;
 
   const dispatch = createEventDispatcher();
 
-  $: if (!lastSampleAddType && $mainStore) {
-    onSampleAdd($mainStore.settings.lastSampleAddType);
-  } else if (lastSampleAddType && $mainStore) {
-    $mainStore.settings.lastSampleAddType = lastSampleAddType;
+  $: if (!lastSampleAddType && $settings?.lastSampleAddType) {
+    onSampleAdd($settings.lastSampleAddType);
+  } else if (lastSampleAddType && $settings) {
+    mainStore.updateSettings({ ...$settings, lastSampleAddType });
   }
 
   function onSampleAdd(type: SampleAddTypes) {
@@ -71,12 +74,12 @@
           error = "No audio detected. Did you mean to play something?";
           snackbar?.open();
         } else {
-          onNewSamples(
-            SampleStore.createNewSample(
-              buf,
-              `Recorded on ${new Date().toISOString().substring(0, 19)}`
-            ).id
-          );
+          onNewSamples([
+            new SampleStore({
+              data: buf,
+              title: `Recorded on ${new Date().toISOString().substring(0, 19)}`,
+            }),
+          ]);
         }
       });
     } catch (e) {
@@ -101,19 +104,13 @@
         multiple: true,
         description: "Audio or video files",
       });
-      const ids = files.map(
-        (file) => SampleStore.createNewSample(file, file.name).id
+      onNewSamples(
+        files.map((file) => new SampleStore({ data: file, title: file.name }))
       );
-
-      onNewSamples(ids);
     } catch (e) {}
   }
 
-  function onNewSamples(sampleIds: string | string[]) {
-    if (!(sampleIds instanceof Array)) {
-      sampleIds = [sampleIds];
-    }
-    $mainStore.samples = sampleIds.concat($mainStore.samples);
+  function onNewSamples(sampleIds: SampleStore[]) {
     dispatch("newSamples", sampleIds);
   }
 </script>

@@ -1,10 +1,14 @@
-<script>
-  import { SampleStore, anyPlaying } from "$lib/store";
+<script lang="ts">
+  import { getMainStore, SampleStore } from "$lib/store";
 
   import Button, { Icon } from "@smui/button/styled";
+  import { get } from "svelte/store";
 
   export let volume = 1;
-  let lastVolume = null;
+
+  const { anyPlaying, samples } = getMainStore()!;
+
+  let lastVolume: number | null = null;
 </script>
 
 <div class="root">
@@ -13,7 +17,10 @@
   </Button>
   <div class="visualizer" />
   <div class="bottomButtons">
-    <Button disabled={!$anyPlaying} on:click={() => SampleStore.stopAll()}>
+    <Button
+      disabled={!$anyPlaying}
+      on:click={() => $samples?.forEach((s) => get(s.player)?.stop())}
+    >
       <Icon class="material-icons">stop</Icon>
       Stop
     </Button>

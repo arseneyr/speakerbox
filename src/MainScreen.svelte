@@ -4,13 +4,22 @@
   import ControlPanel from "./components/ControlPanel.svelte";
   import Sample from "./Sample.svelte";
   import Editor from "./components/Editor.svelte";
-  import { mainStore } from "$lib/store";
+  import { getMainStore, MainStore, SampleStore } from "$lib/store";
   import NewSampleButton from "./NewSampleButton.svelte";
 
-  export let editing = [];
+  export let editing: string[] = [];
   export let editMode = false;
 
-  $: noSamples = !$mainStore?.samples.length;
+  let newSamples: SampleStore[] = [];
+
+  const mainStore = getMainStore()!;
+  const { samples } = mainStore;
+
+  $: noSamples = !$samples?.length;
+
+  function onNewSamples({ detail }: CustomEvent<SampleStore[]>) {
+    newSamples = newSamples.concat(detail);
+  }
 </script>
 
 <Grid>
@@ -18,10 +27,7 @@
     <a slot="link" href="javascript:;" on:click={() => alert("yo")}
       >Sync with Google Drive</a
     >
-    <NewSampleButton
-      slot="addButton"
-      on:newSamples={({ detail }) => (editing = detail.concat(editing))}
-    />
+    <NewSampleButton slot="addButton" on:newSamples={onNewSamples} />
 
     <Button
       slot="editButton"
@@ -39,20 +45,32 @@
     </Button>
   </ControlPanel>
   <!-- <slot name="samples" /> -->
-  {#if $mainStore}
-    {#each $mainStore.samples as id (id)}
-      {#if editing.includes(id)}
+  {#each newSamples as sampleStore (sampleStore.id)}
+    <Editor
+      {sampleStore}
+      on:close={() => {
+        mainStore.prepend(sampleStore);
+        newSamples = newSamples.filter(({ id }) => id !== sampleStore.id);
+      }}
+    />
+  {/each}
+  {#if $samples}
+    {#each $samples as sample (sample.id)}
+      {#if editing.includes(sample.id)}
         <Editor
-          {id}
-          on:close={() => (editing = editing.filter((i) => i !== id))}
+          sampleStore={sample}
+          on:close={() => (editing = editing.filter((i) => i !== sample.id))}
         />
       {:else}
         <Sample
-          {id}
+          sampleStore={sample}
           {editMode}
           on:delete={() =>
-            ($mainStore.samples = $mainStore.samples.filter((i) => i !== id))}
-          on:edit={() => (editing = editing.concat(id))}
+            $samples &&
+            mainStore.update(
+              $samples.map(({ id }) => id).filter((i) => i !== sample.id)
+            )}
+          on:edit={() => (editing = editing.concat(sample.id))}
         />
       {/if}
     {/each}

@@ -14,8 +14,8 @@
     | { icon: string; onClick: () => void }
     | undefined = undefined;
 
-  let transition;
-  let outDuration;
+  let transition: { duration: number } | null;
+  let outDuration: number;
 
   $: {
     const timeRemaining =
@@ -25,11 +25,16 @@
     outDuration = 0;
   }
 
-  function grow(node, { duration }) {
+  function grow(_: HTMLElement, { duration }: { duration: number }) {
     return {
       duration,
-      css: (t) => `clip-path: inset(0 ${100 - t * 100}% 0 0)`,
+      css: (t: number) => `clip-path: inset(0 ${100 - t * 100}% 0 0)`,
     };
+  }
+
+  function onIconButtonClick(event: MouseEvent) {
+    event.stopPropagation();
+    iconButton!.onClick();
   }
 </script>
 
@@ -50,10 +55,7 @@
       <IconButton
         class="material-icons iconButton"
         ripple={false}
-        on:click={(evt) => {
-          evt.stopPropagation();
-          iconButton.onClick();
-        }}>{iconButton.icon}</IconButton
+        on:click={onIconButtonClick}>{iconButton.icon}</IconButton
       >
     </div>
   {/if}

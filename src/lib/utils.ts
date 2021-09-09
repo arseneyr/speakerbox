@@ -1,4 +1,5 @@
-import { Readable, StartStopNotifier, Writable, writable } from "svelte/store";
+import type { Readable, StartStopNotifier, Writable } from "svelte/store";
+import { writable } from "svelte/store";
 import externalAssert from "assert";
 
 export function persistantWritable<T>(
@@ -65,54 +66,6 @@ class Deferred<T> {
   };
 }
 
-type SpiedStore<
-  T,
-  S extends Readable<T> | Writable<T> | PrivateWritable<T>
-> = S & { _val: T };
-
-// function spyOnStore<
-//   T,
-//   S extends Readable<T> | Writable<T> | PrivateWritable<T>
-// >(initialValue: T, store: S): SpiedStore<T, S> {
-//   let val = initialValue;
-//   const oldSubscribe = store.subscribe.bind(store);
-//   const newSubscribe = {
-//     subscribe: { value: (fn) => oldSubscribe((v) => ((val = v), fn(v))) },
-//   };
-//   const oldUpdate =
-//     "update" in store
-//       ? store.update.bind(store)
-//       : "_update" in store
-//       ? store._update.bind(store)
-//       : null;
-//   const newUpdate =
-//     "update" in store
-//       ? { update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
-//       : "_update" in store
-//       ? { _update: { value: (fn) => oldUpdate((v) => (val = fn(v))) } }
-//       : false;
-
-//   const oldSet =
-//     "set" in store
-//       ? store.set.bind(store)
-//       : "_set" in store
-//       ? store._set.bind(store)
-//       : null;
-//   const newSet =
-//     "set" in store
-//       ? { set: { value: (v) => ((val = v), oldSet(v)) } }
-//       : "_set" in store
-//       ? { _set: { value: (v) => ((val = v), oldSet(v)) } }
-//       : false;
-
-//   return Object.defineProperties(store, {
-//     _val: { get: () => val },
-//     ...newSubscribe,
-//     ...newUpdate,
-//     ...newSet,
-//   }) as S & { _val: T };
-// }
-
 function isTruthy<T>(val: T): val is NonNullable<T> {
   return Boolean(val);
 }
@@ -154,4 +107,3 @@ function assert(condition: unknown, message?: string): asserts condition {
 }
 
 export { privateWritable, Deferred, waitForValue, assert };
-export type { SpiedStore };

@@ -89,12 +89,14 @@ export enum SampleAddTypes {
   RECORD_DESKTOP = "RECORD_DESKTOP",
 }
 
+export interface SavedSettings {
+  lastSampleAddType?: SampleAddTypes;
+}
+
 export interface MainSavedState {
   version: string;
   samples: string[];
-  settings: {
-    lastSampleAddType?: SampleAddTypes;
-  };
+  settings: SavedSettings;
 }
 
 export interface SampleSavedState {

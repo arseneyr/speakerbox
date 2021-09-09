@@ -13,17 +13,17 @@
   export let options: Option[] = [];
   $: mainButton = options[0];
   let menuOpen = false;
-  let downButtonHandler = () => {
+  let downButtonHandler: (() => void) | undefined = () => {
     menuOpen = true;
   };
   $: if (menuOpen) {
     downButtonHandler = undefined;
   }
-  let menuEl;
+  let menuEl: any;
   $: if (menuEl) {
     try {
       // Disgusting rummaging inside the menu component
-      menuEl.$$.ctx[3].$$.ctx[8].flipCornerHorizontally();
+      // menuEl.$$.ctx[3].$$.ctx[8].flipCornerHorizontally();
     } catch (e) {}
   }
 </script>

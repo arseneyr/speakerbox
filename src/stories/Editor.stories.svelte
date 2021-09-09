@@ -6,14 +6,16 @@
   import { SampleStore } from "$lib/store";
   const samplePromise = fetch(wav)
     .then((b) => b.blob())
-    .then((blob) => SampleStore.createNewSample(blob, faker.lorem.sentence()));
+    .then(
+      (blob) => new SampleStore({ data: blob, title: faker.lorem.sentence() })
+    );
 </script>
 
 <Meta title="Editor" component={Editor} />
 
 <Template let:args>
   {#await samplePromise then sample}
-    <Editor {...args} id={sample.id} />
+    <Editor {...args} sampleStore={sample} />
   {/await}
 </Template>
 

@@ -3,15 +3,16 @@
   import MainScreen from "../MainScreen.svelte";
   import faker from "faker";
   import wav from "./sample.wav";
-  import { SampleStore, initialize, mainStore } from "$lib/store";
+  import { SampleStore, MainStore, setMainStore } from "$lib/store";
   import { inMemory } from "$lib/backend";
 
-  const mainStorePromise = initialize(inMemory);
+  const mainStore = new MainStore(inMemory());
+  setMainStore(mainStore);
   const fetchPromise = fetch(wav).then((b) => b.arrayBuffer());
   async function loadMainStore(titles) {
-    const [buf] = await Promise.all([fetchPromise, mainStorePromise]);
-    $mainStore.samples = titles.map(
-      (title) => SampleStore.createNewSample(buf, title).id
+    const [buf] = await Promise.all([fetchPromise, mainStore.init()]);
+    titles.forEach((title) =>
+      mainStore.prepend(new SampleStore({ data: buf, title }))
     );
   }
 </script>

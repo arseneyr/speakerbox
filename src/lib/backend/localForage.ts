@@ -7,6 +7,8 @@ import type {
 
 const MAIN_STATE_KEY = "speakerbox";
 
+let persistent: boolean | null = null;
+
 function getSampleStateKey(id: string) {
   return `sample-` + id;
 }
@@ -36,10 +38,17 @@ async function getSampleData(id: string) {
 }
 
 async function setSampleData(id: string, data: ArrayBuffer) {
+  if (persistent === false) {
+    persistent = true;
+    navigator.storage
+      .persist()
+      .then((p) => !p && console.error("persistence denied!"));
+  }
   return localForage.setItem(getSampleDataKey(id), data);
 }
 
 function create(): StorageBackend {
+  navigator.storage.persisted().then((p) => (persistent = p));
   return {
     getMainState,
     setMainState,

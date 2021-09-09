@@ -1,5 +1,6 @@
 import { getAudioContext } from "$lib/audioContext";
-import { AbortError, Player } from "$lib/types";
+import { AbortError } from "$lib/types";
+import type { Player } from "$lib/types";
 import { privateWritable } from "$lib/utils";
 
 function createEncodedPlayer(

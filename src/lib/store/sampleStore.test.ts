@@ -57,9 +57,6 @@ test("play/stop works", async () => {
 test("audioBuffer decoding is cancelled properly", async () => {
   const [encodedFirst] = WebAudioTestAPI.createEncodedBuffer();
   const sample = new SampleStore({ data: encodedFirst });
-  await expect(waitForValue(sample["_encodedAudio"])).resolves.toBe(
-    encodedFirst
-  );
 
   expect(getAudioContext().decodeAudioData).not.toHaveBeenCalled();
   const decodePromise = waitForValue(sample.audioBuffer);
@@ -67,7 +64,7 @@ test("audioBuffer decoding is cancelled properly", async () => {
 
   const [encodedSecond, decodedSecond] = WebAudioTestAPI.createEncodedBuffer();
 
-  sample["_encodedAudio"].set(encodedSecond);
+  sample["_source"].set({ encoded: encodedSecond, decoded: null });
   await expect(decodePromise).resolves.toBe(decodedSecond);
 });
 
@@ -82,7 +79,6 @@ test("setting audiobuffer does not cause decoding", () => {
 
 test("setting audiobuffer cancels properly", async () => {
   const sample = new SampleStore({ data: new ArrayBuffer(0) });
-  await waitForValue(sample["_encodedAudio"]);
   const audioBufferPromise = waitForValue(sample.audioBuffer);
   const newAudioBuffer = getAudioContext().createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);

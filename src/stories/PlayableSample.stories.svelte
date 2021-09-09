@@ -1,39 +1,39 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import Sample from "../Sample.svelte";
-  import { inMemory } from "$lib/backend";
-  import { SampleStore, initialize } from "$lib/store";
+  import { SampleStore } from "$lib/store";
   import wav from "./sample.wav";
 
-  let store;
-  let staticStore;
+  let sampleStore;
 
-  initialize(inMemory);
+  // initialize(inMemory);
   fetch(wav)
     .then((b) => b.arrayBuffer())
-    .then((buf) => (staticStore = SampleStore.createNewSample(buf, "static")));
+    .then(
+      (buf) => (sampleStore = new SampleStore({ data: buf, title: "static" }))
+    );
 
-  document.ondragenter = (e) => e.preventDefault();
-  document.ondragover = (e) => e.preventDefault();
-  document.ondrop = (event) => {
-    event.preventDefault();
-    console.log(event.dataTransfer.files);
-    store = SampleStore.createNewSample(event.dataTransfer.files[0], "test");
-  };
+  // document.ondragenter = (e) => e.preventDefault();
+  // document.ondragover = (e) => e.preventDefault();
+  // document.ondrop = (event) => {
+  //   event.preventDefault();
+  //   console.log(event.dataTransfer.files);
+  //   store = SampleStore.createNewSample(event.dataTransfer.files[0], "test");
+  // };
 </script>
 
 <Meta title="Sample Button" component={Sample} />
 
-<Template>
+<!-- <Template>
   {#if store}
     <Sample id={store.id} />
   {/if}
-</Template>
+</Template> -->
 
-<Story name="Drag n Drop" />
+<!-- <Story name="Drag n Drop" /> -->
 
 <Story name="Static">
-  {#if staticStore}
-    <Sample id={staticStore.id} />
+  {#if sampleStore}
+    <Sample {sampleStore} />
   {/if}
 </Story>

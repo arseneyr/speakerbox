@@ -1,7 +1,13 @@
-import type { MainSavedState, Player, StorageBackend } from "$lib/types";
+import type {
+  MainSavedState,
+  Player,
+  SavedSettings,
+  StorageBackend,
+} from "$lib/types";
 import { assert } from "$lib/utils";
 import { getContext, setContext } from "svelte";
-import { derived, Readable, writable } from "svelte/store";
+import { derived, writable } from "svelte/store";
+import type { Readable, Unsubscriber } from "svelte/store";
 import { SampleStore } from "./sampleStore";
 
 const VERSION = "1.0";
@@ -32,11 +38,16 @@ function isMainStateValid(state: MainSavedState | null): boolean {
 
 class MainStore {
   private _mainState = writable<MainSavedState | null>(null);
-  private _sampleMap = new Map<string, SampleStore>();
+  private _sampleMap = new Map<
+    string,
+    { sample: SampleStore; subs: Unsubscriber[] }
+  >();
 
   public samples = derived(this._mainState, (state) =>
-    state?.samples.map((id) => this._sampleMap.get(id))
+    state?.samples.map((id) => this._sampleMap.get(id)!.sample)
   );
+
+  public settings = derived(this._mainState, (state) => state?.settings);
 
   constructor(private readonly _backend: StorageBackend) {}
 
@@ -45,7 +56,7 @@ class MainStore {
   }
 
   public prepend(sample: SampleStore): void {
-    this._sampleMap.set(sample.id, sample);
+    this._addSample(sample);
     this._mainState.update(
       (state) => (
         assert(state, "main store init not complete"),
@@ -58,8 +69,7 @@ class MainStore {
   }
 
   public remove(id: string): void {
-    const deleted = this._sampleMap.delete(id);
-    assert(deleted, "delete called on non-existing sample");
+    this._removeSample(id);
 
     this._mainState.update(
       (state) => (
@@ -79,6 +89,10 @@ class MainStore {
         { ...state, samples: ids }
       )
     );
+  }
+
+  public updateSettings(settings: SavedSettings): void {
+    this._mainState.update((state) => state && { ...state, settings });
   }
 
   private _onMainStateUpdate(mainState: MainSavedState | null) {
@@ -107,8 +121,7 @@ class MainStore {
           assert(sampleState, `sampleState for id ${id} missing!`);
           return;
         }
-        this._sampleMap.set(
-          id,
+        this._addSample(
           new SampleStore({ data: sampleData, id, title: sampleState.title })
         );
       })
@@ -117,9 +130,38 @@ class MainStore {
     this._mainState.subscribe(this._onMainStateUpdate.bind(this));
   }
 
+  private _addSample(sample: SampleStore) {
+    let prevSavedData: ArrayBuffer | AudioBuffer | null = null;
+
+    const subs = [
+      sample.saveSource.subscribe((source) => {
+        if (prevSavedData !== source) {
+          prevSavedData = source;
+          source && this._backend.setSampleData(sample.id, source);
+        }
+      }),
+      sample.title.subscribe((title) =>
+        this._backend.setSampleState({
+          id: sample.id,
+          title: title ?? undefined,
+        })
+      ),
+    ];
+
+    this._sampleMap.set(sample.id, { sample, subs });
+  }
+
+  private _removeSample(id: string) {
+    const value = this._sampleMap.get(id);
+    assert(value, "sample not found!");
+
+    value.subs.forEach((f) => f());
+    this._sampleMap.delete(id);
+  }
+
   public anyPlaying: Readable<boolean> = derived(this._mainState, (_, s1) =>
     derived<Readable<Player | null>[], boolean>(
-      Array.from(this._sampleMap.values(), (sample) => sample.player),
+      Array.from(this._sampleMap.values(), ({ sample }) => sample.player),
       (players, s2) =>
         derived(
           players.filter((p): p is Player => !!p).map((p) => p.playing),
@@ -128,34 +170,5 @@ class MainStore {
     ).subscribe(s1)
   );
 }
-
-// function createAnyPlayingStore(): Readable<boolean> & {
-//   add(player: Readable<SimplePlayer | null>);
-//   delete(player: Readable<SimplePlayer>);
-// } {
-//   const setStore = writable(
-//     new Set<Readable<{ playing: Readable<boolean> } | null>>()
-//   );
-//   return Object.assign(
-//     derived<typeof setStore, boolean>(setStore, (playerSet, s1) =>
-//       derived(
-//         Array.from(playerSet) as any,
-//         (players: (SimplePlayer | null)[], s2) =>
-//           derived(
-//             players.filter((p) => p).map((p) => p.playing) as any,
-//             (playing: boolean[]) => playing.some((v) => v)
-//           ).subscribe(s2)
-//       ).subscribe(s1)
-//     ),
-//     {
-//       add(player: Readable<SimplePlayer | null>) {
-//         setStore.update((set) => set.add(player));
-//       },
-//       delete(player: Readable<SimplePlayer>) {
-//         setStore.update((set) => (set.delete(player), set));
-//       },
-//     }
-//   );
-// }
 
 export { MainStore, getMainStore, setMainStore };

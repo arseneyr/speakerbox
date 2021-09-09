@@ -13,12 +13,16 @@ export default defineConfig({
       $lib: resolve(__dirname, "/src/lib"),
     },
   },
+  define: {
+    "process.env": process.env,
+    global: "window",
+  },
   build: {
     rollupOptions: {
       treeshake: {
-        preset: 'smallest',
-        moduleSideEffects: module => !module.includes('browser-fs-access')
-      }
-    }
-  }
+        preset: "smallest",
+        moduleSideEffects: (module) => !module.includes("browser-fs-access"),
+      },
+    },
+  },
 });

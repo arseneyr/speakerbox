@@ -4,17 +4,16 @@
   import Tooltip, { Wrapper } from "@smui/tooltip/styled";
   import CloseButton from "./CloseButton.svelte";
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
-  import { SampleStore } from "$lib/store";
+  import type { SampleStore } from "$lib/store";
   import EditManager from "$lib/EditManager";
+  import type { Region } from "wavesurfer.js/src/plugin/regions";
 
-  export let id;
+  export let sampleStore: SampleStore;
   export function stop() {
     wavesurfer?.stop();
   }
 
   const dispatch = createEventDispatcher();
-
-  const sampleStore = SampleStore.getSample(id);
 
   const { title, audioBuffer } = sampleStore;
 
@@ -23,15 +22,15 @@
   $: $audioBuffer && editManager.loadData($audioBuffer);
 
   let paused = true;
-  let waveformEl;
-  let wavesurfer;
-  let region;
+  let waveformEl: HTMLDivElement;
+  let wavesurfer: WaveSurfer;
+  let region: Region | null = null;
   let ready = false;
 
-  let regionClose;
+  let regionClose: CloseButton;
 
   let currentTitleValue = $title;
-  let debounceTimer = null;
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   function updateTitle() {
     $title = currentTitleValue;
     debounceTimer = null;
@@ -83,32 +82,35 @@
 
   function onRegionClose() {
     regionClose.$destroy();
-    region.remove();
+    region!.remove();
     region = null;
     wavesurfer.enableDragSelection(regionConfig);
   }
 
-  function onNewRegion(newRegion) {
+  function onNewRegion(newRegion: Region) {
     region = newRegion;
     wavesurfer.disableDragSelection();
     function onPlaybackLeave() {
-      region.un("out", onPlaybackLeave);
+      newRegion.un("out", onPlaybackLeave);
       paused = true;
     }
-    region.handleLeftEl.addEventListener("click", (e) => {
+    newRegion.handleLeftEl!.addEventListener("click", (e) => {
       e.stopPropagation();
-      region.play();
+      newRegion.play();
       paused = false;
     });
-    region.handleRightEl.addEventListener("click", (e) => {
+    newRegion.handleRightEl!.addEventListener("click", (e) => {
       e.stopPropagation();
-      region.un("out");
-      region.on("out", onPlaybackLeave);
-      wavesurfer.play(Math.max(region.end - 1, region.start), region.end);
+      newRegion.un("out");
+      newRegion.on("out", onPlaybackLeave);
+      wavesurfer.play(
+        Math.max(newRegion.end - 1, newRegion.start),
+        newRegion.end
+      );
       paused = false;
     });
     regionClose = new CloseButton({
-      target: region.element,
+      target: newRegion.element,
     });
     regionClose.$on("click", (event) => {
       event.stopPropagation();
@@ -118,9 +120,9 @@
 
   function onEdit(type: "cut" | "crop") {
     if (type === "cut") {
-      editManager.cut(region.start, region.end);
+      editManager.cut(region!.start, region!.end);
     } else if (type === "crop") {
-      editManager.crop(region.start, region.end);
+      editManager.crop(region!.start, region!.end);
     }
     wavesurfer.stop();
     paused = true;
@@ -183,7 +185,7 @@
         wavesurfer.enableDragSelection(regionConfig);
         wavesurfer.on("region-created", () =>
           wavesurfer.on("region-update-end", (r) => {
-            wavesurfer.un("region-update-end");
+            (wavesurfer.un as any)("region-update-end");
             onNewRegion(r);
           })
         );
@@ -191,7 +193,7 @@
           paused = true;
           wavesurfer.stop();
         });
-        wavesurfer.un("ready");
+        (wavesurfer.un as any)("ready");
       });
     })();
 
