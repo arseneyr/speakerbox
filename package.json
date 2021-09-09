@@ -12,7 +12,7 @@
     "prepare": "npm run vite-workaround",
     "vite-workaround": "find node_modules/@material/ node_modules/wavesurfer.js/ -name \"*.js.map\" -type f -delete",
     "test": "jest",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package && rimraf node_modules/.cache node_modules/.vite"
   },
   "resolutions": {
     "@smui/**/@material/animation": "^12",
@@ -52,11 +52,10 @@
     "@types/dom-mediacapture-record": "^1.0.10",
     "@types/jest": "^27.0.1",
     "@types/uuid": "^8.3.1",
-    "@types/wavesurfer.js": "^5.1.0",
+    "@types/wavesurfer.js": "^5.2.0",
     "@typescript-eslint/eslint-plugin": "^4.31.0",
     "@typescript-eslint/parser": "^4.31.0",
     "babel-jest": "^27.1.1",
-    "babel-loader": "^8.2.2",
     "css-loader": "^5.2.6",
     "eslint": "^7.32.0",
     "eslint-plugin-svelte3": "^3.2.1",
@@ -64,11 +63,8 @@
     "jest": "^27.1.1",
     "prettier-plugin-svelte": "^2.4.0",
     "sass": "^1.39.0",
-    "sass-loader": "^10",
     "storybook-builder-vite": "^0.0.12",
-    "style-loader": "^2.0.0",
     "svelte": "3.42.4",
-    "svelte-loader": "^3.1.2",
     "svelte-preprocess": "^4.9.4",
     "ts-jest": "^27.0.5",
     "tslib": "^2.3.1",
@@ -99,6 +95,7 @@
     "p-queue": "https://github.com/arseneyr/p-queue#abortcontroller",
     "patch-package": "^6.4.7",
     "postinstall-postinstall": "^2.1.0",
+    "rimraf": "^3.0.2",
     "uuid": "^8.3.2",
     "wasm-media-encoders": "^0.6.3",
     "wavesurfer.js": "^5.1.0"
