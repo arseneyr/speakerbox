@@ -102,6 +102,7 @@ class SampleStore {
       };
     } else if (decoded) {
       const player = createDecodedPlayer(decoded);
+      set(player);
       return () => {
         player.destroy();
       };

@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { getMainStore, SampleStore } from "$lib/store";
+  import { setVolume } from "$lib/audioContext";
+
+  import { getMainStore } from "$lib/store";
 
   import Button, { Icon } from "@smui/button/styled";
   import { get } from "svelte/store";
@@ -9,6 +11,8 @@
   const { anyPlaying, samples } = getMainStore()!;
 
   let lastVolume: number | null = null;
+
+  $: setVolume(volume);
 </script>
 
 <div class="root">
