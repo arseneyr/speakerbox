@@ -42,6 +42,7 @@ class MainStore {
     string,
     { sample: SampleStore; subs: Unsubscriber[] }
   >();
+  private readonly _initPromise: Promise<void>;
 
   public samples = derived(this._mainState, (state) =>
     state?.samples.map((id) => this._sampleMap.get(id)!.sample)
@@ -49,10 +50,12 @@ class MainStore {
 
   public settings = derived(this._mainState, (state) => state?.settings);
 
-  constructor(private readonly _backend: StorageBackend) {}
+  constructor(private readonly _backend: StorageBackend) {
+    this._initPromise = this._loadMainState();
+  }
 
-  public async init(): Promise<void> {
-    return this._loadMainState();
+  public init(): Promise<void> {
+    return this._initPromise;
   }
 
   public prepend(sample: SampleStore): void {
@@ -68,18 +71,55 @@ class MainStore {
     );
   }
 
-  public remove(id: string): void {
-    this._removeSample(id);
-
+  public append(sample: SampleStore): void {
+    this._addSample(sample);
     this._mainState.update(
       (state) => (
         assert(state, "main store init not complete"),
         {
           ...state,
-          samples: state.samples.filter((s) => s !== id),
+          samples: state.samples.concat(sample.id),
         }
       )
     );
+  }
+
+  public remove(id: string): { undo: () => void; delete: () => void } {
+    const sample = this._sampleMap.get(id)?.sample;
+    assert(sample, "removing non-existant sample!");
+    this._removeSample(id);
+    let samplePosition = 0;
+
+    this._mainState.update((state) => {
+      assert(state, "main store init not complete");
+      samplePosition = state?.samples.indexOf(id) ?? 0;
+      return {
+        ...state,
+        samples: state.samples.filter((s) => s !== id),
+      };
+    });
+
+    return {
+      undo: () => {
+        this._addSample(sample);
+        this._mainState.update(
+          (state) => (
+            assert(state, "main store init not complete"),
+            {
+              ...state,
+              samples: [
+                ...state.samples.slice(0, samplePosition),
+                sample.id,
+                ...state.samples.slice(samplePosition),
+              ],
+            }
+          )
+        );
+      },
+      delete: () => {
+        this._backend.deleteSample(sample.id);
+      },
+    };
   }
 
   public update(ids: string[]): void {

@@ -70,18 +70,25 @@ function createEncodedPlayer(
 function createDecodedPlayer(buffer: AudioBuffer): Player {
   let source: AudioBufferSourceNode | undefined;
   const playing = privateWritable(false);
+  let removeFromAudioContext: (() => void) | undefined;
   return {
     play() {
       getAudioContext().resume();
       if (source) {
         source.onended = null;
         source.stop();
+        removeFromAudioContext?.();
+        removeFromAudioContext = undefined;
       }
       source = getAudioContext().createBufferSource();
       source.buffer = buffer;
-      addSourceToAudioContext(source);
+      removeFromAudioContext = addSourceToAudioContext(source);
       // source.connect(getAudioContext().destination);
-      source.onended = () => playing._set(false);
+      source.onended = () => {
+        playing._set(false);
+        removeFromAudioContext?.();
+        removeFromAudioContext = undefined;
+      };
       playing._set(true);
       source.start();
     },
@@ -93,7 +100,7 @@ function createDecodedPlayer(buffer: AudioBuffer): Player {
     playing,
     destroy() {
       this.stop();
-      source?.disconnect();
+      // source?.disconnect();
     },
   };
 }

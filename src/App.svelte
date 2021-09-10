@@ -11,16 +11,20 @@
   setMainStore(mainStore);
 
   if (import.meta.env.DEV) {
-    fetch(longSample)
-      .then((r) => r.arrayBuffer())
-      .then((buf) =>
+    (async function loadTestData() {
+      const samples = await waitForValue(mainStore.samples);
+      if (samples.length === 0) {
+        const data = await (await fetch(longSample)).arrayBuffer();
         Array.from({ length: 5 }, (_, i) =>
-          mainStore.prepend(
-            new SampleStore({ data: buf, title: `Test Sample #${i}` })
+          mainStore.append(
+            new SampleStore({ data, title: `Test Sample #${i}` })
           )
-        )
-      );
+        );
+      }
+    })();
   }
 </script>
 
-<Layout><MainScreen /></Layout>
+{#await mainStore.init() then _}
+  <Layout><MainScreen /></Layout>
+{/await}

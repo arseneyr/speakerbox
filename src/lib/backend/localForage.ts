@@ -4,6 +4,26 @@ import type {
   SampleSavedState,
   StorageBackend,
 } from "$lib/types";
+import { assert } from "$lib/utils";
+
+interface SerializedAudioBuffer {
+  numberOfChannels: number;
+  sampleRate: number;
+  length: number;
+}
+
+function isSerializedAudioBuffer(
+  input: ArrayBuffer | SerializedAudioBuffer | null
+): input is SerializedAudioBuffer {
+  return (
+    typeof input === "object" &&
+    input !== null &&
+    "numberOfChannels" in input &&
+    "sampleRate" in input &&
+    "length" in input &&
+    input["numberOfChannels"] < 20
+  );
+}
 
 const MAIN_STATE_KEY = "speakerbox";
 
@@ -15,6 +35,10 @@ function getSampleStateKey(id: string) {
 
 function getSampleDataKey(id: string) {
   return `data-` + id;
+}
+
+function getAudioBufferChannelKey(id: string, channel: number) {
+  return `buffer-${id}-channel-${channel}`;
 }
 
 async function getMainState() {
@@ -34,17 +58,75 @@ async function setSampleState(state: SampleSavedState) {
 }
 
 async function getSampleData(id: string) {
-  return localForage.getItem<ArrayBuffer | null>(getSampleDataKey(id));
+  const value = await localForage.getItem<
+    ArrayBuffer | SerializedAudioBuffer | null
+  >(getSampleDataKey(id));
+  if (isSerializedAudioBuffer(value)) {
+    const channelData = await Promise.all(
+      Array.from({ length: value.numberOfChannels }, (_, i) =>
+        localForage.getItem<Float32Array>(getAudioBufferChannelKey(id, i))
+      )
+    );
+    if (channelData.some((d) => !d)) {
+      assert(false, `missing channel data for sample ${id}`);
+      return null;
+    }
+    const audioBuffer = new AudioBuffer(value);
+    (channelData as Float32Array[]).forEach((data, i) =>
+      audioBuffer.copyToChannel(data, i)
+    );
+    return audioBuffer;
+  }
+
+  return value;
 }
 
-async function setSampleData(id: string, data: ArrayBuffer) {
+async function setSampleData(id: string, data: ArrayBuffer | AudioBuffer) {
   if (persistent === false) {
     persistent = true;
     navigator.storage
       .persist()
       .then((p) => !p && console.error("persistence denied!"));
   }
-  return localForage.setItem(getSampleDataKey(id), data);
+  if (data instanceof AudioBuffer) {
+    const channelData = Array.from({ length: data.numberOfChannels }, (_, i) =>
+      data.getChannelData(i)
+    );
+    await Promise.all(
+      channelData
+        .map<Promise<unknown>>((data, i) =>
+          localForage.setItem(getAudioBufferChannelKey(id, i), data)
+        )
+        .concat(
+          localForage.setItem(getSampleDataKey(id), {
+            numberOfChannels: data.numberOfChannels,
+            sampleRate: data.sampleRate,
+            length: data.length,
+          })
+        )
+    );
+  } else {
+    await localForage.setItem(getSampleDataKey(id), data);
+  }
+}
+
+async function deleteSample(id: string) {
+  const data = await localForage.getItem<
+    ArrayBuffer | SerializedAudioBuffer | null
+  >(getSampleDataKey(id));
+
+  const deleteArray = [
+    localForage.removeItem(getSampleDataKey(id)),
+    localForage.removeItem(getSampleStateKey(id)),
+  ];
+
+  if (isSerializedAudioBuffer(data)) {
+    for (let i = 0; i < data.numberOfChannels; ++i) {
+      deleteArray.push(localForage.removeItem(getAudioBufferChannelKey(id, i)));
+    }
+  }
+
+  await Promise.all(deleteArray);
 }
 
 function create(): StorageBackend {
@@ -58,6 +140,8 @@ function create(): StorageBackend {
 
     getSampleData,
     setSampleData,
+
+    deleteSample,
   };
 }
 

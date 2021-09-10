@@ -21,7 +21,7 @@ function addSourceToAudioContext(
         })
       : source;
   sourceNode.connect(gainNode!);
-  return sourceNode.disconnect.bind(source);
+  return () => sourceNode.disconnect();
 }
 
 function setVolume(volume: number): void {

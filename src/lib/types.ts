@@ -52,10 +52,10 @@ export interface StorageBackend {
   getSampleData(id: string): Promise<ArrayBuffer | AudioBuffer | null>;
   setSampleData(id: string, data: ArrayBuffer | AudioBuffer): Promise<unknown>;
 
+  deleteSample(id: string): Promise<unknown>;
+
   saveInvalidMainState?(state: unknown): Promise<unknown>;
 }
-
-type GConstructor<T> = new (...args: any[]) => T;
 
 // export function TypedEventTarget<
 //   TBase extends GConstructor<EventTarget>,

@@ -12,7 +12,7 @@
   async function loadMainStore(titles) {
     const [buf] = await Promise.all([fetchPromise, mainStore.init()]);
     titles.forEach((title) =>
-      mainStore.prepend(new SampleStore({ data: buf, title }))
+      mainStore.append(new SampleStore({ data: buf, title }))
     );
   }
 </script>

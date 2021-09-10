@@ -4,7 +4,7 @@ import { privateWritable } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
-import { createDecodedPlayer, createEncodedPlayer } from "./player";
+import { createDecodedPlayer, createEncodedPlayer } from "$lib/player";
 import type { Player } from "$lib/types";
 
 const PLAYER_CREATE_QUEUE_DEPTH = 2;

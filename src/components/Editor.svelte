@@ -1,6 +1,6 @@
 <script lang="ts">
   import Textfield from "@smui/textfield/styled";
-  import Button, { Group, Icon } from "@smui/button/styled";
+  import Button, { Group, Icon, Label } from "@smui/button/styled";
   import Tooltip, { Wrapper } from "@smui/tooltip/styled";
   import CloseButton from "./CloseButton.svelte";
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
@@ -30,26 +30,15 @@
   let regionClose: CloseButton;
 
   let currentTitleValue = $title;
-  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-  function updateTitle() {
+  function onSave() {
     $title = currentTitleValue;
-    debounceTimer = null;
-  }
-
-  function debounce() {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-    debounceTimer = setTimeout(updateTitle, 700);
-  }
-  onDestroy(() => {
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-    updateTitle();
     $workingBuffer && sampleStore.setAudioBuffer($workingBuffer);
-  });
-
+    dispatch("save");
+    dispatch("close");
+  }
+  function onCancel() {
+    dispatch("close");
+  }
   const commonHandleStyles = {
     backgroundColor: "#ebeee7",
     cursor: "pointer",
@@ -63,9 +52,6 @@
     },
   };
 
-  // $: wavesurfer &&
-  //   $workingBuffer &&
-  //   wavesurfer.loadDecodedBuffer($workingBuffer);
   $: if (wavesurfer && $workingBuffer) {
     wavesurfer.loadDecodedBuffer($workingBuffer);
   } else {
@@ -201,11 +187,10 @@
   });
 </script>
 
-<div class="root fullWidth" class:playing={!paused}>
+<div class="root fullWidth">
   <div class="topBar">
     <Textfield
       bind:value={currentTitleValue}
-      on:input={debounce}
       class="title"
       input$spellcheck="false"
       input$autocomplete="off"
@@ -213,7 +198,15 @@
       input$autocapitalize="off"
     />
 
-    <CloseButton on:click={() => dispatch("close")} />
+    <!-- <CloseButton on:click={() => dispatch("close")} /> -->
+    <div class="saveButtons">
+      <Button on:click={onSave}
+        ><Icon class="material-icons">save</Icon><Label>Save</Label></Button
+      >
+      <Button color="secondary" on:click={onCancel}
+        ><Icon class="material-icons">close</Icon><Label>Cancel</Label></Button
+      >
+    </div>
   </div>
   <div class="waveform" bind:this={waveformEl} />
   <div class="buttonPanel">
@@ -305,6 +298,9 @@
   .topBar > :global(.title > input) {
     @include typography.typography("headline5");
   }
+  .saveButtons {
+    margin: 16px 8px;
+  }
   .waveform > :global(wave) {
     overflow: unset !important;
   }
@@ -313,7 +309,7 @@
     position: relative;
   }
 
-  :root :global(.wavesurfer-region > button) {
+  .root :global(.wavesurfer-region > button) {
     @include icon-button.density(-5);
     position: absolute;
     top: 4px;
