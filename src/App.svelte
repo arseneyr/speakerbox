@@ -1,13 +1,22 @@
-<script>
+<script context="module" lang="ts">
+  import { GDriveBackend } from "$lib/backend/gdrive";
+
+  export function getGDrive() {
+    return getContext<GDriveBackend | undefined>("gdrive");
+  }
+</script>
+
+<script lang="ts">
   import MainScreen from "./MainScreen.svelte";
   import { MainStore, SampleStore, setMainStore } from "$lib/store";
-  import { localForage } from "$lib/backend";
-  import Layout from "./Layout.svelte";
   import longSample from "./stories/long_sample.mp3";
   import { waitForValue } from "$lib/utils";
+  import { getContext, setContext } from "svelte";
+  import type { StorageBackend } from "$lib/types";
 
-  // const backend = localForage();
-  const mainStore = new MainStore(localForage());
+  export let backend: StorageBackend;
+  backend instanceof GDriveBackend && setContext("gdrive", backend);
+  const mainStore = new MainStore(backend);
   setMainStore(mainStore);
 
   if (import.meta.env.DEV) {
@@ -26,5 +35,5 @@
 </script>
 
 {#await mainStore.init() then _}
-  <Layout><MainScreen /></Layout>
+  <MainScreen />
 {/await}

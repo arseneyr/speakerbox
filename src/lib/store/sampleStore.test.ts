@@ -19,7 +19,7 @@ import { getAudioContext } from "$lib/audioContext";
 //   createEncodedPlayer: jest.fn(async () => ({ destroy: () => {} })),
 // }));
 
-jest.mock("./player");
+jest.mock("../player");
 
 beforeEach(() => {
   getAudioContext().decodeAudioData.mockClear();

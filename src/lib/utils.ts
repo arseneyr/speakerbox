@@ -1,5 +1,10 @@
-import type { Readable, StartStopNotifier, Writable } from "svelte/store";
-import { writable } from "svelte/store";
+import type {
+  Readable,
+  StartStopNotifier,
+  Unsubscriber,
+  Writable,
+} from "svelte/store";
+import { derived, writable } from "svelte/store";
 import externalAssert from "assert";
 
 export function persistantWritable<T>(
@@ -106,4 +111,65 @@ function assert(condition: unknown, message?: string): asserts condition {
   }
 }
 
-export { privateWritable, Deferred, waitForValue, assert };
+type Stores =
+  | Readable<any>
+  | [Readable<any>, ...Array<Readable<any>>]
+  | Array<Readable<any>>;
+type StoresValues<T> = T extends Readable<infer U>
+  ? U
+  : {
+      [K in keyof T]: T[K] extends Readable<infer U> ? U : never;
+    };
+
+function memoizedDerived<S extends Stores, T>(
+  stores: S,
+  fn: (values: StoresValues<S>) => T,
+  initial_value?: T
+): Readable<T>;
+
+function memoizedDerived<S extends Stores, T>(
+  stores: S,
+  fn: (values: StoresValues<S>, set: (value: T) => void) => Unsubscriber | void,
+  initial_value?: T
+): Readable<T>;
+
+function memoizedDerived<S extends Stores, T>(
+  stores: S,
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  fn: Function,
+  initial_value?: T
+): Readable<T> {
+  const single = !Array.isArray(stores);
+  const auto = fn.length < 2;
+  let prevValues: Array<Readable<any> | undefined> = single
+    ? [undefined]
+    : Array.from(stores, () => undefined);
+  let savedResult: T;
+  let cleanup: Unsubscriber | undefined;
+
+  return derived(
+    stores,
+    (values, set) => {
+      const valueArray: Array<Readable<any>> = single ? [values] : values;
+      const newSet: typeof set = (v) => {
+        savedResult = v;
+        set(v);
+      };
+      if (valueArray.some((v, i) => v !== prevValues[i])) {
+        cleanup?.();
+        prevValues = valueArray;
+        const result = fn(single ? valueArray[0] : valueArray, newSet);
+        if (auto) {
+          newSet(result);
+        } else {
+          cleanup = typeof result === "function" ? result : undefined;
+        }
+      } else {
+        set(savedResult);
+      }
+    },
+    initial_value
+  );
+}
+
+export { privateWritable, Deferred, waitForValue, assert, memoizedDerived };

@@ -7,6 +7,8 @@
   import { getMainStore, SampleStore } from "$lib/store";
   import NewSampleButton from "./NewSampleButton.svelte";
   import Snackbar, { Actions } from "@smui/snackbar/styled";
+  import { getGDrive } from "./App.svelte";
+  import { readable } from "svelte/store";
 
   export let editing = new Set<string>();
   export let editMode = false;
@@ -14,12 +16,18 @@
   let newSamples: SampleStore[] = [];
 
   const mainStore = getMainStore()!;
+  const gDrive = getGDrive();
+  // const signIn = gDrive?.signIn ?? (() => alert("noooo"));
+  $: isSignedIn = gDrive?.isSignedIn ?? readable(false);
   const { samples } = mainStore;
 
   $: noSamples = !$samples?.length;
 
   function onNewSamples({ detail }: CustomEvent<SampleStore[]>) {
     newSamples = detail.concat(newSamples);
+  }
+  function signIn() {
+    gDrive ? gDrive.signIn() : alert("noooooo");
   }
 
   let snackbar: any;
@@ -45,9 +53,18 @@
 
 <Grid>
   <ControlPanel>
-    <a slot="link" href="javascript:;" on:click={() => alert("yo")}
-      >Sync with Google Drive</a
-    >
+    <svelte:fragment slot="link">
+      {#if gDrive}
+        {#if !$isSignedIn}<a
+            class="gDriveLabel"
+            href="javascript:;"
+            on:click={signIn}>Sync with Google Drive</a
+          >
+        {:else}
+          <span class="gDriveLabel">Synced with Google Drive</span>
+        {/if}
+      {/if}
+    </svelte:fragment>
     <NewSampleButton slot="addButton" on:newSamples={onNewSamples} />
 
     <Button
@@ -124,7 +141,7 @@
   :global(.snackbarSurface > span) {
     color: white;
   }
-  a {
+  .gDriveLabel {
     @include typography.typography("subtitle2");
   }
 </style>

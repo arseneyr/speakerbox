@@ -1920,6 +1920,26 @@
   dependencies:
     tslib "^2.1.0"
 
+"@material/dialog@^11.0.0", "@material/dialog@^12":
+  version "12.0.0"
+  resolved "https://registry.yarnpkg.com/@material/dialog/-/dialog-12.0.0.tgz#a6135f9020ebaa1a22739f4ea528b7a90a40f0cb"
+  integrity sha512-LusDwYTmZwmHEIFmoL0LC0W/uotHgGxbvXZY30BUF33IgxKc7e/NC9Tr8nmEAHLfVpaInusEn9bqPckvKfyD+w==
+  dependencies:
+    "@material/animation" "^12.0.0"
+    "@material/base" "^12.0.0"
+    "@material/button" "^12.0.0"
+    "@material/dom" "^12.0.0"
+    "@material/elevation" "^12.0.0"
+    "@material/feature-targeting" "^12.0.0"
+    "@material/icon-button" "^12.0.0"
+    "@material/ripple" "^12.0.0"
+    "@material/rtl" "^12.0.0"
+    "@material/shape" "^12.0.0"
+    "@material/theme" "^12.0.0"
+    "@material/touch-target" "^12.0.0"
+    "@material/typography" "^12.0.0"
+    tslib "^2.1.0"
+
 "@material/dom@^11.0.0", "@material/dom@^12", "@material/dom@^12.0.0":
   version "12.0.0"
   resolved "https://registry.yarnpkg.com/@material/dom/-/dom-12.0.0.tgz#fd6c5e37384580af403ad5e37dcd9257e480205d"
@@ -2359,6 +2379,16 @@
     "@material/dom" "^11.0.0"
     svelte "^3.35.0"
 
+"@smui/dialog@^4":
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/@smui/dialog/-/dialog-4.2.0.tgz#39c3e0ff1a297edb5e2f5960de026e41bd057e0b"
+  integrity sha512-pBzEoOzkHHzY58O1dDJ1ffRtD9A3IUJBe9tmLlf6LaiWMfkR1hE/V/bAgJIs5XRIZRjD5brlo83b7/4PpNFcYw==
+  dependencies:
+    "@material/button" "^11.0.0"
+    "@material/dialog" "^11.0.0"
+    "@material/dom" "^11.0.0"
+    "@smui/common" "^4.2.0"
+
 "@smui/floating-label@^4.2.0":
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/@smui/floating-label/-/floating-label-4.2.0.tgz#08e18d19f61967a6613be68e90028622913ef97c"
@@ -2432,7 +2462,7 @@
     "@material/dom" "^11.0.0"
     "@material/ripple" "^11.0.0"
 
-"@smui/select@^4.2.0":
+"@smui/select@^4":
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/@smui/select/-/select-4.2.0.tgz#2950ec9f272f748deefbbf6808600021c79302ae"
   integrity sha512-MVKKKxbgdlprXmVcPXZZHJLz3SjKrmg9/bmbOKMnmn4dHgsvfxeO/EijMu5pbv5J8OrbGERZU8BMVzAYwWmvVw==
@@ -3461,6 +3491,30 @@
   version "1.0.10"
   resolved "https://registry.yarnpkg.com/@types/dom-mediacapture-record/-/dom-mediacapture-record-1.0.10.tgz#3b96ead62f89b01eb2b9d5d080f29b2373f2493c"
   integrity sha512-8O84hHuVhMMLHLybf3y9SQpNcnQSuzVzcJaUNq9+4Ovb7fodS0aQXep4hyMtxd6fe/dyszbHFjFqtyawf4y46A==
+
+"@types/faker@^5.5.8":
+  version "5.5.8"
+  resolved "https://registry.yarnpkg.com/@types/faker/-/faker-5.5.8.tgz#6649adfdfdbb0acf95361fc48f2d0ca6e88bd1cf"
+  integrity sha512-bsl0rYsaZVHlZkynL5O04q6YXDmVjcid6MbOHWqvtE2WWs/EKhp0qchDDhVWlWyQXUffX1G83X9LnMxRl8S/Mw==
+
+"@types/gapi.auth2@^0.0.55":
+  version "0.0.55"
+  resolved "https://registry.yarnpkg.com/@types/gapi.auth2/-/gapi.auth2-0.0.55.tgz#88523c1b8d4866ea64ec9cbecb9ecc90b80b88aa"
+  integrity sha512-chmROsbo28jI5or0aRP8X3aBuWkq8jJHj75al/C0BhI/qum8v7XSxxQ9aLpA2ULPWgWSyh6orn9ZCaUSA4iQCA==
+  dependencies:
+    "@types/gapi" "*"
+
+"@types/gapi.drive@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@types/gapi.drive/-/gapi.drive-0.0.2.tgz#13e6917951b4e04cc7df81dccadb5fe7a23cc8cf"
+  integrity sha512-55Xkkcymw/WMOsKLArwb1OyHZDOewFuACBaUf5aB6u4ettYeXQJlxv+bphJH4kcstlfBQXFRiBGkUBbcpYXQsw==
+  dependencies:
+    "@types/gapi" "*"
+
+"@types/gapi@*", "@types/gapi@^0.0.41":
+  version "0.0.41"
+  resolved "https://registry.yarnpkg.com/@types/gapi/-/gapi-0.0.41.tgz#c477ee4f0951c005869219fd10b456ae2bba437e"
+  integrity sha512-tmHO66z/f91JZCDqinj/nNvQEszsz/hBT4+MvCSKT5sDzl5Ld/oXZ8WaecCBjRLw2uWKUInUHM9MhEXWkOiNjw==
 
 "@types/glob-base@^0.3.0":
   version "0.3.0"

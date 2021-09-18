@@ -3,7 +3,7 @@ import testBackend from "../backend/test";
 import { waitForValue } from "$lib/utils";
 import { SampleStore } from "./sampleStore";
 
-jest.mock("./player");
+jest.mock("../player");
 
 const backend = testBackend();
 let store: MainStore;

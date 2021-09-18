@@ -5,6 +5,7 @@
 
   import Button, { Icon } from "@smui/button/styled";
   import { get } from "svelte/store";
+  import Settings from "./Settings.svelte";
 
   export let volume = 1;
 
@@ -12,12 +13,17 @@
 
   let lastVolume: number | null = null;
 
+  let showSettings = false;
+
   $: setVolume(volume);
 </script>
 
+<Settings bind:open={showSettings} />
 <div class="root">
   <Button class="settingsButton smallButton" color="secondary">
-    <Icon class="material-icons">settings</Icon>
+    <Icon class="material-icons" on:click={() => (showSettings = true)}
+      >settings</Icon
+    >
   </Button>
   <div class="visualizer" />
   <div class="bottomButtons">

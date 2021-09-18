@@ -4,8 +4,6 @@ let gainNode: GainNode | undefined;
 function getAudioContext(): AudioContext {
   if (!audioContext) {
     audioContext = new AudioContext();
-    gainNode = new GainNode(audioContext);
-    gainNode.connect(audioContext.destination);
     audioContext.onstatechange = () => console.log(audioContext!.state);
   }
   return audioContext;
@@ -14,21 +12,30 @@ function getAudioContext(): AudioContext {
 function addSourceToAudioContext(
   source: HTMLAudioElement | AudioBufferSourceNode
 ): () => void {
+  if (!gainNode) {
+    gainNode = new GainNode(getAudioContext(), { gain: _volume });
+    gainNode.connect(getAudioContext().destination);
+  }
   const sourceNode =
     source instanceof HTMLAudioElement
       ? new MediaElementAudioSourceNode(getAudioContext(), {
           mediaElement: source,
         })
       : source;
-  sourceNode.connect(gainNode!);
+  sourceNode.connect(gainNode);
   return () => sourceNode.disconnect();
 }
 
+let _volume = 1;
+
 function setVolume(volume: number): void {
-  getAudioContext();
+  if (!gainNode) {
+    _volume = volume;
+    return;
+  }
   volume === 0
-    ? (gainNode!.gain.value = 0)
-    : gainNode!.gain.exponentialRampToValueAtTime(volume, 0.1);
+    ? (gainNode.gain.value = 0)
+    : gainNode.gain.exponentialRampToValueAtTime(volume, 0.1);
 }
 
 export { getAudioContext, addSourceToAudioContext, setVolume };

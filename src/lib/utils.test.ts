@@ -1,4 +1,5 @@
-import { derived, Readable, writable } from "svelte/store";
+import { derived, readable, Readable, writable } from "svelte/store";
+import { memoizedDerived } from "./utils";
 
 test("high order stores", () => {
   const setStore = writable(new Set<Readable<{ inner: Readable<boolean> }>>());
@@ -22,6 +23,64 @@ test("high order stores", () => {
   inner.set(false);
   expect(subscriber).toHaveBeenLastCalledWith(false);
   expect(subscriber).toHaveBeenCalledTimes(3);
+});
+
+describe("memoizedDerived", () => {
+  test("single store", () => {
+    const source = writable(1);
+    const derivedFn = jest.fn((a) => a + 1);
+    const subscriber = jest.fn();
+
+    const derivedStore = memoizedDerived(source, derivedFn);
+    expect(derivedFn).not.toHaveBeenCalled();
+
+    const unsub = derivedStore.subscribe(subscriber);
+    expect(derivedFn).toHaveBeenCalledTimes(1);
+    expect(derivedFn).toHaveBeenCalledWith(1, expect.anything());
+    expect(subscriber).toHaveBeenCalledTimes(1);
+    expect(subscriber).toHaveBeenCalledWith(2);
+    unsub();
+    derivedStore.subscribe(subscriber);
+    expect(derivedFn).toHaveBeenCalledTimes(1);
+    expect(subscriber).toHaveBeenCalledTimes(2);
+    expect(subscriber).toHaveBeenLastCalledWith(2);
+    source.set(10);
+    expect(derivedFn).toHaveBeenCalledTimes(2);
+    expect(derivedFn).toHaveBeenLastCalledWith(10, expect.anything());
+    expect(subscriber).toHaveBeenCalledTimes(3);
+    expect(subscriber).toHaveBeenLastCalledWith(11);
+  });
+  test("multiple stores", () => {
+    const source1 = writable(1);
+    const source2 = readable(2);
+    const derivedFn = jest.fn(([a, b]) => a + b);
+    const subscriber = jest.fn();
+
+    const derivedStore = memoizedDerived([source1, source2], derivedFn);
+    expect(derivedFn).not.toHaveBeenCalled();
+
+    const unsub = derivedStore.subscribe(subscriber);
+    expect(derivedFn).toHaveBeenCalledTimes(1);
+    expect(derivedFn).toHaveBeenCalledWith(
+      expect.arrayContaining([1, 2]),
+      expect.anything()
+    );
+    expect(subscriber).toHaveBeenCalledTimes(1);
+    expect(subscriber).toHaveBeenCalledWith(3);
+    unsub();
+    derivedStore.subscribe(subscriber);
+    expect(derivedFn).toHaveBeenCalledTimes(1);
+    expect(subscriber).toHaveBeenCalledTimes(2);
+    expect(subscriber).toHaveBeenLastCalledWith(3);
+    source1.set(10);
+    expect(derivedFn).toHaveBeenCalledTimes(2);
+    expect(derivedFn).toHaveBeenLastCalledWith(
+      expect.arrayContaining([10, 2]),
+      expect.anything()
+    );
+    expect(subscriber).toHaveBeenCalledTimes(3);
+    expect(subscriber).toHaveBeenLastCalledWith(12);
+  });
 });
 
 // describe("spyOnStore", () => {

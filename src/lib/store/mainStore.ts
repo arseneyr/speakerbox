@@ -9,6 +9,7 @@ import { getContext, setContext } from "svelte";
 import { derived, writable } from "svelte/store";
 import type { Readable, Unsubscriber } from "svelte/store";
 import { SampleStore } from "./sampleStore";
+import { getAudioContext } from "$lib/audioContext";
 
 const VERSION = "1.0";
 
@@ -45,13 +46,18 @@ class MainStore {
   private readonly _initPromise: Promise<void>;
 
   public samples = derived(this._mainState, (state) =>
-    state?.samples.map((id) => this._sampleMap.get(id)!.sample)
+    state?.samples.map((id) => {
+      const mapValue = this._sampleMap.get(id);
+      assert(mapValue, `sample ${id} not found in map!`);
+      return mapValue.sample;
+    })
   );
 
   public settings = derived(this._mainState, (state) => state?.settings);
 
   constructor(private readonly _backend: StorageBackend) {
     this._initPromise = this._loadMainState();
+    // this.anyPlaying.subscribe(this._onAnyPlayingChange.bind(this));
   }
 
   public init(): Promise<void> {
@@ -118,6 +124,7 @@ class MainStore {
       },
       delete: () => {
         this._backend.deleteSample(sample.id);
+        sample.destroy();
       },
     };
   }
@@ -197,6 +204,31 @@ class MainStore {
 
     value.subs.forEach((f) => f());
     this._sampleMap.delete(id);
+  }
+
+  private _onAnyPlayingChange(anyPlaying: boolean) {
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    function waitForIdle() {
+      idleTimer && clearTimeout(idleTimer);
+      idleTimer = setTimeout(onIdle, 1500);
+    }
+    function onIdle() {
+      idleTimer = undefined;
+      document.addEventListener("mousemove", eventHandler);
+    }
+    function eventHandler() {
+      console.log("mouse moved!");
+      document.removeEventListener("mousemove", eventHandler);
+      getAudioContext().resume();
+      waitForIdle();
+    }
+    console.log(`anyPlaying: ${anyPlaying}`);
+    if (!anyPlaying) {
+      waitForIdle();
+    } else {
+      idleTimer && clearTimeout(idleTimer);
+      idleTimer = undefined;
+    }
   }
 
   public anyPlaying: Readable<boolean> = derived(this._mainState, (_, s1) =>

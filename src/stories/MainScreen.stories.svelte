@@ -1,10 +1,12 @@
-<script lang="ts">
+<script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import MainScreen from "../MainScreen.svelte";
   import faker from "faker";
   import wav from "./sample.wav";
   import { SampleStore, MainStore, setMainStore } from "$lib/store";
   import { inMemory } from "$lib/backend";
+  import { onDestroy } from "svelte";
+  import { get } from "svelte/store";
 
   const mainStore = new MainStore(inMemory());
   setMainStore(mainStore);
@@ -15,6 +17,9 @@
       mainStore.append(new SampleStore({ data: buf, title }))
     );
   }
+  onDestroy(() => {
+    get(mainStore.samples)?.forEach(({ id }) => mainStore.remove(id).delete());
+  });
 </script>
 
 <Meta title="MainScreen" component={MainScreen} />

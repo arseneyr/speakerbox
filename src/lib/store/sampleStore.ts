@@ -1,6 +1,6 @@
-import { derived, writable } from "svelte/store";
+import { derived, get, writable } from "svelte/store";
 import { v4 } from "uuid";
-import { privateWritable } from "$lib/utils";
+import { memoizedDerived, privateWritable } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
 import PCancelable, { CancelError } from "p-cancelable";
 import PQueue from "p-queue";
@@ -31,7 +31,7 @@ class SampleStore {
     decoded: AudioBuffer | null;
   }>({ encoded: null, decoded: null });
 
-  public readonly player = derived(
+  public readonly player = memoizedDerived(
     // [this._encodedAudio, this._decodedAudio],
     this._source,
     this._createPlayer.bind(this),
@@ -63,6 +63,11 @@ class SampleStore {
     }
   }
 
+  public destroy() {
+    this._abortPlayerCreate?.abort();
+    this._playerCreated && get(this.player)?.destroy();
+  }
+
   public setAudioBuffer(buffer: AudioBuffer): void {
     this._source.set({ encoded: null, decoded: buffer });
   }
@@ -73,6 +78,9 @@ class SampleStore {
     concurrency: PLAYER_CREATE_QUEUE_DEPTH,
   });
 
+  private _abortPlayerCreate: AbortController | undefined;
+  private _playerCreated = false;
+
   private _createPlayer(
     {
       encoded,
@@ -80,14 +88,18 @@ class SampleStore {
     }: { encoded: ArrayBuffer | null; decoded: AudioBuffer | null },
     set: (val: Player | null) => void
   ) {
+    console.log(
+      `creating player, ${SampleStore._playerCreateQueue.size} in queue`
+    );
     if (encoded) {
-      const abort = new AbortController();
+      const abort = (this._abortPlayerCreate = new AbortController());
       let player: Player | null = null;
       SampleStore._playerCreateQueue
         .add(() => createEncodedPlayer(encoded, abort.signal), {
           signal: abort.signal,
         })
         .then((p) => {
+          this._playerCreated = true;
           set(p);
           player = p;
         })
@@ -97,14 +109,18 @@ class SampleStore {
           }
         });
       return () => {
+        console.log("cancelling create!");
         abort.abort();
         player?.destroy();
+        this._playerCreated = false;
       };
     } else if (decoded) {
       const player = createDecodedPlayer(decoded);
+      this._playerCreated = true;
       set(player);
       return () => {
         player.destroy();
+        this._playerCreated = false;
       };
     }
     set(null);
