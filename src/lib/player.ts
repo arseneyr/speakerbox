@@ -9,16 +9,15 @@ import { privateWritable } from "$lib/utils";
 //   }
 // }
 
-function createEncodedPlayer(
-  buffer: ArrayBuffer,
-  abort?: AbortSignal
-): Promise<Player> {
+function createEncodedPlayer(blob: Blob, abort?: AbortSignal): Promise<Player> {
   if (abort?.aborted) {
     return Promise.reject(new AbortError());
   }
 
   return new Promise((resolve, reject) => {
-    const audio = new Audio(URL.createObjectURL(new Blob([buffer])));
+    // const audio = new Audio(URL.createObjectURL(new Blob([buffer])));
+    const audio = new Audio();
+    audio.srcObject = blob;
     let removeFromAudioContext: (() => void) | undefined;
     function onAbort() {
       audio.oncanplaythrough = null;

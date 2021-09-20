@@ -43,18 +43,23 @@ declare global {
 // }
 
 export interface StorageBackend {
-  getMainState(): Promise<MainSavedState | null>;
-  setMainState(state: MainSavedState): Promise<unknown>;
+  // getMainState(): Promise<unknown | null>;
+  // setMainState(state: unknown): Promise<unknown>;
+  getState(id: string): Promise<unknown | null>;
+  setState(id: string, state: unknown): Promise<unknown>;
+  deleteState(id: string): Promise<unknown>;
 
-  getSampleState(id: string): Promise<SampleSavedState | null>;
-  setSampleState(state: SampleSavedState): Promise<unknown>;
-
-  getSampleData(id: string): Promise<ArrayBuffer | AudioBuffer | null>;
-  setSampleData(id: string, data: ArrayBuffer | AudioBuffer): Promise<unknown>;
+  getSampleData(id: string): Promise<Blob | AudioBuffer | null>;
+  setSampleData(id: string, data: Blob | AudioBuffer): Promise<unknown>;
 
   deleteSample(id: string): Promise<unknown>;
 
   saveInvalidMainState?(state: unknown): Promise<unknown>;
+}
+
+export interface RemoteStorageBackend extends StorageBackend {
+  signedInUser: Readable<string | false | null>;
+  signIn(): Promise<void>;
 }
 
 // export function TypedEventTarget<

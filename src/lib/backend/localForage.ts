@@ -13,7 +13,7 @@ interface SerializedAudioBuffer {
 }
 
 function isSerializedAudioBuffer(
-  input: ArrayBuffer | SerializedAudioBuffer | null
+  input: Blob | SerializedAudioBuffer | null
 ): input is SerializedAudioBuffer {
   return (
     typeof input === "object" &&
@@ -26,6 +26,10 @@ function isSerializedAudioBuffer(
 }
 
 const MAIN_STATE_KEY = "speakerbox";
+
+function getStateKey(id: string) {
+  return `sb-state-` + id;
+}
 
 let persistent: boolean | null = null;
 
@@ -41,12 +45,16 @@ function getAudioBufferChannelKey(id: string, channel: number) {
   return `buffer-${id}-channel-${channel}`;
 }
 
-async function getMainState() {
-  return localForage.getItem<MainSavedState | null>(MAIN_STATE_KEY);
+async function getState(id: string) {
+  return localForage.getItem<unknown | null>(getStateKey(id));
 }
 
-async function setMainState(state: MainSavedState) {
-  return localForage.setItem(MAIN_STATE_KEY, state);
+async function setState(id: string, state: unknown) {
+  return localForage.setItem(getStateKey(id), state);
+}
+
+async function deleteState(id: string) {
+  return localForage.removeItem(getStateKey(id));
 }
 
 async function getSampleState(id: string) {
@@ -58,9 +66,9 @@ async function setSampleState(state: SampleSavedState) {
 }
 
 async function getSampleData(id: string) {
-  const value = await localForage.getItem<
-    ArrayBuffer | SerializedAudioBuffer | null
-  >(getSampleDataKey(id));
+  const value = await localForage.getItem<Blob | SerializedAudioBuffer | null>(
+    getSampleDataKey(id)
+  );
   if (isSerializedAudioBuffer(value)) {
     const channelData = await Promise.all(
       Array.from({ length: value.numberOfChannels }, (_, i) =>
@@ -81,7 +89,7 @@ async function getSampleData(id: string) {
   return value;
 }
 
-async function setSampleData(id: string, data: ArrayBuffer | AudioBuffer) {
+async function setSampleData(id: string, data: Blob | AudioBuffer) {
   if (persistent === false) {
     persistent = true;
     navigator.storage
@@ -111,9 +119,9 @@ async function setSampleData(id: string, data: ArrayBuffer | AudioBuffer) {
 }
 
 async function deleteSample(id: string) {
-  const data = await localForage.getItem<
-    ArrayBuffer | SerializedAudioBuffer | null
-  >(getSampleDataKey(id));
+  const data = await localForage.getItem<Blob | SerializedAudioBuffer | null>(
+    getSampleDataKey(id)
+  );
 
   const deleteArray = [
     localForage.removeItem(getSampleDataKey(id)),
@@ -132,11 +140,12 @@ async function deleteSample(id: string) {
 function create(): StorageBackend {
   navigator.storage.persisted().then((p) => (persistent = p));
   return {
-    getMainState,
-    setMainState,
+    getState,
+    setState,
+    deleteState,
 
-    getSampleState,
-    setSampleState,
+    // getSampleState,
+    // setSampleState,
 
     getSampleData,
     setSampleData,

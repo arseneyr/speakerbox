@@ -23,8 +23,11 @@ function getMainStore(): MainStore | undefined {
   return getContext<MainStore | undefined>(MAIN_STORE_KEY);
 }
 
-function isMainStateValid(state: MainSavedState | null): boolean {
-  if (state?.version !== VERSION) {
+function isMainStateValid(state: unknown | null): state is MainSavedState {
+  if (typeof state !== 'object' || state === null) {
+    return false
+  }
+  if ('version' in state && state?.version !== VERSION) {
     return false;
   }
   if (!Array.isArray(state.samples)) {

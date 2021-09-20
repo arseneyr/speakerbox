@@ -2,7 +2,7 @@ import { derived, get, writable } from "svelte/store";
 import { v4 } from "uuid";
 import { memoizedDerived, privateWritable } from "$lib/utils";
 import { getAudioContext } from "$lib/audioContext";
-import PCancelable, { CancelError } from "p-cancelable";
+import PCancelable, { CancelError, OnCancelFunction } from "p-cancelable";
 import PQueue from "p-queue";
 import { createDecodedPlayer, createEncodedPlayer } from "$lib/player";
 import type { Player } from "$lib/types";
@@ -10,13 +10,21 @@ import type { Player } from "$lib/types";
 const PLAYER_CREATE_QUEUE_DEPTH = 2;
 
 interface SampleStoreOpts {
-  readonly data: ArrayBuffer | Blob | AudioBuffer;
+  readonly data: Blob | AudioBuffer;
   readonly id?: string;
   readonly title?: string;
 }
 
-const decodeAudio = PCancelable.fn((arrayBuffer: ArrayBuffer) =>
-  getAudioContext().decodeAudioData(arrayBuffer.slice(0))
+const decodeAudio = PCancelable.fn(
+  async (blob: Blob, onCancel: OnCancelFunction) => {
+    let cancelled = false;
+    onCancel(() => (cancelled = true));
+    const arrayBuffer = await blob.arrayBuffer();
+    if (cancelled) {
+      throw new CancelError();
+    }
+    return getAudioContext().decodeAudioData(arrayBuffer.slice(0));
+  }
 );
 
 class SampleStore {
@@ -27,7 +35,7 @@ class SampleStore {
   // private readonly _encodedAudio = writable<ArrayBuffer | null>(null);
   // private readonly _decodedAudio = writable<AudioBuffer | null>(null);
   private readonly _source = writable<{
-    encoded: ArrayBuffer | null;
+    encoded: Blob | null;
     decoded: AudioBuffer | null;
   }>({ encoded: null, decoded: null });
 
@@ -54,10 +62,6 @@ class SampleStore {
 
     if (data instanceof AudioBuffer) {
       this._source.set({ encoded: null, decoded: data });
-    } else if (data instanceof Blob) {
-      data
-        .arrayBuffer()
-        .then((buf) => this._source.set({ encoded: buf, decoded: null }));
     } else {
       this._source.set({ encoded: data, decoded: null });
     }
@@ -82,10 +86,7 @@ class SampleStore {
   private _playerCreated = false;
 
   private _createPlayer(
-    {
-      encoded,
-      decoded,
-    }: { encoded: ArrayBuffer | null; decoded: AudioBuffer | null },
+    { encoded, decoded }: { encoded: Blob | null; decoded: AudioBuffer | null },
     set: (val: Player | null) => void
   ) {
     console.log(
@@ -127,10 +128,7 @@ class SampleStore {
   }
 
   private _setDecodedAudio(
-    {
-      encoded,
-      decoded,
-    }: { encoded: ArrayBuffer | null; decoded: AudioBuffer | null },
+    { encoded, decoded }: { encoded: Blob | null; decoded: AudioBuffer | null },
     set: (val: AudioBuffer | null) => void
   ) {
     if (decoded) {

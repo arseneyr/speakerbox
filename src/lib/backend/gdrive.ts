@@ -1,6 +1,5 @@
-import type { StorageBackend } from "$lib/types";
+import type { RemoteStorageBackend, StorageBackend } from "$lib/types";
 import { privateWritable } from "$lib/utils";
-import type { Readable } from "svelte/store";
 import { localForage } from ".";
 
 declare global {
@@ -38,9 +37,11 @@ async function initializeGapi(): Promise<void> {
     }
   });
   await new Promise<void>((resolve) =>
-    gapi.load("client", () => {
+    gapi.load("client:auth2", () => {
       resolve(
         gapi.client.init({
+          clientId: import.meta.env.VITE_GDRIVE_CLIENT_ID,
+          scope: "https://www.googleapis.com/auth/drive.appdata",
           discoveryDocs: [
             "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
           ],
@@ -50,36 +51,41 @@ async function initializeGapi(): Promise<void> {
   );
 }
 
-export class GDriveBackend extends EventTarget implements StorageBackend {
-  public readonly isSignedIn = privateWritable<boolean>(false);
+export class GDriveBackend extends EventTarget implements RemoteStorageBackend {
+  public readonly signedInUser = privateWritable<string | false | null>(null);
 
   private readonly _local = localForage();
 
-  public signIn() {
-    gapi.auth.authorize(
-      {
-        client_id: import.meta.env.VITE_GDRIVE_CLIENT_ID,
-        scope: "https://www.googleapis.com/auth/drive.appdata",
-        authuser: 0,
-      },
-      (token) => !token.error && this.isSignedIn._set(true)
-    );
+  constructor() {
+    super();
+    this._init();
   }
 
-  public static async initialize() {
+  private async _init() {
     await initializeGapi();
-    const ret = new GDriveBackend();
-    try {
-      gapi.auth.setToken(await silentLogin());
-      ret.isSignedIn._set(true);
-    } catch (e) {
-      if (e === "immediate_failed") {
-        ret.isSignedIn._set(false);
-      } else {
-        throw e;
-      }
-    }
+    console.log(gapi.auth2.getAuthInstance().isSignedIn.get());
+    // try {
+    //   gapi.auth.setToken(await silentLogin());
+    //   this.signedInUser._set(true);
+    // } catch (e) {
+    //   if (e === "immediate_failed") {
+    //     ret.isSignedIn._set(false);
+    //   } else {
+    //     throw e;
+    //   }
+    // }
   }
+
+  public async getState() {}
+  public async setState() {}
+  public async deleteState() {}
+  public async getSampleData() {
+    return null;
+  }
+  public async setSampleData() {}
+  public async deleteSample() {}
+
+  public async signIn() {}
 }
 
 // async function initialize(): Promise<GDriveBackend> {
@@ -99,4 +105,4 @@ export class GDriveBackend extends EventTarget implements StorageBackend {
 //   return { ...localForage(), signIn, isSignedIn };
 // }
 
-export default GDriveBackend.initialize;
+export default () => new GDriveBackend();

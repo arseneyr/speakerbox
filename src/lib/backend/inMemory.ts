@@ -1,36 +1,36 @@
-import type {
-  MainSavedState,
-  SampleSavedState,
-  StorageBackend,
-} from "$lib/types";
+import type { StorageBackend } from "$lib/types";
 
-let mainState: MainSavedState | null = null;
-const sampleState = new Map<string, SampleSavedState>();
-const sampleData = new Map<string, ArrayBuffer | AudioBuffer>();
+const state = new Map<string, unknown>();
+const sampleData = new Map<string, Blob | AudioBuffer>();
 
-function getMainState() {
-  return Promise.resolve(mainState);
+function getState(id: string) {
+  return Promise.resolve(state.get(id));
 }
 
-function setMainState(state: MainSavedState) {
-  mainState = state;
+function setState(id: string, newState: unknown) {
+  state.set(id, newState);
   return Promise.resolve();
 }
 
-function getSampleState(id: string) {
-  return Promise.resolve(sampleState.get(id) ?? null);
-}
-
-function setSampleState(state: SampleSavedState) {
-  sampleState.set(state.id, state);
+function deleteState(id: string) {
+  state.delete(id);
   return Promise.resolve();
 }
+
+// function getSampleState(id: string) {
+//   return Promise.resolve(sampleState.get(id) ?? null);
+// }
+
+// function setSampleState(state: SampleSavedState) {
+//   sampleState.set(state.id, state);
+//   return Promise.resolve();
+// }
 
 function getSampleData(id: string) {
   return Promise.resolve(sampleData.get(id) ?? null);
 }
 
-function setSampleData(id: string, data: ArrayBuffer | AudioBuffer) {
+function setSampleData(id: string, data: Blob | AudioBuffer) {
   sampleData.set(id, data);
   return Promise.resolve();
 }
@@ -42,10 +42,10 @@ function deleteSample(id: string) {
 
 function create(): StorageBackend {
   return {
-    getMainState,
-    setMainState,
-    getSampleState,
-    setSampleState,
+    getState,
+    setState,
+    deleteState,
+
     getSampleData,
     setSampleData,
     deleteSample,
