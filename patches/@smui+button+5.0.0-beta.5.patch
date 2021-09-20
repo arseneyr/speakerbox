@@ -1,0 +1,11 @@
+diff --git a/node_modules/@smui/button/styled.js b/node_modules/@smui/button/styled.js
+index bf29296..e9d3c74 100644
+--- a/node_modules/@smui/button/styled.js
++++ b/node_modules/@smui/button/styled.js
+@@ -1,4 +1,4 @@
+-import '../_index.scss';
++import './_index.scss';
+ export * from './index.js';
+ export { default } from './index.js';
+ //# sourceMappingURL=styled.js.map
+\ No newline at end of file

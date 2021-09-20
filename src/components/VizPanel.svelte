@@ -18,12 +18,16 @@
   $: setVolume(volume);
 </script>
 
-<Settings bind:open={showSettings} />
+{#if showSettings}
+  <Settings on:close={() => (showSettings = false)} />
+{/if}
 <div class="root">
-  <Button class="settingsButton smallButton" color="secondary">
-    <Icon class="material-icons" on:click={() => (showSettings = true)}
-      >settings</Icon
-    >
+  <Button
+    class="settingsButton smallButton"
+    color="secondary"
+    on:click={() => (showSettings = true)}
+  >
+    <Icon class="material-icons">settings</Icon>
   </Button>
   <div class="visualizer" />
   <div class="bottomButtons">

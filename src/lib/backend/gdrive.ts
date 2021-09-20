@@ -19,7 +19,7 @@ function silentLogin() {
   return new Promise<GoogleApiOAuth2TokenObject>((res, rej) => {
     gapi.auth.authorize(
       {
-        client_id: import.meta.env.VITE_GDRIVE_CLIENT_ID as string,
+        client_id: import.meta.env.VITE_GDRIVE_CLIENT_ID,
         scope: "https://www.googleapis.com/auth/drive.appdata",
         authuser: 0,
         immediate: true,
@@ -58,7 +58,7 @@ export class GDriveBackend extends EventTarget implements StorageBackend {
   public signIn() {
     gapi.auth.authorize(
       {
-        client_id: import.meta.env.VITE_GDRIVE_CLIENT_ID as string,
+        client_id: import.meta.env.VITE_GDRIVE_CLIENT_ID,
         scope: "https://www.googleapis.com/auth/drive.appdata",
         authuser: 0,
       },

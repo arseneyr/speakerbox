@@ -75,6 +75,9 @@ WebAudioTestAPI.createEncodedBuffer = () => {
   return [encodedData, decodedData];
 };
 
+// Workaround for web-audio-test-api not allowing naked constructors, which is
+// totally fine
+
 const OriginalAudioContext = AudioContext;
 const OriginalAudioBuffer = AudioBuffer;
 
@@ -86,6 +89,14 @@ global.AudioBuffer = function (options: Required<AudioBufferOptions>) {
   );
 } as any;
 global.AudioBuffer.prototype = OriginalAudioBuffer.prototype;
+
+global.GainNode = function (context: BaseAudioContext) {
+  return context.createGain();
+} as any;
+
+global.MediaStreamAudioDestinationNode = function (context: AudioContext) {
+  return context.createMediaStreamDestination();
+} as any;
 
 (global as any).AudioContext = function (
   ...args: ConstructorParameters<typeof AudioContext>
