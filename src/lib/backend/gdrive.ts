@@ -49,6 +49,7 @@ async function initializeGapi(): Promise<void> {
       );
     })
   );
+  console.log(gapi.client.drive);
 }
 
 export class GDriveBackend extends EventTarget implements RemoteStorageBackend {

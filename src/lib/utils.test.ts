@@ -1,5 +1,6 @@
 import { derived, readable, Readable, writable } from "svelte/store";
 import { memoizedDerived } from "./utils";
+import Automerge from "automerge";
 
 test("high order stores", () => {
   const setStore = writable(new Set<Readable<{ inner: Readable<boolean> }>>());
@@ -80,6 +81,22 @@ describe("memoizedDerived", () => {
     );
     expect(subscriber).toHaveBeenCalledTimes(3);
     expect(subscriber).toHaveBeenLastCalledWith(12);
+  });
+});
+
+describe("automerge", () => {
+  test("merging unrelated", () => {
+    const doc1 = Automerge.from({ a: 1 });
+    const doc2 = Automerge.from({ b: 2 }) as any;
+    expect(Automerge.merge(doc1, doc2)).toEqual({ a: 1, b: 2 });
+  });
+
+  test("combining arrays", () => {
+    const doc1 = Automerge.from({ a: [1] });
+    const doc2 = Automerge.from({ a: [2] });
+    const conflicts = Automerge.getConflicts(Automerge.merge(doc1, doc2), "a");
+
+    console.log(conflicts);
   });
 });
 

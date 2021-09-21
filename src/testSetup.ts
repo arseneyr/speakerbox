@@ -1,3 +1,7 @@
+import { TextEncoder, TextDecoder } from "util";
+
+process.env.DEV = "true";
+
 declare global {
   const WebAudioTestAPI: {
     createEncodedBuffer: () => [ArrayBuffer, AudioBuffer];
@@ -7,6 +11,9 @@ declare global {
     decodeAudioData: jest.Mock<Promise<AudioBuffer>, [ArrayBuffer]>;
   }
 }
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
 
 type TypedArray =
   | {
