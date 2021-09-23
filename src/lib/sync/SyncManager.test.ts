@@ -1,8 +1,8 @@
 import * as t from "io-ts";
 import { fold, isLeft } from "fp-ts/Either";
 import { pipe } from "fp-ts/function";
-import inMemory from "./backend/inMemory";
-import { privateWritable, waitForValue } from "./utils";
+import inMemory from "$lib/backend/inMemory";
+import { privateWritable, waitForValue } from "$lib/utils";
 import type SyncManager from "./SyncManager";
 
 function createRemoteBackend() {

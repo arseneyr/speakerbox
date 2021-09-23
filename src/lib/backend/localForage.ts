@@ -118,15 +118,12 @@ async function setSampleData(id: string, data: Blob | AudioBuffer) {
   }
 }
 
-async function deleteSample(id: string) {
+async function deleteSampleData(id: string) {
   const data = await localForage.getItem<Blob | SerializedAudioBuffer | null>(
     getSampleDataKey(id)
   );
 
-  const deleteArray = [
-    localForage.removeItem(getSampleDataKey(id)),
-    localForage.removeItem(getSampleStateKey(id)),
-  ];
+  const deleteArray = [localForage.removeItem(getSampleDataKey(id))];
 
   if (isSerializedAudioBuffer(data)) {
     for (let i = 0; i < data.numberOfChannels; ++i) {
@@ -150,7 +147,7 @@ function create(): StorageBackend {
     getSampleData,
     setSampleData,
 
-    deleteSample,
+    deleteSampleData,
   };
 }
 

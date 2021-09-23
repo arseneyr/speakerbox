@@ -35,7 +35,7 @@ function setSampleData(id: string, data: Blob | AudioBuffer) {
   return Promise.resolve();
 }
 
-function deleteSample(id: string) {
+function deleteSampleData(id: string) {
   sampleData.delete(id);
   return Promise.resolve();
 }
@@ -48,7 +48,7 @@ function create(): StorageBackend {
 
     getSampleData,
     setSampleData,
-    deleteSample,
+    deleteSampleData,
   };
 }
 

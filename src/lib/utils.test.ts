@@ -91,11 +91,22 @@ describe("automerge", () => {
     expect(Automerge.merge(doc1, doc2)).toEqual({ a: 1, b: 2 });
   });
 
-  test("combining arrays", () => {
+  test("combining new arrays", () => {
     const doc1 = Automerge.from({ a: [1] });
     const doc2 = Automerge.from({ a: [2] });
     const conflicts = Automerge.getConflicts(Automerge.merge(doc1, doc2), "a");
 
+    console.log(conflicts);
+  });
+
+  test("combining changed arrays", () => {
+    let doc1 = Automerge.from({ a: [] } as { a: number[] });
+    doc1 = Automerge.change(doc1, (doc) => {
+      doc.a.push(1);
+    });
+    const doc2 = Automerge.from({ a: [] });
+    const conflicts = Automerge.getConflicts(Automerge.merge(doc1, doc2), "a");
+    expect(conflicts).toBeDefined();
     console.log(conflicts);
   });
 });

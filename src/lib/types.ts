@@ -52,7 +52,7 @@ export interface StorageBackend {
   getSampleData(id: string): Promise<Blob | AudioBuffer | null>;
   setSampleData(id: string, data: Blob | AudioBuffer): Promise<unknown>;
 
-  deleteSample(id: string): Promise<unknown>;
+  deleteSampleData(id: string): Promise<unknown>;
 
   saveInvalidMainState?(state: unknown): Promise<unknown>;
 }
