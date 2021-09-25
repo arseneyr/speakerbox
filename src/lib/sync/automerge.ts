@@ -4,6 +4,9 @@ import * as t from "io-ts";
 let Automerge: typeof import("automerge");
 
 export async function loadAutomerge(): Promise<typeof Automerge> {
+  if (Automerge) {
+    return Automerge;
+  }
   Automerge = (await import("automerge")).default;
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore

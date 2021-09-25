@@ -1,4 +1,4 @@
-import { derived, get, Readable } from "svelte/store";
+import { get, Readable } from "svelte/store";
 import type {
   ILocalBackend,
   IRemoteBackend,
@@ -37,7 +37,7 @@ class SampleDataManager {
       revisionId,
       sampleData
     );
-    const remoteSyncPromise = this._signedIn()
+    const remoteSyncPromise = this._isSignedIn()
       ? this._remoteBackend.setSampleData(revisionId, sampleData)
       : Promise.resolve();
 
@@ -57,7 +57,7 @@ class SampleDataManager {
         throw new CancelError();
       }
       if (!sampleData) {
-        if (!this._signedIn()) {
+        if (!this._isSignedIn()) {
           throw new Error("No sample data!");
         }
         sampleData = await this._remoteBackend.getSampleData(id);
@@ -105,22 +105,9 @@ class SampleDataManager {
       );
       this._loading.set(revisionId, promise.cancel.bind(promise));
     }
-    // for (const [id, cancel] of this._loading) {
-    //   if (!mainState.sampleList.includes(id)) {
-    //     cancel();
-    //   }
-    // }
-    // this.sampleData._update((map) => {
-    //   for (const [id] of map) {
-    //     if (!mainState.sampleList.includes(id)) {
-    //       map.delete(id);
-    //     }
-    //   }
-    //   return map;
-    // });
   }
 
-  private _signedIn(): boolean {
+  private _isSignedIn(): boolean {
     return typeof get(this._remoteBackend.signedInUser) === "string";
   }
 }

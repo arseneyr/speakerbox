@@ -31,7 +31,7 @@ class StateManager {
 
   public readonly mainState = derived(
     this._localState,
-    this._derivedStore.bind(this)
+    this._derivedMainStore.bind(this)
   );
 
   constructor(
@@ -39,7 +39,7 @@ class StateManager {
     private readonly _remoteBackend: IRemoteBackend
   ) {}
 
-  public async init() {
+  public async init(): Promise<void> {
     const localState = await this._fetchLocalState();
 
     this._localState.set(
@@ -135,7 +135,7 @@ class StateManager {
     return ret;
   }
 
-  private _derivedStore(localState: InternalLocalState | undefined) {
+  private _derivedMainStore(localState: InternalLocalState | undefined) {
     if (!localState) {
       return null;
     }
