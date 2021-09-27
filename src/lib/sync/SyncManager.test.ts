@@ -20,50 +20,6 @@ function createRemoteBackend() {
   };
 }
 
-describe("AutomergeCodec", () => {
-  let Automerge: typeof import("automerge");
-  let MergableTestCodec: any;
-  const TestCodec = t.type({
-    hello: t.literal("foo"),
-  });
-
-  beforeAll(async () => {
-    const { loadAutomerge, AutomergeCodec } = await import("./SyncManager");
-    loadAutomerge();
-    MergableTestCodec = AutomergeCodec(TestCodec);
-    Automerge = (await import("automerge")).default;
-    jest.resetModules();
-  });
-
-  test("encodes/decodes properly", () => {
-    const doc = Automerge.from({ hello: "foo" });
-    const encoded = MergableTestCodec.encode(doc);
-    expect(encoded).toBeInstanceOf(Uint8Array);
-    // expect(isRight(either));
-    pipe(
-      MergableTestCodec.decode(encoded),
-      fold(
-        () => {
-          throw new Error();
-        },
-        (decodedDoc) => {
-          expect(decodedDoc).toEqual(doc);
-        }
-      )
-    );
-  });
-
-  test("invalid input causes error", () => {
-    expect(isLeft(MergableTestCodec.decode(new Uint8Array()))).toBe(true);
-  });
-  test("invalid schema causes error", () => {
-    const encoded = MergableTestCodec.encode(
-      Automerge.from({ hello: "bar" }) as any
-    );
-    expect(isLeft(MergableTestCodec.decode(encoded))).toBe(true);
-  });
-});
-
 describe("SyncManager", () => {
   let remoteBackend: ReturnType<typeof createRemoteBackend>;
   let SyncManager: typeof import("./SyncManager").default;

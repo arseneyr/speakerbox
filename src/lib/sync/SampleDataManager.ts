@@ -47,6 +47,20 @@ class SampleDataManager {
     ];
   }
 
+  public deleteSampleData(
+    revisionId: RevisionId
+  ): [Promise<unknown>, Promise<unknown>] {
+    const localSyncPromise = this._localBackend.deleteSampleData(revisionId);
+    const remoteSyncPromise = this._isSignedIn()
+      ? this._remoteBackend.deleteSampleData(revisionId)
+      : Promise.resolve();
+
+    return [
+      localSyncPromise,
+      Promise.all([localSyncPromise, remoteSyncPromise]),
+    ];
+  }
+
   private _load = PCancelable.fn(
     async (id: RevisionId, onCancel: PCancelable.OnCancelFunction) => {
       let cancelled = false;

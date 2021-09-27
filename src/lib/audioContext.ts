@@ -25,7 +25,7 @@ function setSink(deviceId: string): Promise<undefined> | undefined {
 
 // Potential workaround for this bug:
 // https://bugs.chromium.org/p/chromium/issues/detail?id=1157478#c8
-function playSilence() {}
+// function playSilence() {}
 
 function addSourceToAudioContext(
   source: HTMLAudioElement | AudioBufferSourceNode

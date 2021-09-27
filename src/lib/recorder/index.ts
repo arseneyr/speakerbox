@@ -3,6 +3,8 @@ import { Deferred } from "$lib/utils";
 
 declare global {
   interface MediaTrackConstraints {
+    noiseSuppression: boolean;
+    autoGainControl?: boolean;
     googNoiseSuppression?: boolean;
     googAutoGainControl?: boolean;
     mozNoiseSuppression?: boolean;
