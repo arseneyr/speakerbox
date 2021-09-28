@@ -1,4 +1,4 @@
-import { derived, writable } from "svelte/store";
+import { derived, get, writable } from "svelte/store";
 import {
   ILocalBackend,
   IRemoteBackend,
@@ -12,18 +12,71 @@ import {
   MergeableMainState,
   REMOTE_STATE_KEY,
 } from "./types";
-import { loadAutomerge } from "./automerge";
-import type AutomergeType from "automerge";
-import type { Patch } from "automerge";
+import {
+  loadAutomerge,
+  mergeableChange,
+  mergeableClone,
+  mergeableInit,
+  mergeableMerge,
+} from "./automerge";
 import { assert } from "$lib/utils";
 import { pipe } from "fp-ts/lib/function";
-import { getOrElse, getOrElseW, map } from "fp-ts/lib/Either";
+import { getOrElseW } from "fp-ts/lib/Either";
 
-let Automerge: typeof AutomergeType;
+type InternalCachedState = LocalStateCached & {
+  cachedState: MergeableMainState;
+};
+type InternalLocalState = LocalStateFull | InternalCachedState;
 
-type InternalLocalState =
-  | LocalStateFull
-  | (LocalStateCached & { cachedState: MergeableMainState });
+function upgradeLocalState(
+  localState: LocalStateFull,
+  remoteState: MergeableMainState | null,
+  userId: string
+): { localState: InternalCachedState; remoteState: MergeableMainState } {
+  let newRemoteState: MergeableMainState, newCachedState: MergeableMainState;
+  if (!remoteState) {
+    newCachedState = mergeableInit(localState.mainState);
+    newRemoteState = mergeableClone(newCachedState);
+  } else {
+    assert(
+      remoteState.sampleList.filter((id) =>
+        localState.mainState.sampleList.includes(id)
+      ).length === 0,
+      "duplicate samples in remote/local sample list!"
+    );
+    assert(
+      Object.keys(remoteState.samples).filter((id) =>
+        Object.keys(localState.mainState.samples).includes(id)
+      ).length === 0,
+      "duplicate samples in remote/local sample map!"
+    );
+
+    newRemoteState = mergeableChange(remoteState, (state) => {
+      state.sampleList.push(...localState.mainState.sampleList);
+      for (const [k, v] of Object.entries(localState.mainState.samples)) {
+        state.samples[k] = v;
+      }
+    });
+    newCachedState = mergeableClone(newRemoteState);
+  }
+
+  return {
+    localState: {
+      version: localState.version,
+      settings: localState.settings,
+      userId,
+      cachedState: newCachedState,
+    },
+    remoteState: newRemoteState,
+  };
+}
+
+function mergeCachedAndRemoteStates(
+  cachedState: MergeableMainState,
+  remoteState: MergeableMainState
+): { cachedState: MergeableMainState; remoteState: MergeableMainState } {
+  const newRemoteState = mergeableMerge(remoteState, cachedState);
+}
 
 class StateManager {
   private readonly _localState = writable<InternalLocalState>();
@@ -40,99 +93,57 @@ class StateManager {
   ) {}
 
   public async init(): Promise<void> {
-    const localState = await this._fetchLocalState();
+    const fetchedLocalState = await this._fetchLocalState();
+    let internalLocalState: InternalLocalState;
+    if (!fetchedLocalState) {
+      internalLocalState = StateManager._createNewLocalState();
+      await this._localBackend.setState(LOCAL_STATE_KEY, internalLocalState);
+    } else if (LocalStateCached.is(fetchedLocalState)) {
+      const cachedState = await this._fetchCachedState(
+        fetchedLocalState.userId
+      );
+      if (!cachedState) {
+        internalLocalState = StateManager._createNewLocalState();
+        await this._localBackend.setState(LOCAL_STATE_KEY, internalLocalState);
+      } else {
+        internalLocalState = { ...fetchedLocalState, cachedState };
+      }
+    } else {
+      internalLocalState = fetchedLocalState;
+    }
 
-    this._localState.set(
-      await pipe(
-        localState,
-        map(async (state) => {
-          if (LocalStateCached.is(state)) {
-            return pipe(
-              await this._fetchCachedState(state.userId),
-              map((cachedState) => ({ ...state, cachedState })),
-              getOrElseW((err) => {
-                console.log(err);
-                return StateManager._createNewLocalState();
-              })
-            );
-          }
-          return state;
-        }),
-        getOrElseW((err) => {
-          console.log(err);
-          return StateManager._createNewLocalState();
-        })
-      )
-    );
-
+    this._localState.set(internalLocalState);
     this._remoteBackend.signedInUser.subscribe(this._onSignIn.bind(this));
   }
 
   public updateMainState(
     updateFn: (state: MainState) => void
   ): [Promise<unknown>, Promise<unknown>] {
-    let localSyncPromise!: Promise<unknown>;
-    let remoteSyncPromise: Promise<unknown> | undefined;
+    let syncRemoteState = false;
     this._localState.update((state) => {
       if (LocalStateFull.is(state)) {
         updateFn(state.mainState);
-        localSyncPromise = this._localBackend.setState(LOCAL_STATE_KEY, state);
       } else {
-        state.cachedState = this._changeState(state.cachedState, updateFn);
-        localSyncPromise = this._localBackend.setState(
-          state.userId,
-          MergeableMainState.encode(state.cachedState)
-        );
+        state.cachedState = mergeableChange(state.cachedState, updateFn);
         this._remoteState.update((remoteState) => {
           if (remoteState) {
-            remoteState = this._mergeState(remoteState, state.cachedState);
-            remoteSyncPromise = this._remoteBackend.setState(
-              REMOTE_STATE_KEY,
-              MergeableMainState.encode(remoteState)
-            );
+            syncRemoteState = true;
+            remoteState = mergeableMerge(remoteState, state.cachedState);
           }
           return remoteState;
         });
       }
       return state;
     });
+    const localSyncPromise = this._syncLocalState();
+    const remoteSyncPromise = syncRemoteState
+      ? this._syncRemoteState()
+      : Promise.resolve();
 
     return [
       localSyncPromise,
-      Promise.all([
-        localSyncPromise,
-        ...(remoteSyncPromise ? [remoteSyncPromise] : []),
-      ]),
+      Promise.all([localSyncPromise, remoteSyncPromise]),
     ];
-  }
-
-  private _patch?: Patch;
-  private _patchCallback(patch: Patch) {
-    this._patch = patch;
-  }
-
-  private _initState(state: MainState) {
-    return Automerge.from(state, {
-      patchCallback: this._patchCallback.bind(this),
-    });
-  }
-
-  private _mergeState(first: MergeableMainState, second: MergeableMainState) {
-    const newFirst = Automerge.merge(first, second);
-    const patch = this._patch;
-    this._patch = undefined;
-    assert(patch, "patch not generated after merge!");
-    return newFirst;
-  }
-
-  private _changeState(
-    doc: MergeableMainState,
-    updateFn: (state: MainState) => void
-  ) {
-    const ret = Automerge.change(doc, updateFn);
-    assert(this._patch);
-    this._patch = undefined;
-    return ret;
   }
 
   private _derivedMainStore(localState: InternalLocalState | undefined) {
@@ -162,9 +173,39 @@ class StateManager {
     };
   }
 
+  private async _syncLocalState() {
+    const localState = get(this._localState);
+    if ("cachedState" in localState) {
+      await Promise.all([
+        this._localBackend.setState(
+          localState.userId,
+          MergeableMainState.encode(localState.cachedState)
+        ),
+      ]);
+    }
+  }
+
+  private async _syncRemoteState() {
+    const remoteState = get(this._remoteState);
+    remoteState &&
+      (await this._remoteBackend.setState(
+        REMOTE_STATE_KEY,
+        MergeableMainState.encode(remoteState)
+      ));
+  }
+
   private async _fetchLocalState() {
     const encodedState = await this._localBackend.getState(LOCAL_STATE_KEY);
-    return LocalState.decode(encodedState);
+    if (!encodedState) {
+      return null;
+    }
+    return pipe(
+      LocalState.decode(encodedState),
+      getOrElseW((err) => {
+        console.log(err);
+        return null;
+      })
+    );
   }
 
   private async _fetchCachedState(userId: string) {
@@ -172,7 +213,14 @@ class StateManager {
       this._localBackend.getState(userId),
       loadAutomerge(),
     ]);
-    return MergeableMainState.decode(encodedCache);
+    return pipe(
+      MergeableMainState.decode(encodedCache),
+      getOrElseW((err) => {
+        console.log(err);
+        this._localBackend.deleteState(userId);
+        return null;
+      })
+    );
   }
 
   private async _fetchRemoteState() {
@@ -180,23 +228,24 @@ class StateManager {
       this._remoteBackend.getState(REMOTE_STATE_KEY),
       loadAutomerge(),
     ]);
+    if (encodedRemoteState === null) {
+      return null;
+    }
     return pipe(
       MergeableMainState.decode(encodedRemoteState),
-      getOrElse((err) => {
+      getOrElseW((err) => {
         console.log(err);
-        const newState = Automerge.from(StateManager._createNewMainState());
-        this._remoteBackend.setState(
-          REMOTE_STATE_KEY,
-          MergeableMainState.encode(newState)
-        );
-        return newState;
+        return null;
       })
     );
   }
+
   private async _onSignIn(userId: string | false | null) {
     if (userId === null) {
       return;
     }
+    let syncLocalState = false,
+      syncRemoteState = false;
     if (typeof userId === "string") {
       let remoteState = await this._fetchRemoteState();
 
@@ -204,28 +253,34 @@ class StateManager {
         if ("cachedState" in localState) {
           if (localState.userId === userId) {
             // Existing cached user signed in
-            remoteState = Automerge.merge(remoteState, localState.cachedState);
-            localState.cachedState = Automerge.merge(
-              localState.cachedState,
-              remoteState
-            );
+            if (!remoteState) {
+              remoteState = mergeableClone(localState.cachedState);
+            } else {
+              remoteState = mergeableMerge(remoteState, localState.cachedState);
+              localState.cachedState = mergeableMerge(
+                localState.cachedState,
+                remoteState
+              );
+            }
+            syncLocalState = syncRemoteState = true;
           } else {
             // New user signed in. Throw away the cache.
-            localState.cachedState = this._initState(remoteState);
+            if (!remoteState) {
+              remoteState = mergeableInit(StateManager._createNewMainState());
+              syncRemoteState = true;
+            }
+            localState.cachedState = mergeableClone(remoteState);
             localState.userId = userId;
+            syncLocalState = true;
           }
         } else {
           // Upgrade local state to cached state
-          remoteState = Automerge.merge(
+          ({ localState, remoteState } = upgradeLocalState(
+            localState,
             remoteState,
-            Automerge.from(localState.mainState)
-          );
-          localState = {
-            version: localState.version,
-            settings: localState.settings,
-            userId,
-            cachedState: this._initState(remoteState),
-          };
+            userId
+          ));
+          syncLocalState = syncRemoteState = true;
         }
         return localState;
       });
@@ -238,10 +293,13 @@ class StateManager {
         if ("userId" in localState) {
           this._localBackend.deleteState(localState.userId);
           localState = StateManager._createNewLocalState();
+          syncLocalState = true;
         }
         return localState;
       });
     }
+    syncLocalState && this._syncLocalState();
+    syncRemoteState && this._syncRemoteState();
   }
 }
 

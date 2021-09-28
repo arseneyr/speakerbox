@@ -61,14 +61,15 @@ export interface SampleParams {
 }
 
 export interface ISyncManager {
-  addSample(params: SampleParams): Promise<void>;
+  addSample(params: SampleParams): Promise<unknown>;
   updateSample(
     // id: string,
     // update: Partial<{ title: string; data: Blob | AudioBuffer }>
     update: Pick<SampleParams, "id"> & Partial<SampleParams>
-  ): Promise<void>;
-  setSampleOrder(ids: SampleId[]): Promise<void>;
-  setSettings(settings: t.TypeOf<typeof LocalSettings>): Promise<void>;
+  ): Promise<unknown>;
+  // setSampleOrder(ids: SampleId[]): Promise<void>;
+  moveSample(oldIndex: number, newIndex: number): Promise<unknown>;
+  setSettings(settings: t.TypeOf<typeof LocalSettings>): Promise<unknown>;
 }
 
 export const LOCAL_STATE_KEY = "local";
