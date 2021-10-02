@@ -8,22 +8,24 @@ import {
   mergeableMerge,
   mergeableChange,
   mergeableClone,
+  mergeableLoad,
+  mergeableSave,
 } from "./automerge";
 
 let Automerge: typeof import("automerge");
-let MergableTestCodec: ReturnType<typeof AutomergeCodec>;
 const TestCodec = t.type({
   hello: t.literal("foo"),
 });
+const MergableTestCodec = AutomergeCodec(TestCodec);
 
 beforeAll(async () => {
   Automerge = await loadAutomerge();
-  MergableTestCodec = AutomergeCodec(TestCodec);
+  // MergableTestCodec = AutomergeCodec(TestCodec);
 });
 
 describe("AutomergeCodec", () => {
   test("encodes/decodes properly", () => {
-    const doc = Automerge.from({ hello: "foo" });
+    const doc = mergeableInit({ hello: "foo" as const });
     const encoded = MergableTestCodec.encode(doc);
     expect(encoded).toBeInstanceOf(Uint8Array);
     // expect(isRight(either));
@@ -41,7 +43,7 @@ describe("AutomergeCodec", () => {
   });
 
   test("invalid input causes error", () => {
-    expect(isLeft(MergableTestCodec.decode(new Uint8Array()))).toBe(true);
+    expect(isLeft(MergableTestCodec.decode(new Uint8Array(10)))).toBe(true);
   });
   test("invalid schema causes error", () => {
     const encoded = MergableTestCodec.encode(
@@ -120,6 +122,7 @@ describe("automerge conflicts", () => {
     // changing doc.foo, while doc1 update is operating on the old list
     expect(merged._conflicts).not.toBeDefined();
   });
+
   test("reordering arrays while adding", () => {
     let doc1 = mergeableInit({ foo: [1, 2, 3] });
     let doc2 = mergeableClone(doc1);
@@ -128,11 +131,42 @@ describe("automerge conflicts", () => {
       state.foo.push(state.foo.splice(0, 1)[0]);
     });
     doc1 = mergeableChange(doc1, (state) => {
+      state.foo.push(state.foo.splice(1, 1)[0]);
       state.foo.push(4);
     });
     const merged = mergeableMerge(doc2, doc1);
 
     expect(merged._conflicts).not.toBeDefined();
     expect(merged).toEqual({ foo: expect.arrayContaining([1, 2, 3, 4]) });
+  });
+
+  test("save/load with conflicts", () => {
+    let doc1 = mergeableInit({ foo: "a" });
+    let doc2 = mergeableClone(doc1);
+    const doc1ActorId = Automerge.getActorId(doc1);
+    const doc2ActorId = Automerge.getActorId(doc2);
+    expect(doc1ActorId).not.toBe(doc2ActorId);
+    doc1 = mergeableChange(doc1, (state) => (state.foo = "b"));
+    doc2 = mergeableChange(doc2, (state) => (state.foo = "c"));
+    const expectedConflict = {
+      foo: expect.arrayContaining([
+        { actorId: doc1ActorId, value: "b" },
+        { actorId: doc2ActorId, value: "c" },
+      ]),
+    };
+    // Actor ids didn't change
+    expect(doc1ActorId).toBe(Automerge.getActorId(doc1));
+
+    const merged = mergeableMerge(doc1, doc2);
+    expect(Automerge.getActorId(merged)).toBe(doc1ActorId);
+    expect(merged._conflicts).toEqual(expectedConflict);
+
+    const savedMerged = mergeableSave(merged);
+    const loadedMerged = mergeableLoad(savedMerged);
+    // Actor ID doesnt change on load
+    expect(Automerge.getActorId(loadedMerged)).toBe(
+      Automerge.getActorId(merged)
+    );
+    expect(loadedMerged._conflicts).toEqual(expectedConflict);
   });
 });

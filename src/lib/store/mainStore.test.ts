@@ -1,5 +1,5 @@
 import { MainStore } from "./mainStore";
-import testBackend from "../backend/test";
+import testBackend from "../backend/testBackend";
 import { waitForValue } from "$lib/utils";
 import { SampleStore } from "./sampleStore";
 

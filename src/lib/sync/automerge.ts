@@ -1,20 +1,46 @@
-import { assert } from "$lib/utils";
-import type { ValueDiff } from "automerge";
-import type { BinaryDocument, Doc, ListDiff, MapDiff, Patch } from "automerge";
-import type { string } from "fp-ts";
+import type { Entries } from "$lib/utils";
+import type { FreezeObject } from "automerge";
+import type { OpId } from "automerge";
+import type { BinaryDocument, Doc, Patch } from "automerge";
 import * as t from "io-ts";
 
-declare module "automerge" {
-  interface ListDiff {
-    props: {
-      [propName: string]: { [opId: string]: MapDiff | ListDiff | ValueDiff };
-    };
-  }
-}
+// declare module "automerge" {
+//   interface ListDiff {
+//     props: {
+//       [propName: string]: { [opId: string]: MapDiff | ListDiff | ValueDiff };
+//     };
+//   }
+// }
 type Mutable<T> = {
   -readonly [P in keyof T]: T[P] extends ReadonlyArray<infer U>
     ? Mutable<U>[]
     : Mutable<T[P]>;
+};
+
+// interface ConflictMap {
+//   [key: string]: ConflictMap | { actorId: string; value: any }[];
+// }
+
+type ConflictMap<T extends Record<string, any>> = {
+  [K in keyof T]: T[K] extends Record<string, any>
+    ? ConflictMap<T[K]>
+    : { actorId: string; value: T[K] }[];
+};
+
+type PropDiff<T> = {
+  objectId: OpId;
+  type: "map" | "list";
+  props: {
+    [K in keyof T]: { [opId: string]: PropDiff<T[K]> };
+  };
+};
+
+// type ConflictMapValues<T> = ConflictMap<T>[keyof ConflictMap<T>];
+type ConflictMapValues = ConflictMap<any> | { actorId: string; value: any }[];
+
+type ExtendedDoc<T> = Doc<T> & {
+  _conflicts?: ConflictMap<T>;
+  _actorId: string;
 };
 
 let Automerge: typeof import("automerge");
@@ -33,23 +59,29 @@ export async function loadAutomerge(): Promise<typeof Automerge> {
 }
 
 export const AutomergeCodec = <C extends t.Mixed>(base: C) =>
-  new t.Type<Doc<t.TypeOf<C>>, Uint8Array, unknown>(
+  new t.Type<ExtendedDoc<t.TypeOf<C>>, Uint8Array, unknown>(
     "Automerge Doc",
-    (input): input is Doc<t.TypeOf<C>> => base.is(input),
+    (input): input is ExtendedDoc<t.TypeOf<C>> =>
+      typeof input === "object" &&
+      input !== null &&
+      "_actorId" in input &&
+      base.is(input),
     (input, context) => {
-      if (input instanceof Uint8Array) {
-        try {
-          return base.validate(
-            Automerge.load(input as BinaryDocument),
-            context
-          );
-        } catch {
-          return t.failure(input, context);
+      try {
+        if (!(input instanceof Uint8Array)) {
+          throw new Error("non uint8array passed");
         }
+        const doc = mergeableLoad(input);
+        return base.validate(doc, context);
+      } catch (e: unknown) {
+        return t.failure(
+          input,
+          context,
+          e instanceof Error ? e.message : undefined
+        );
       }
-      return t.failure(input, context);
     },
-    (input) => Automerge.save(input)
+    (input) => mergeableSave(input)
   );
 
 // interface ConflictRecord {
@@ -58,57 +90,52 @@ export const AutomergeCodec = <C extends t.Mixed>(base: C) =>
 // }
 
 // type ConflictMap = Record<string, ConflictMap | ConflictRecord>;
-interface ConflictMap {
-  [key: string]: ConflictMap | { actorId: string; value: any }[];
-}
+// function getConflictPaths(
+//   diff: ListDiff | MapDiff,
+//   path: string[]
+// ): string[][] {
+//   let ret: string[][] = [];
+//   if (!diff.props) {
+//     return ret;
+//   }
+//   for (const [propName, value] of Object.entries(diff.props)) {
+//     if (Object.keys(value).length > 1) {
+//       // conflict exists
+//       ret.push(path.concat(propName));
+//     } else {
+//       ret = ret.concat(
+//         ...Object.values(value)
+//           .filter(
+//             (innerVal): innerVal is ListDiff | MapDiff =>
+//               innerVal.type === "map" || innerVal.type === "list"
+//           )
+//           .map((innerVal) => getConflictPaths(innerVal, path.concat(propName)))
+//       );
+//     }
+//   }
+//   return ret;
+// }
 
-type ExtendedDoc<T> = Doc<T> & { _conflicts?: ConflictMap };
-
-function getConflictPaths(
-  diff: ListDiff | MapDiff,
-  path: string[]
-): string[][] {
-  let ret: string[][] = [];
-  if (!diff.props) {
-    return ret;
-  }
-  for (const [propName, value] of Object.entries(diff.props)) {
-    if (Object.keys(value).length > 1) {
-      // conflict exists
-      ret.push(path.concat(propName));
-    } else {
-      ret = ret.concat(
-        ...Object.values(value)
-          .filter(
-            (innerVal): innerVal is ListDiff | MapDiff =>
-              innerVal.type === "map" || innerVal.type === "list"
-          )
-          .map((innerVal) => getConflictPaths(innerVal, path.concat(propName)))
-      );
-    }
-  }
-  return ret;
-}
-
-function extractConflicts(
-  doc: Doc<any>,
-  diff: ListDiff | MapDiff
-): ConflictMap | null {
+function extractConflicts<T>(
+  doc: Doc<T>,
+  diff: PropDiff<T>
+): ConflictMapValues | null {
   if (!diff.props) {
     return null;
   }
 
-  let ret: ConflictMap | null = null;
+  let ret: ConflictMapValues | null = null;
 
-  for (const [propName, propValue] of Object.entries(diff.props)) {
+  for (const [propName, propValue] of Object.entries(diff.props) as Entries<
+    typeof diff.props
+  >) {
     if (Object.keys(propValue).length > 1) {
-      ret = ret ?? {};
-      ret[propName] = Object.entries(Automerge.getConflicts(doc, propName)).map(
-        ([changeId, value]) => ({
-          actorId: changeId.split("@", 2)[1],
-          value,
-        })
-      );
+      (ret ?? (ret = {} as any))[propName] = Object.entries(
+        Automerge.getConflicts(doc, propName)
+      ).map(([changeId, value]) => ({
+        actorId: changeId.split("@", 2)[1],
+        value,
+      }));
       // ret[propName] = Object.entries(propValue)
       //   .filter((entry): entry is [string, ValueDiff] => {
       //     const valid = entry[1].type === "value";
@@ -121,14 +148,16 @@ function extractConflicts(
       //   }));
     } else {
       const nestedDiffs = Object.values(propValue).filter(
-        (nestedDiff): nestedDiff is ListDiff | MapDiff =>
+        (nestedDiff): nestedDiff is PropDiff<T[keyof T]> =>
           nestedDiff.type === "map" || nestedDiff.type === "list"
       );
       for (const nestedDiff of nestedDiffs) {
-        const nestedConflict = extractConflicts(doc[propName], nestedDiff);
+        const nestedConflict = extractConflicts(
+          doc[propName] as FreezeObject<T[keyof T]>,
+          nestedDiff
+        );
         if (nestedConflict) {
-          ret = ret ?? {};
-          ret[propName] = nestedConflict;
+          (ret ?? (ret = {} as any))[propName] = nestedConflict;
         }
       }
     }
@@ -164,7 +193,7 @@ function patchCallback<T extends Record<string, unknown>>(
   //   }
   // );
 
-  const conflicts = extractConflicts(newDoc, patch.diffs);
+  const conflicts = extractConflicts(newDoc, patch.diffs as PropDiff<T>);
   // const conflictPaths = getConflictPaths(patch.diffs, []);
   // if (conflictPaths.length) {
   //   const conflictMap: ConflictMap = {};
@@ -195,29 +224,84 @@ function patchCallback<T extends Record<string, unknown>>(
   // }
 }
 
+function addActorId<T>(
+  doc: Doc<T> | ExtendedDoc<T>,
+  actorId?: string
+): ExtendedDoc<T> {
+  return Object.defineProperty(doc, "_actorId", {
+    enumerable: false,
+    configurable: false,
+    writable: false,
+    value:
+      actorId ?? ("_actorId" in doc ? doc._actorId : Automerge.getActorId(doc)),
+  }) as ExtendedDoc<T>;
+}
+
 function mergeableInit<T extends Record<string, unknown>>(
   state: T,
   actorId?: string
 ): ExtendedDoc<T> {
-  return Automerge.from(state, {
-    patchCallback: patchCallback as any,
-    actorId,
-  });
+  return addActorId(
+    Automerge.from(state, {
+      patchCallback: patchCallback as any,
+      actorId,
+    }),
+    actorId
+  );
 }
 
-function mergeableClone<T>(doc: Doc<T>): Doc<T> {
-  return Automerge.clone(doc, { patchCallback: patchCallback as any });
+function mergeableClone<T>(doc: Doc<T>, actorId?: string): ExtendedDoc<T> {
+  return addActorId(
+    Automerge.clone(doc, { patchCallback: patchCallback as any, actorId }),
+    actorId
+  );
 }
 
 function mergeableChange<T extends Record<string, unknown>>(
   doc: Doc<T>,
   updateFn: (contents: Mutable<T>) => void
-): Doc<T> {
-  return Automerge.change(doc, updateFn);
+): ExtendedDoc<T> {
+  return addActorId(Automerge.change(doc, updateFn));
 }
 
 function mergeableMerge<T>(first: Doc<T>, second: Doc<T>): ExtendedDoc<T> {
-  return Automerge.merge(first, second);
+  return addActorId(Automerge.merge(first, second));
 }
 
-export { mergeableInit, mergeableMerge, mergeableChange, mergeableClone };
+function mergeableSave<T>(doc: Doc<T> | ExtendedDoc<T>): Uint8Array {
+  const actorIdBuffer = new TextEncoder().encode(Automerge.getActorId(doc));
+  const savedState = Automerge.save(doc);
+  const outputBuffer = new Uint8Array(
+    actorIdBuffer.length + 1 + savedState.length
+  );
+  outputBuffer.set(actorIdBuffer, 0);
+  // Leave room for null byte
+  outputBuffer.set(savedState, actorIdBuffer.length + 1);
+  return outputBuffer;
+}
+
+function mergeableLoad<T>(data: Uint8Array): ExtendedDoc<T> {
+  const actorIdSplitPoint = data.indexOf(0);
+  if (actorIdSplitPoint < 0) {
+    throw new Error("no actor id null byte found");
+  }
+  const actorId = new TextDecoder("utf-8", { fatal: true }).decode(
+    data.subarray(0, actorIdSplitPoint)
+  );
+  return addActorId(
+    Automerge.load<T>(data.subarray(actorIdSplitPoint + 1) as BinaryDocument, {
+      patchCallback,
+      actorId,
+    }),
+    actorId
+  );
+}
+
+export {
+  mergeableInit,
+  mergeableMerge,
+  mergeableChange,
+  mergeableClone,
+  mergeableLoad,
+  mergeableSave,
+};

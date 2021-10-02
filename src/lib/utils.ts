@@ -6,6 +6,11 @@ import type {
 } from "svelte/store";
 import { derived, writable } from "svelte/store";
 import externalAssert from "assert";
+import type { Private } from "@babel/types";
+
+export type Entries<T> = {
+  [K in keyof T]: [K, T[K]];
+}[keyof T][];
 
 export function persistantWritable<T>(
   init: T,
@@ -27,22 +32,39 @@ function privateWritable<T>(
   value: T,
   start?: StartStopNotifier<T>
 ): PrivateWritable<T> {
-  const ret = writable(value, start) as Partial<Writable<T>>;
+  const ret = writable(value, start);
+
+  const originalSet = ret.set;
+  // const originalUpdate = ret.update;
+  delete (ret as any)["set"];
+  delete (ret as any)["update"];
 
   Object.defineProperties(ret, {
-    _set: Object.getOwnPropertyDescriptor(ret, "set")!,
-    _update: Object.getOwnPropertyDescriptor(ret, "update")!,
-    _val: {
-      get: () => {
-        let val;
-        ret.update!((v) => (val = v));
-        return val;
+    _set: {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: (v: T) => {
+        value = v;
+        originalSet(v);
       },
+    },
+    _update: {
+      configurable: false,
+      enumerable: false,
+      writable: false,
+      value: (updateFn: (v: T) => T) => {
+        value = updateFn(value);
+        originalSet(value);
+      },
+    },
+    _val: {
+      get: () => value,
     },
   });
 
-  delete ret["set"];
-  delete ret["update"];
+  // delete ret["set"];
+  // delete ret["update"];
   return (ret as unknown) as PrivateWritable<T>;
 }
 
@@ -75,10 +97,18 @@ function isTruthy<T>(val: T): val is NonNullable<T> {
   return Boolean(val);
 }
 
+function waitForValue<T extends null>(
+  store: Readable<T>,
+  predicate?: (val: T) => val is NonNullable<T>
+): Promise<NonNullable<T>>;
 function waitForValue<T>(
   store: Readable<T>,
-  predicate = isTruthy
-): Promise<NonNullable<T>> {
+  predicate?: (val: T) => boolean
+): Promise<T>;
+function waitForValue<T>(
+  store: Readable<T>,
+  predicate: (val: T) => boolean = isTruthy
+): Promise<T> {
   return new Promise((resolve) => {
     let firstTime = true;
     const unsub = store.subscribe((val) => {

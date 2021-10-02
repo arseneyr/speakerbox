@@ -25,9 +25,9 @@ beforeEach(() => {
   getAudioContext().decodeAudioData.mockClear();
 });
 
-test("creating new sample from arraybuffer", async () => {
+test("creating new sample from blob", async () => {
   const sample = new SampleStore({
-    data: new ArrayBuffer(0),
+    data: new Blob(),
     title: "test title",
   });
   expect(get(sample.title)).toBe("test title");
@@ -36,18 +36,12 @@ test("creating new sample from arraybuffer", async () => {
 
 test("audioBuffer decoding works", async () => {
   const [encoded, decoded] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = new SampleStore({ data: encoded });
-  await expect(waitForValue(sample.audioBuffer)).resolves.toBe(decoded);
-});
-
-test("creating new sample from blob", async () => {
-  const [encoded, decoded] = WebAudioTestAPI.createEncodedBuffer();
   const sample = new SampleStore({ data: new Blob([encoded]) });
   await expect(waitForValue(sample.audioBuffer)).resolves.toBe(decoded);
 });
 
 test("play/stop works", async () => {
-  const sample = new SampleStore({ data: new ArrayBuffer(0) });
+  const sample = new SampleStore({ data: new Blob() });
   const player = await waitForValue(sample.player);
   expect(get(player.playing)).toBe(false);
   player.play();
@@ -56,7 +50,7 @@ test("play/stop works", async () => {
 
 test("audioBuffer decoding is cancelled properly", async () => {
   const [encodedFirst] = WebAudioTestAPI.createEncodedBuffer();
-  const sample = new SampleStore({ data: encodedFirst });
+  const sample = new SampleStore({ data: new Blob([encodedFirst]) });
 
   expect(getAudioContext().decodeAudioData).not.toHaveBeenCalled();
   const decodePromise = waitForValue(sample.audioBuffer);
@@ -64,12 +58,12 @@ test("audioBuffer decoding is cancelled properly", async () => {
 
   const [encodedSecond, decodedSecond] = WebAudioTestAPI.createEncodedBuffer();
 
-  sample["_source"].set({ encoded: encodedSecond, decoded: null });
+  sample["_source"].set({ encoded: new Blob([encodedSecond]), decoded: null });
   await expect(decodePromise).resolves.toBe(decodedSecond);
 });
 
 test("setting audiobuffer does not cause decoding", () => {
-  const sample = new SampleStore({ data: new ArrayBuffer(0) });
+  const sample = new SampleStore({ data: new Blob() });
   const newAudioBuffer = getAudioContext().createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);
 
@@ -78,7 +72,7 @@ test("setting audiobuffer does not cause decoding", () => {
 });
 
 test("setting audiobuffer cancels properly", async () => {
-  const sample = new SampleStore({ data: new ArrayBuffer(0) });
+  const sample = new SampleStore({ data: new Blob() });
   const audioBufferPromise = waitForValue(sample.audioBuffer);
   const newAudioBuffer = getAudioContext().createBuffer(2, 44100 * 5, 44100);
   sample.setAudioBuffer(newAudioBuffer);

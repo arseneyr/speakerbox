@@ -16,7 +16,7 @@ export const SampleInfo = t.type({
 });
 export const MainState = t.type({
   version: t.string,
-  sampleList: t.readonlyArray(t.string),
+  sampleList: t.array(t.string),
   samples: t.record(t.string, SampleInfo),
 });
 export const LocalStateCached = t.type({
@@ -41,15 +41,15 @@ export type LocalStateFull = t.TypeOf<typeof LocalStateFull>;
 export type LocalState = t.TypeOf<typeof LocalState>;
 export type MergeableMainState = t.TypeOf<typeof MergeableMainState>;
 
-interface UserIdBrand {
-  readonly UserId: unique symbol;
-}
-export const UserId = t.brand(
-  t.string,
-  (u): u is t.Branded<string, UserIdBrand> => t.string.is(u),
-  "UserId"
-);
-export type UserId = t.TypeOf<typeof UserId>;
+// interface UserIdBrand {
+//   readonly UserId: unique symbol;
+// }
+// export const UserId = t.brand(
+//   t.string,
+//   (u): u is t.Branded<string, UserIdBrand> => t.string.is(u),
+//   "UserId"
+// );
+// export type UserId = t.TypeOf<typeof UserId>;
 
 export type SampleId = string;
 export type RevisionId = string;
@@ -71,6 +71,17 @@ export interface ISyncManager {
   moveSample(oldIndex: number, newIndex: number): Promise<unknown>;
   setSettings(settings: t.TypeOf<typeof LocalSettings>): Promise<unknown>;
 }
+
+export const enum SignedInTypes {
+  SignedIn = "SignedIn",
+  SignedOut = "SignedOut",
+  Offline = "Offline",
+}
+
+export type SignedInState =
+  | { state: SignedInTypes.SignedIn; user: string }
+  | { state: SignedInTypes.SignedOut }
+  | { state: SignedInTypes.Offline };
 
 export const LOCAL_STATE_KEY = "local";
 export const REMOTE_STATE_KEY = "remote";
@@ -103,5 +114,5 @@ export interface IRemoteBackend {
   getSampleData(key: string): Promise<Blob | AudioBuffer | null>;
   setSampleData(key: string, data: Blob | AudioBuffer): Promise<unknown>;
   deleteSampleData(key: string): Promise<unknown>;
-  signedInUser: Readable<string | false | null>;
+  signedInUser: Readable<SignedInState>;
 }

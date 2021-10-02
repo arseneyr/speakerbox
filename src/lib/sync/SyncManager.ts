@@ -1,4 +1,3 @@
-import * as t from "io-ts";
 import { derived, get, Readable, writable } from "svelte/store";
 import { assert } from "$lib/utils";
 import { v4 } from "uuid";
@@ -6,10 +5,6 @@ import StateManager from "./StateManager";
 import type { ISyncManager, MainState, SampleId } from "./types";
 
 class SyncManager implements ISyncManager {
-  private readonly _sampleDataCache = writable(
-    new Map<RevisionId, Blob | AudioBuffer>()
-  );
-
   private readonly _stateManager;
 
   public readonly store;
