@@ -14,3 +14,7 @@
 interface ImportMetaEnv {
   VITE_GDRIVE_CLIENT_ID: string;
 }
+
+declare module "automerge/frontend/constants" {
+  export const CONFLICTS: unique symbol;
+}

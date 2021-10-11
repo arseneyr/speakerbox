@@ -3,14 +3,15 @@ import { fold, isLeft } from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/function";
 import {
   loadAutomerge,
-  AutomergeCodec,
   mergeableInit,
   mergeableMerge,
   mergeableChange,
   mergeableClone,
   mergeableLoad,
   mergeableSave,
+  mergeableGetConflicts,
 } from "./automerge";
+import { AutomergeCodec } from "./types";
 
 let Automerge: typeof import("automerge");
 const TestCodec = t.type({
@@ -57,25 +58,16 @@ describe("automerge conflicts", () => {
   test("double init", () => {
     const doc1 = mergeableInit({ foo: "baz" }, "c0ffee");
     const doc2 = mergeableInit({ foo: "bar" }, "f00d");
+    const expectedConflict = {
+      foo: expect.arrayContaining([
+        { actorId: "c0ffee", value: "baz" },
+        { actorId: "f00d", value: "bar" },
+      ]),
+    };
     const merged = mergeableMerge(doc1, doc2);
-    expect(merged._conflicts).toEqual(
-      // expect.arrayContaining([
-      //   {
-      //     path: ["foo"],
-      //     values: expect.arrayContaining([
-      //       { setByNewDoc: true, value: "baz" },
-      //       { setByNewDoc: false, value: "bar" },
-      //     ]),
-      //   },
-      // ])
-      {
-        foo: expect.arrayContaining([
-          { actorId: "c0ffee", value: "baz" },
-          { actorId: "f00d", value: "bar" },
-        ]),
-      }
-    );
-    // expect(merged._conflicts).toHaveLength(1);
+    expect(mergeableGetConflicts(merged)).toEqual(expectedConflict);
+    const merged2 = mergeableMerge(doc2, merged);
+    expect(mergeableGetConflicts(merged2)).toEqual(expectedConflict);
   });
 
   test("array changes", () => {
@@ -87,7 +79,7 @@ describe("automerge conflicts", () => {
       foo.push("baz");
     });
     const merged = mergeableMerge(doc2, doc1);
-    expect(merged._conflicts).not.toBeDefined();
+    expect(mergeableGetConflicts(merged)).toBeNull();
     expect(merged).toEqual({ foo: expect.arrayContaining(["bar", "baz"]) });
   });
 
@@ -97,7 +89,7 @@ describe("automerge conflicts", () => {
     doc1 = mergeableChange(doc1, ({ foo }: any) => (foo.bar = "bob"));
     doc2 = mergeableChange(doc2, ({ foo }: any) => (foo.baz = "pop"));
     const merged = mergeableMerge(doc2, doc1);
-    expect(merged._conflicts).toEqual({
+    expect(mergeableGetConflicts(merged)).toEqual({
       foo: expect.arrayContaining([
         { actorId: expect.any(String), value: { bar: "bob" } },
         { actorId: expect.any(String), value: { baz: "pop" } },
@@ -120,7 +112,7 @@ describe("automerge conflicts", () => {
 
     // There is no conflict, because the doc2 update is creating a new list and
     // changing doc.foo, while doc1 update is operating on the old list
-    expect(merged._conflicts).not.toBeDefined();
+    expect(mergeableGetConflicts(merged)).toBeNull();
   });
 
   test("reordering arrays while adding", () => {
@@ -136,7 +128,7 @@ describe("automerge conflicts", () => {
     });
     const merged = mergeableMerge(doc2, doc1);
 
-    expect(merged._conflicts).not.toBeDefined();
+    expect(mergeableGetConflicts(merged)).toBeNull();
     expect(merged).toEqual({ foo: expect.arrayContaining([1, 2, 3, 4]) });
   });
 
@@ -159,7 +151,7 @@ describe("automerge conflicts", () => {
 
     const merged = mergeableMerge(doc1, doc2);
     expect(Automerge.getActorId(merged)).toBe(doc1ActorId);
-    expect(merged._conflicts).toEqual(expectedConflict);
+    expect(mergeableGetConflicts(merged)).toEqual(expectedConflict);
 
     const savedMerged = mergeableSave(merged);
     const loadedMerged = mergeableLoad(savedMerged);
@@ -167,6 +159,6 @@ describe("automerge conflicts", () => {
     expect(Automerge.getActorId(loadedMerged)).toBe(
       Automerge.getActorId(merged)
     );
-    expect(loadedMerged._conflicts).toEqual(expectedConflict);
+    expect(mergeableGetConflicts(loadedMerged)).toEqual(expectedConflict);
   });
 });

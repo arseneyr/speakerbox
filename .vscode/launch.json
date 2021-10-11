@@ -12,7 +12,31 @@
       "args": [
         "test",
         "--runInBand",
-        "--watchAll=false"
+        "--watchAll=false",
+        "--testTimeout=300000"
+      ],
+      "skipFiles": [
+        "<node_internals>/**"
+      ]
+    },
+    {
+      "type": "node",
+      "name": "hella busted tests",
+      "request": "launch",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "disableOptimisticBPs": true,
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "yarn",
+      "args": [
+        "test",
+        "--runInBand",
+        "--watchAll=false",
+        "--testTimeout=300000",
+        "--testPathPattern=StateManager"
+      ],
+      "skipFiles": [
+        "<node_internals>/**"
       ]
     }
   ]

@@ -1,4 +1,5 @@
-import { SignedInState, SignedInTypes } from "$lib/sync/types";
+import { RetryError, SignedInState, SignedInTypes } from "$lib/sync/types";
+import type { StorageBackend } from "$lib/types";
 import { privateWritable } from "$lib/utils";
 import inMemory from "./inMemory";
 
@@ -10,24 +11,45 @@ export default jest.fn(() => {
   return ret;
 });
 
+function delay(delayMs: number) {
+  return new Promise((res) => setTimeout(res, delayMs));
+}
+
+export function createTestLocalBackend(delayMs = 100) {
+  return new Proxy(inMemory(), {
+    get: (target, prop: keyof StorageBackend) => {
+      const fn = target[prop] as any;
+      if (typeof fn === "function" && prop.includes("set")) {
+        return (...args: any[]) =>
+          delay(delayMs).then(() => fn.apply(target, args));
+      }
+      return fn;
+    },
+  });
+}
+
 export function createTestRemoteBackend() {
   const inMemoryBackend = inMemory();
   const upToDateEndpoints = new Map<string, Set<any>>();
   return {
     createEndpoint() {
       return {
-        ...inMemoryBackend,
         setState(key: string, state: unknown) {
           if (this.signedInUser._val.state !== SignedInTypes.SignedIn) {
             throw new Error("setting state while signed out");
           }
           const keyEndpoints = upToDateEndpoints.get(key);
+          if (!keyEndpoints) {
+            upToDateEndpoints.set(key, new Set([this]));
+            return inMemoryBackend.setState(key, state);
+          }
+
           if (keyEndpoints?.has(this)) {
             keyEndpoints.clear();
             keyEndpoints.add(this);
             return inMemoryBackend.setState(key, state);
           }
-          throw new Error("State changed since last change!");
+          throw new RetryError();
         },
         getState(key: string) {
           if (this.signedInUser._val.state !== SignedInTypes.SignedIn) {
@@ -48,8 +70,9 @@ export function createTestRemoteBackend() {
         signedInUser: privateWritable<SignedInState>({
           state: SignedInTypes.SignedOut,
         }),
-        __signIn(user: string) {
+        __signIn(user: string): typeof this {
           this.signedInUser._set({ state: SignedInTypes.SignedIn, user });
+          return this;
         },
         __signOut() {
           this.signedInUser._set({ state: SignedInTypes.SignedOut });

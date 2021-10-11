@@ -5,8 +5,7 @@ import type {
   Writable,
 } from "svelte/store";
 import { derived, writable } from "svelte/store";
-import externalAssert from "assert";
-import type { Private } from "@babel/types";
+import externalAssert, { AssertionError } from "assert";
 
 export type Entries<T> = {
   [K in keyof T]: [K, T[K]];
@@ -29,7 +28,7 @@ type PrivateWritable<T> = Readable<T> & {
 };
 
 function privateWritable<T>(
-  value: T,
+  value?: T,
   start?: StartStopNotifier<T>
 ): PrivateWritable<T> {
   const ret = writable(value, start);
@@ -53,7 +52,7 @@ function privateWritable<T>(
       configurable: false,
       enumerable: false,
       writable: false,
-      value: (updateFn: (v: T) => T) => {
+      value: (updateFn: (v?: T) => T) => {
         value = updateFn(value);
         originalSet(value);
       },
@@ -134,7 +133,16 @@ function assert(condition: unknown, message?: string): asserts condition {
     // @ts-ignore
     !import.meta.env.PROD
   ) {
-    externalAssert(condition, message);
+    externalAssert(
+      condition,
+      new AssertionError({
+        message,
+        expected: true,
+        actual: condition,
+        operator: "==",
+        stackStartFn: assert,
+      })
+    );
   } else {
     console.error(`Assertion failed: ${message ?? ""}`);
     console.trace();

@@ -1,9 +1,10 @@
 import { get, Readable } from "svelte/store";
-import type {
-  ILocalBackend,
-  IRemoteBackend,
+import {
+  ISampleDataBackend,
   MainState,
   RevisionId,
+  SignedInState,
+  SignedInTypes,
 } from "./types";
 import PCancelable, { CancelError } from "p-cancelable";
 import { assert, privateWritable } from "$lib/utils";
@@ -16,8 +17,10 @@ class SampleDataManager {
   private readonly _loading = new Map<RevisionId, () => void>();
 
   constructor(
-    private readonly _localBackend: ILocalBackend,
-    private readonly _remoteBackend: IRemoteBackend,
+    private readonly _localBackend: ISampleDataBackend,
+    private readonly _remoteBackend: ISampleDataBackend & {
+      signedInUser: Readable<SignedInState>;
+    },
     private readonly _mainState: Readable<MainState | null>
   ) {
     this._mainState.subscribe(this._onMainStateChange.bind(this));
@@ -122,7 +125,9 @@ class SampleDataManager {
   }
 
   private _isSignedIn(): boolean {
-    return typeof get(this._remoteBackend.signedInUser) === "string";
+    return (
+      get(this._remoteBackend.signedInUser).state === SignedInTypes.SignedIn
+    );
   }
 }
 

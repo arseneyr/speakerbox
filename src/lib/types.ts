@@ -49,12 +49,12 @@ export interface StorageBackend {
   setState(id: string, state: unknown): Promise<unknown>;
   deleteState(id: string): Promise<unknown>;
 
-  getSampleData(id: string): Promise<Blob | AudioBuffer | null>;
-  setSampleData(id: string, data: Blob | AudioBuffer): Promise<unknown>;
+  // getSampleData(id: string): Promise<Blob | AudioBuffer | null>;
+  // setSampleData(id: string, data: Blob | AudioBuffer): Promise<unknown>;
 
-  deleteSampleData(id: string): Promise<unknown>;
+  // deleteSampleData(id: string): Promise<unknown>;
 
-  saveInvalidMainState?(state: unknown): Promise<unknown>;
+  // saveInvalidMainState?(state: unknown): Promise<unknown>;
 }
 
 export interface RemoteStorageBackend extends StorageBackend {

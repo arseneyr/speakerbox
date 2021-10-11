@@ -1,7 +1,7 @@
-import { derived, get, Readable, writable } from "svelte/store";
+import { derived, get, Readable } from "svelte/store";
 import {
-  ILocalBackend,
-  IRemoteBackend,
+  ILocalStateBackend,
+  IRemoteStateBackend,
   LocalStateCached,
   LocalState,
   LocalStateFull,
@@ -14,59 +14,63 @@ import {
   SampleInfo,
   SignedInState,
   SignedInTypes,
+  RetryError,
 } from "./types";
 import {
   loadAutomerge,
   mergeableChange,
   mergeableClone,
+  mergeableGetConflicts,
+  mergeableHasChanged,
   mergeableInit,
   mergeableMerge,
 } from "./automerge";
 import { assert, Entries, privateWritable } from "$lib/utils";
 import { pipe } from "fp-ts/lib/function";
 import { getOrElseW } from "fp-ts/lib/Either";
-import PQueue from "p-queue";
 
-type InternalCachedState = LocalStateCached & {
+type InternalStateCached = LocalStateCached & {
   cachedState: MergeableMainState;
 };
-type InternalLocalState = LocalStateFull | InternalCachedState;
+type InternalState = LocalStateFull | InternalStateCached;
 
 type OutputConflicts<T> = {
   [sampleId: string]: {
     [K in keyof T]?: {
       localValue: T[K];
-      remoteValue: T[K];
+      remoteValues: T[K][];
     };
   };
 };
 type OutputState =
-  | (MainState & { conflicts?: OutputConflicts<SampleInfo> })
+  | (Pick<MainState, "sampleList" | "samples"> & {
+      conflicts?: OutputConflicts<SampleInfo>;
+    })
   | null;
 
 class StateManager {
-  private readonly _localState = writable<InternalLocalState>();
-  private readonly _remoteState = writable<MergeableMainState | null>(null);
-  private readonly _syncQueue = new PQueue();
+  private readonly _localState = privateWritable<InternalState>();
+  private _remoteState: MergeableMainState | null = null;
+  private readonly _syncCounter = privateWritable(0);
 
   public readonly mainState: Readable<OutputState> = derived(
     this._localState,
     this._derivedMainStore.bind(this)
   );
 
-  public readonly syncing = privateWritable(false);
+  public readonly syncing = derived(this._syncCounter, (c) => c > 0);
 
   constructor(
-    private readonly _localBackend: ILocalBackend,
-    private readonly _remoteBackend: IRemoteBackend
+    private readonly _localBackend: ILocalStateBackend,
+    private readonly _remoteBackend: IRemoteStateBackend
   ) {
-    this._syncQueue.on("add", () => this.syncing._set(true));
-    this._syncQueue.on("idle", () => this.syncing._set(false));
+    // this._syncQueue.on("add", () => this.syncing._set(true));
+    // this._syncQueue.on("idle", () => this.syncing._set(false));
   }
 
   public async init(): Promise<void> {
     const fetchedLocalState = await this._fetchLocalState();
-    let internalLocalState: InternalLocalState;
+    let internalLocalState: InternalState;
     if (!fetchedLocalState) {
       internalLocalState = StateManager._createNewLocalState();
       await this._localBackend.setState(LOCAL_STATE_KEY, internalLocalState);
@@ -87,59 +91,48 @@ class StateManager {
       internalLocalState = fetchedLocalState;
     }
 
-    this._localState.set(internalLocalState);
+    this._localState._set(internalLocalState);
     this._remoteBackend.signedInUser.subscribe(this._onSignIn.bind(this));
   }
 
-  public updateMainState(
-    updateFn: (state: MainState) => void
-  ): { localSynced: Promise<unknown>; remoteSynced: Promise<unknown> } {
-    this.syncing._set(true);
-    let syncRemoteState = false;
-    this._localState.update((state) => {
+  public updateMainState(updateFn: (state: MainState) => void): void {
+    this._localState._update((state) => {
       if (LocalStateFull.is(state)) {
         updateFn(state.mainState);
       } else {
         state.cachedState = mergeableChange(state.cachedState, updateFn);
-        this._remoteState.update((remoteState) => {
-          if (remoteState) {
-            syncRemoteState = true;
-            remoteState = mergeableMerge(remoteState, state.cachedState);
-          }
-          return remoteState;
-        });
+        if (this._remoteState) {
+          this._remoteState = mergeableMerge(
+            this._remoteState,
+            state.cachedState
+          );
+        }
       }
       return state;
     });
-    const localSynced = this._syncLocalState();
-    const remoteSynced = Promise.all([
-      localSynced,
-      syncRemoteState ? this._syncRemoteState() : Promise.resolve(),
-    ]);
-
-    return {
-      localSynced,
-      remoteSynced,
-    };
+    this._syncLocalState();
+    this._syncRemoteState();
   }
 
-  private _derivedMainStore(localState: InternalLocalState | undefined) {
+  private _derivedMainStore(localState?: InternalState): OutputState {
     if (!localState) {
       return null;
     }
 
-    if (LocalStateFull.is(localState)) {
-      return localState.mainState;
-    } else {
-      const sampleConflicts = localState.cachedState._conflicts?.samples;
-      if (sampleConflicts) {
-        const remoteState = get(this._remoteState);
-        assert(remoteState);
+    function filter(state: MainState) {
+      return { samples: state.samples, sampleList: state.sampleList };
+    }
 
-        const ret = {
-          ...localState.cachedState,
-          conflicts: {} as OutputConflicts<SampleInfo>,
-        };
+    if (LocalStateFull.is(localState)) {
+      return filter(localState.mainState);
+    } else {
+      const sampleConflicts = mergeableGetConflicts(localState.cachedState)
+        ?.samples;
+      const ret: OutputState = filter(localState.cachedState);
+      if (sampleConflicts) {
+        // assert(this._remoteState);
+
+        const conflicts = (ret.conflicts = {} as OutputConflicts<SampleInfo>);
         for (const [sampleId, sampleConflict] of Object.entries(
           sampleConflicts
         )) {
@@ -149,51 +142,63 @@ class StateManager {
             const localValue = conflict.find(
               ({ actorId }) => actorId === localState.cachedState._actorId
             )?.value;
-            const remoteValue = conflict.find(
-              ({ actorId }) => actorId === remoteState._actorId
-            )?.value;
-            assert(localValue && remoteValue);
-            ret.conflicts[sampleId][conflictingProp] = {
-              localValue,
-              remoteValue,
+            const remoteValues = conflict
+              .filter(
+                ({ actorId }) => actorId !== localState.cachedState._actorId
+              )
+              .map(({ value }) => value);
+            assert(localValue && remoteValues);
+            conflicts[sampleId] = {
+              [conflictingProp]: {
+                localValue,
+                remoteValues,
+              },
             };
           }
         }
-        return ret;
       }
-      return localState.cachedState;
+      return ret;
     }
+  }
+
+  private static _moveSamplesIntoState(
+    destination: MergeableMainState,
+    source: MainState
+  ): MergeableMainState {
+    assert(
+      destination.sampleList.filter((id) => source.sampleList.includes(id))
+        .length === 0,
+      "duplicate samples in remote/local sample list!"
+    );
+    assert(
+      Object.keys(destination.samples).filter((id) =>
+        Object.keys(source.samples).includes(id)
+      ).length === 0,
+      "duplicate samples in remote/local sample map!"
+    );
+
+    return mergeableChange(destination, (state) => {
+      state.sampleList.push(...source.sampleList);
+      for (const [k, v] of Object.entries(source.samples)) {
+        state.samples[k] = v;
+      }
+    });
   }
 
   private static _upgradeLocalState(
     localState: LocalStateFull,
     remoteState: MergeableMainState | null,
     userId: string
-  ): { localState: InternalCachedState; remoteState: MergeableMainState } {
+  ): { localState: InternalStateCached; remoteState: MergeableMainState } {
     let newRemoteState: MergeableMainState, newCachedState: MergeableMainState;
     if (!remoteState) {
       newCachedState = mergeableInit(localState.mainState);
       newRemoteState = mergeableClone(newCachedState);
     } else {
-      assert(
-        remoteState.sampleList.filter((id) =>
-          localState.mainState.sampleList.includes(id)
-        ).length === 0,
-        "duplicate samples in remote/local sample list!"
+      newRemoteState = StateManager._moveSamplesIntoState(
+        remoteState,
+        localState.mainState
       );
-      assert(
-        Object.keys(remoteState.samples).filter((id) =>
-          Object.keys(localState.mainState.samples).includes(id)
-        ).length === 0,
-        "duplicate samples in remote/local sample map!"
-      );
-
-      newRemoteState = mergeableChange(remoteState, (state) => {
-        state.sampleList.push(...localState.mainState.sampleList);
-        for (const [k, v] of Object.entries(localState.mainState.samples)) {
-          state.samples[k] = v;
-        }
-      });
       newCachedState = mergeableClone(newRemoteState);
     }
 
@@ -225,26 +230,81 @@ class StateManager {
   }
 
   private async _syncLocalState() {
-    const localState = get(this._localState);
-    if ("cachedState" in localState) {
-      return this._syncQueue.add(() =>
-        this._localBackend.setState(
-          localState.userId,
-          MergeableMainState.encode(localState.cachedState)
-        )
-      );
+    return this._runSynced(async () => {
+      const localState = get(this._localState);
+      if (LocalStateFull.is(localState)) {
+        await this._localBackend.setState(LOCAL_STATE_KEY, localState);
+      } else {
+        await Promise.all([
+          this._localBackend.setState(LOCAL_STATE_KEY, {
+            version: localState.version,
+            settings: localState.settings,
+            userId: localState.userId,
+          }),
+          this._localBackend.setState(
+            localState.userId,
+            MergeableMainState.encode(localState.cachedState)
+          ),
+        ]);
+      }
+    });
+  }
+
+  private _isRemoteSyncing = false;
+
+  private async _syncRemoteState() {
+    if (!this._isRemoteSyncing) {
+      return this._runSynced(async () => {
+        try {
+          this._isRemoteSyncing = true;
+          // eslint-disable-next-line no-constant-condition
+          while (true) {
+            if (!this._remoteState) {
+              return;
+            }
+            try {
+              await this._remoteBackend.setState(
+                REMOTE_STATE_KEY,
+                MergeableMainState.encode(this._remoteState)
+              );
+              return;
+            } catch (e) {
+              if (!(e instanceof RetryError)) {
+                throw e;
+              }
+              await this.poll();
+            }
+          }
+        } finally {
+          this._isRemoteSyncing = false;
+        }
+      });
     }
   }
 
-  private async _syncRemoteState() {
-    const remoteState = get(this._remoteState);
-    assert(remoteState, "syncing non-existant remote state");
-    return this._syncQueue.add(() =>
-      this._remoteBackend.setState(
-        REMOTE_STATE_KEY,
-        MergeableMainState.encode(remoteState)
-      )
-    );
+  private _acquireSyncLock() {
+    this._syncCounter._update((c) => c + 1);
+  }
+
+  private _releaseSyncLock() {
+    this._syncCounter._update((c) => c - 1);
+  }
+
+  private _runSynced<T>(fn: () => T): T {
+    this._acquireSyncLock();
+    try {
+      const ret: any = fn();
+      if (typeof ret?.finally === "function") {
+        return ret.finally(() => {
+          this._releaseSyncLock();
+        });
+      }
+      this._releaseSyncLock();
+      return ret;
+    } catch (e) {
+      this._releaseSyncLock();
+      throw e;
+    }
   }
 
   private async _fetchLocalState() {
@@ -266,6 +326,9 @@ class StateManager {
       this._localBackend.getState(userId),
       loadAutomerge(),
     ]);
+    if (!encodedCache) {
+      return null;
+    }
     return pipe(
       MergeableMainState.decode(encodedCache),
       getOrElseW((err) => {
@@ -281,7 +344,7 @@ class StateManager {
       this._remoteBackend.getState(REMOTE_STATE_KEY),
       loadAutomerge(),
     ]);
-    if (encodedRemoteState === null) {
+    if (!encodedRemoteState) {
       return null;
     }
     return pipe(
@@ -293,79 +356,112 @@ class StateManager {
     );
   }
 
-  private async _onSignIn(signedInState: SignedInState) {
-    if (signedInState.state === SignedInTypes.Offline) {
-      this.syncing._set(false);
+  public async poll(): Promise<void> {
+    return this._runSynced(async () => {
+      const newRemoteState = await this._fetchRemoteState();
+      if (!this._remoteState || !newRemoteState) {
+        return;
+      }
+      this._localState._update((localState) => {
+        assert("cachedState" in localState);
+        assert(newRemoteState);
+        assert(this._remoteState);
+
+        if (newRemoteState._actorId !== this._remoteState._actorId) {
+          // Two endpoints tried to upgrade local states at the same time.
+          // The one already stored wins.
+
+          localState.cachedState = StateManager._moveSamplesIntoState(
+            mergeableClone(newRemoteState),
+            localState.cachedState
+          );
+        } else {
+          localState.cachedState = mergeableMerge(
+            localState.cachedState,
+            newRemoteState
+          );
+        }
+
+        this._remoteState = mergeableMerge(
+          newRemoteState,
+          localState.cachedState
+        );
+        return localState;
+      });
+      this._syncLocalState();
+      this._syncRemoteState();
+    });
+  }
+
+  private async _onSignIn(signedInState: SignedInState | null) {
+    if (!signedInState || signedInState.state === SignedInTypes.Offline) {
+      this._remoteState = null;
       return;
     }
-    let syncLocalState = false,
-      syncRemoteState = false;
-    if (signedInState.state === SignedInTypes.SignedIn) {
-      this.syncing._set(true);
-      let remoteState = await this._fetchRemoteState();
+    return this._runSynced(async () => {
+      let syncLocalState = false,
+        syncRemoteState = false;
 
-      this._localState.update((localState) => {
-        if ("cachedState" in localState) {
-          if (localState.userId === signedInState.user) {
-            // Existing cached user signed in
-            if (!remoteState) {
-              remoteState = mergeableClone(localState.cachedState);
-            } else {
-              localState.cachedState = mergeableMerge(
-                localState.cachedState,
-                remoteState
-              );
-              if (!localState.cachedState._conflicts) {
+      if (signedInState.state === SignedInTypes.SignedIn) {
+        let remoteState = await this._fetchRemoteState();
+
+        this._localState._update((localState) => {
+          if ("cachedState" in localState) {
+            if (localState.userId === signedInState.user) {
+              // Existing cached user signed in
+              if (!remoteState) {
+                remoteState = mergeableClone(localState.cachedState);
+                syncRemoteState = true;
+              } else {
+                localState.cachedState = mergeableMerge(
+                  localState.cachedState,
+                  remoteState
+                );
                 remoteState = mergeableMerge(
                   remoteState,
                   localState.cachedState
                 );
+                syncLocalState = syncRemoteState = true;
               }
+            } else {
+              // New user signed in. Throw away the cache.
+              if (!remoteState) {
+                remoteState = mergeableInit(StateManager._createNewMainState());
+                syncRemoteState = true;
+              }
+              localState.cachedState = mergeableClone(remoteState);
+              localState.userId = signedInState.user;
+              syncLocalState = true;
             }
-            syncLocalState = syncRemoteState = true;
           } else {
-            // New user signed in. Throw away the cache.
-            if (!remoteState) {
-              remoteState = mergeableInit(StateManager._createNewMainState());
-              syncRemoteState = true;
-            }
-            localState.cachedState = mergeableClone(remoteState);
-            localState.userId = signedInState.user;
+            // Upgrade local state to cached state
+            ({ localState, remoteState } = StateManager._upgradeLocalState(
+              localState,
+              remoteState,
+              signedInState.user
+            ));
+            syncLocalState = syncRemoteState = true;
+          }
+          return localState;
+        });
+        this._remoteState = remoteState;
+      } else if (signedInState.state === SignedInTypes.SignedOut) {
+        // The user has logged out. We change cached state to local state
+
+        this._remoteState = null;
+        this._localState._update((localState) => {
+          if ("userId" in localState) {
+            this._localBackend.deleteState(localState.userId);
+            localState = StateManager._createNewLocalState();
             syncLocalState = true;
           }
-        } else {
-          // Upgrade local state to cached state
-          ({ localState, remoteState } = StateManager._upgradeLocalState(
-            localState,
-            remoteState,
-            signedInState.user
-          ));
-          syncLocalState = syncRemoteState = true;
-        }
-        return localState;
-      });
-      this._remoteState.set(remoteState);
-    } else if (signedInState.state === SignedInTypes.SignedOut) {
-      // The user has logged out. We change cached state to local state
+          return localState;
+        });
+      }
 
-      this._remoteState.set(null);
-      this._localState.update((localState) => {
-        if ("userId" in localState) {
-          this._localBackend.deleteState(localState.userId);
-          localState = StateManager._createNewLocalState();
-          syncLocalState = true;
-        }
-        return localState;
-      });
-    }
-    if (syncLocalState || syncRemoteState) {
-      await Promise.all([
-        syncLocalState ? this._syncLocalState() : Promise.resolve(),
-        syncRemoteState ? this._syncRemoteState() : Promise.resolve(),
-      ]);
-    } else {
-      this.syncing._set(false);
-    }
+      syncLocalState && this._syncLocalState();
+      syncRemoteState && this._syncRemoteState();
+    });
   }
 }
 

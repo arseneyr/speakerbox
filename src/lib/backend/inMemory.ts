@@ -1,4 +1,5 @@
 import type { StorageBackend } from "$lib/types";
+import cloneDeep from "clone-deep";
 
 class InMemoryBackend implements StorageBackend {
   private _state = new Map<string, unknown>();
@@ -9,7 +10,7 @@ class InMemoryBackend implements StorageBackend {
   }
 
   public setState(id: string, newState: unknown) {
-    this._state.set(id, newState);
+    this._state.set(id, cloneDeep(newState));
     return Promise.resolve();
   }
 

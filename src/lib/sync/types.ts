@@ -1,6 +1,9 @@
+import { filterOrElse } from "fp-ts/lib/Either";
+import { pipe } from "fp-ts/lib/function";
+import type { Errors } from "io-ts";
 import * as t from "io-ts";
 import type { Readable } from "svelte/store";
-import { AutomergeCodec } from "./automerge";
+import { ExtendedDoc, mergeableLoad, mergeableSave } from "./automerge";
 
 export const SampleAddTypes = t.keyof({
   UPLOAD: null,
@@ -30,7 +33,6 @@ export const LocalStateFull = t.type({
   mainState: MainState,
 });
 export const LocalState = t.union([LocalStateCached, LocalStateFull]);
-export const MergeableMainState = AutomergeCodec(MainState);
 
 export type SampleAddTypes = t.TypeOf<typeof SampleAddTypes>;
 export type LocalSettings = t.TypeOf<typeof LocalSettings>;
@@ -63,11 +65,8 @@ export interface SampleParams {
 export interface ISyncManager {
   addSample(params: SampleParams): Promise<unknown>;
   updateSample(
-    // id: string,
-    // update: Partial<{ title: string; data: Blob | AudioBuffer }>
     update: Pick<SampleParams, "id"> & Partial<SampleParams>
   ): Promise<unknown>;
-  // setSampleOrder(ids: SampleId[]): Promise<void>;
   moveSample(oldIndex: number, newIndex: number): Promise<unknown>;
   setSettings(settings: t.TypeOf<typeof LocalSettings>): Promise<unknown>;
 }
@@ -88,7 +87,7 @@ export const REMOTE_STATE_KEY = "remote";
 export const LOCAL_VERSION_1_0 = "1.0";
 export const MAIN_VERSION_1_0 = "1.0";
 
-export interface ILocalBackend {
+export interface ILocalStateBackend {
   getState(key: typeof LOCAL_STATE_KEY | string): Promise<unknown>;
   setState(
     key: typeof LOCAL_STATE_KEY,
@@ -99,20 +98,61 @@ export interface ILocalBackend {
     cachedState: t.OutputOf<typeof MergeableMainState>
   ): Promise<unknown>;
   deleteState(key: typeof LOCAL_STATE_KEY | string): Promise<unknown>;
-  getSampleData(key: string): Promise<Blob | AudioBuffer | null>;
-  setSampleData(key: string, data: Blob | AudioBuffer): Promise<unknown>;
-  deleteSampleData(key: string): Promise<unknown>;
+  // getSampleData(key: string): Promise<Blob | AudioBuffer | null>;
+  // setSampleData(key: string, data: Blob | AudioBuffer): Promise<unknown>;
+  // deleteSampleData(key: string): Promise<unknown>;
 }
 
-export interface IRemoteBackend {
+export interface IRemoteStateBackend {
   getState(key: typeof REMOTE_STATE_KEY): Promise<unknown>;
   setState(
     key: typeof REMOTE_STATE_KEY,
     cachedState: t.OutputOf<typeof MergeableMainState>
   ): Promise<unknown>;
   deleteState(key: typeof REMOTE_STATE_KEY): Promise<unknown>;
+  // getSampleData(key: string): Promise<Blob | AudioBuffer | null>;
+  // setSampleData(key: string, data: Blob | AudioBuffer): Promise<unknown>;
+  // deleteSampleData(key: string): Promise<unknown>;
+  signedInUser: Readable<SignedInState | null>;
+}
+
+export interface ISampleDataBackend {
   getSampleData(key: string): Promise<Blob | AudioBuffer | null>;
   setSampleData(key: string, data: Blob | AudioBuffer): Promise<unknown>;
   deleteSampleData(key: string): Promise<unknown>;
-  signedInUser: Readable<SignedInState>;
 }
+
+export class RetryError extends Error {
+  constructor() {
+    super();
+    this.name = "RetryError";
+  }
+}
+
+export const AutomergeCodec = <C extends t.Mixed>(base: C) =>
+  new t.Type<ExtendedDoc<t.TypeOf<C>>, Uint8Array, unknown>(
+    "Automerge Doc",
+    (input): input is ExtendedDoc<t.TypeOf<C>> =>
+      typeof input === "object" &&
+      input !== null &&
+      "_actorId" in input &&
+      base.is(input),
+    (input, context) => {
+      try {
+        if (!(input instanceof Uint8Array)) {
+          throw new Error("non uint8array passed");
+        }
+        const doc = mergeableLoad(input);
+        return base.validate(doc, context);
+      } catch (e: unknown) {
+        return t.failure(
+          input,
+          context,
+          e instanceof Error ? e.message : undefined
+        );
+      }
+    },
+    (input) => mergeableSave(input)
+  );
+
+export const MergeableMainState = AutomergeCodec(MainState);
