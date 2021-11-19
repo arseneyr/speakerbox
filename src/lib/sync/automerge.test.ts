@@ -11,7 +11,7 @@ import {
   mergeableSave,
   mergeableGetConflicts,
 } from "./automerge";
-import { AutomergeCodec } from "./types";
+import { AutomergeCodec } from "$lib/types";
 
 let Automerge: typeof import("automerge");
 const TestCodec = t.type({
@@ -86,8 +86,8 @@ describe("automerge conflicts", () => {
   test("nested object changes", () => {
     let doc1 = mergeableInit({ foo: {} });
     let doc2 = mergeableInit({ foo: {} });
-    doc1 = mergeableChange(doc1, ({ foo }: any) => (foo.bar = "bob"));
-    doc2 = mergeableChange(doc2, ({ foo }: any) => (foo.baz = "pop"));
+    doc1 = mergeableChange(doc1, ({ foo }) => ((foo as any).bar = "bob"));
+    doc2 = mergeableChange(doc2, ({ foo }) => ((foo as any).baz = "pop"));
     const merged = mergeableMerge(doc2, doc1);
     expect(mergeableGetConflicts(merged)).toEqual({
       foo: expect.arrayContaining([

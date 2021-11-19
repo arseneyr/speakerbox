@@ -1,13 +1,17 @@
 import { get, Readable } from "svelte/store";
 import {
+  IRemoteBackend,
   ISampleDataBackend,
-  MainState,
   RevisionId,
-  SignedInState,
+  SampleData,
   SignedInTypes,
-} from "./types";
+} from "$lib/types";
 import PCancelable, { CancelError } from "p-cancelable";
 import { assert, privateWritable } from "$lib/utils";
+
+function generateStateKey(revisionId: RevisionId): string {
+  return "sample-" + revisionId;
+}
 
 class SampleDataManager {
   public readonly sampleData = privateWritable<
@@ -18,17 +22,15 @@ class SampleDataManager {
 
   constructor(
     private readonly _localBackend: ISampleDataBackend,
-    private readonly _remoteBackend: ISampleDataBackend & {
-      signedInUser: Readable<SignedInState>;
-    },
-    private readonly _mainState: Readable<MainState | null>
+    private readonly _remoteBackend: ISampleDataBackend & IRemoteBackend,
+    private readonly _requestedSamples: Readable<Set<RevisionId> | null>
   ) {
-    this._mainState.subscribe(this._onMainStateChange.bind(this));
+    this._requestedSamples.subscribe(this._onRequestedSamplesChange.bind(this));
   }
 
   public addSampleData(
     revisionId: RevisionId,
-    sampleData: Blob | AudioBuffer
+    sampleData: SampleData
   ): [Promise<unknown>, Promise<unknown>] {
     this.sampleData._update((map) => {
       assert(!map.has(revisionId), "Overwriting sample!");
@@ -36,12 +38,12 @@ class SampleDataManager {
       return map;
     });
 
-    const localSyncPromise = this._localBackend.setSampleData(
+    const localSyncPromise = this._localBackend.setState(
       revisionId,
       sampleData
     );
     const remoteSyncPromise = this._isSignedIn()
-      ? this._remoteBackend.setSampleData(revisionId, sampleData)
+      ? this._remoteBackend.setState(revisionId, sampleData)
       : Promise.resolve();
 
     return [
@@ -53,9 +55,9 @@ class SampleDataManager {
   public deleteSampleData(
     revisionId: RevisionId
   ): [Promise<unknown>, Promise<unknown>] {
-    const localSyncPromise = this._localBackend.deleteSampleData(revisionId);
+    const localSyncPromise = this._localBackend.deleteState(revisionId);
     const remoteSyncPromise = this._isSignedIn()
-      ? this._remoteBackend.deleteSampleData(revisionId)
+      ? this._remoteBackend.deleteState(generateStateKey(revisionId))
       : Promise.resolve();
 
     return [
@@ -69,7 +71,7 @@ class SampleDataManager {
       let cancelled = false;
       onCancel(() => (cancelled = true));
 
-      let sampleData = await this._localBackend.getSampleData(id);
+      let sampleData = await this._localBackend.getState(id);
       if (cancelled) {
         throw new CancelError();
       }
@@ -77,14 +79,14 @@ class SampleDataManager {
         if (!this._isSignedIn()) {
           throw new Error("No sample data!");
         }
-        sampleData = await this._remoteBackend.getSampleData(id);
+        sampleData = await this._remoteBackend.getState(id);
         if (cancelled) {
           throw new CancelError();
         }
         if (!sampleData) {
           throw new Error("No sample data!");
         }
-        await this._localBackend.setSampleData(id, sampleData);
+        await this._localBackend.setState(id, sampleData);
         // if (cancelled) {
         //   throw new CancelError();
         // }
@@ -93,40 +95,40 @@ class SampleDataManager {
     }
   );
 
-  private _onMainStateChange(mainState: MainState | null) {
-    if (!mainState) {
+  private _onRequestedSamplesChange(samples: Set<RevisionId> | null) {
+    if (!samples) {
       return null;
     }
     const currentMap = get(this.sampleData);
-    for (const id of mainState.sampleList) {
-      const sample = mainState.samples[id];
-      if (!sample) {
-        throw new Error("missing sample!");
-      }
-      const { revisionId } = sample;
+    for (const revisionId of samples) {
       if (currentMap.has(revisionId) || this._loading.has(revisionId)) {
         continue;
       }
       const promise = this._load(revisionId);
-      promise.then(
-        (data) => {
-          this._loading.delete(revisionId);
-          this.sampleData._update((map) => map.set(revisionId, data));
-        },
-        (err) => {
-          this._loading.delete(revisionId);
-          if (!(err instanceof CancelError)) {
-            throw err;
+      promise
+        .finally(() => this._loading.delete(revisionId))
+        .then(
+          (data) => {
+            this.sampleData._update((map) => map.set(revisionId, data));
+          },
+          (err) => {
+            if (!(err instanceof CancelError)) {
+              throw err;
+            }
           }
-        }
-      );
+        );
       this._loading.set(revisionId, promise.cancel.bind(promise));
+    }
+    for (const [revId, cancel] of this._loading) {
+      if (!samples.has(revId)) {
+        cancel();
+      }
     }
   }
 
   private _isSignedIn(): boolean {
     return (
-      get(this._remoteBackend.signedInUser).state === SignedInTypes.SignedIn
+      get(this._remoteBackend.signedInUser)?.state === SignedInTypes.SignedIn
     );
   }
 }

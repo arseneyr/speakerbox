@@ -6,7 +6,7 @@ import {
 import { waitForValue } from "$lib/utils";
 import { get } from "svelte/store";
 import StateManager from "./StateManager";
-import type { ILocalStateBackend } from "./types";
+import { generateRevisionId, ILocalBackend } from "$lib/types";
 
 let remoteBackendGenerator: ReturnType<typeof createTestRemoteBackend>;
 beforeEach(() => {
@@ -19,7 +19,7 @@ async function waitForSyncing(...managers: StateManager[]) {
   );
 }
 
-async function getLocalState(localBackend: ILocalStateBackend) {
+async function getLocalState(localBackend: ILocalBackend) {
   const stateManager = new StateManager(
     localBackend,
     remoteBackendGenerator.createEndpoint()
@@ -138,6 +138,10 @@ test("simultaneous array edits", async () => {
 });
 
 test("simultaneous sample object edits", async () => {
+  const [rev1, rev2, rev3] = Array.from({ length: 3 }, () =>
+    generateRevisionId()
+  );
+
   const stateManager1 = new StateManager(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn("")
@@ -145,7 +149,10 @@ test("simultaneous sample object edits", async () => {
   await stateManager1.init();
   stateManager1.updateMainState(
     (state) =>
-      (state.samples["sample1Id"] = { title: "coolSample", revisionId: "foo" })
+      (state.samples["sample1Id"] = {
+        title: "coolSample",
+        revisionId: rev1,
+      })
   );
   await waitForSyncing(stateManager1);
 
@@ -156,36 +163,70 @@ test("simultaneous sample object edits", async () => {
   await stateManager2.init();
   await waitForSyncing(stateManager2);
   expect(get(stateManager2.mainState)).toMatchObject({
-    samples: { sample1Id: { title: "coolSample", revisionId: "foo" } },
+    samples: { sample1Id: { title: "coolSample", revisionId: rev1 } },
   });
 
   stateManager1.updateMainState(
-    (state) => (state.samples.sample1Id.revisionId = "bar")
+    (state) => (state.samples.sample1Id.revisionId = rev2)
   );
   stateManager2.updateMainState(
-    (state) => (state.samples.sample1Id.revisionId = "baz")
+    (state) => (state.samples.sample1Id.revisionId = rev3)
   );
   await waitForSyncing(stateManager1, stateManager2);
   await Promise.all([stateManager1.poll(), stateManager2.poll()]);
   await waitForSyncing(stateManager1, stateManager2);
 
   expect(get(stateManager1.mainState)?.conflicts).toEqual({
-    sample1Id: { revisionId: { localValue: "bar", remoteValues: ["baz"] } },
+    sample1Id: { revisionId: { localValue: rev2, remoteValues: [rev3] } },
   });
   expect(get(stateManager2.mainState)?.conflicts).toEqual({
-    sample1Id: { revisionId: { localValue: "baz", remoteValues: ["bar"] } },
+    sample1Id: { revisionId: { localValue: rev3, remoteValues: [rev2] } },
   });
 
   stateManager1.updateMainState(
-    (state) => (state.samples.sample1Id.revisionId = "baz")
+    (state) => (state.samples.sample1Id.revisionId = rev3)
   );
   const expectedState = {
     sampleList: [],
-    samples: { sample1Id: { title: "coolSample", revisionId: "baz" } },
+    samples: { sample1Id: { title: "coolSample", revisionId: rev3 } },
   };
   await waitForSyncing(stateManager1);
   await stateManager2.poll();
 
   expect(get(stateManager1.mainState)).toEqual(expectedState);
   expect(get(stateManager2.mainState)).toEqual(expectedState);
+});
+
+test("updating while offline gets persisted", async () => {
+  const localBackend = inMemory();
+  let manager = await new StateManager(
+    localBackend,
+    remoteBackendGenerator.createEndpoint().__signIn("")
+  ).init();
+  manager.updateMainState((state) => state.sampleList.push("foo"));
+  await waitForSyncing(manager);
+
+  const newRemoteBackend = remoteBackendGenerator
+    .createEndpoint()
+    .__goOffline();
+  manager = await new StateManager(localBackend, newRemoteBackend).init();
+  expect(get(manager.mainState)).toEqual({ sampleList: ["foo"], samples: {} });
+
+  manager.updateMainState((state) => state.sampleList.push("bar"));
+  newRemoteBackend.__signIn("");
+  await waitForSyncing(manager);
+  await expect(getRemoteState()).resolves.toEqual({
+    sampleList: expect.arrayContaining(["foo", "bar"]),
+    samples: {},
+  });
+});
+
+test("signing in and out is ok", async () => {
+  const remoteBackend = remoteBackendGenerator.createEndpoint();
+  await new StateManager(inMemory(), remoteBackend).init();
+
+  expect(() => {
+    remoteBackend.__signIn("");
+    remoteBackend.__signOut();
+  }).not.toThrow();
 });

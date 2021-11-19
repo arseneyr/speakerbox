@@ -1,10 +1,11 @@
-import localForage from "localforage";
-import type {
-  MainSavedState,
-  SampleSavedState,
-  StorageBackend,
-} from "$lib/types";
+import localForage, { config } from "localforage";
 import { assert } from "$lib/utils";
+import {
+  ILocalBackend,
+  ISampleDataBackend,
+  RevisionId,
+  SampleData,
+} from "$lib/types";
 
 interface SerializedAudioBuffer {
   numberOfChannels: number;
@@ -25,49 +26,49 @@ function isSerializedAudioBuffer(
   );
 }
 
-const MAIN_STATE_KEY = "speakerbox";
-
-function getStateKey(id: string) {
-  return `sb-state-` + id;
-}
-
 let persistent: boolean | null = null;
 
-function getSampleStateKey(id: string) {
-  return `sample-` + id;
-}
-
-function getSampleDataKey(id: string) {
-  return `data-` + id;
-}
+// function getSampleDataKey(id: string) {
+//   return `data-` + id;
+// }
 
 function getAudioBufferChannelKey(id: string, channel: number) {
   return `buffer-${id}-channel-${channel}`;
 }
 
-async function getState(id: string) {
-  return localForage.getItem<unknown | null>(getStateKey(id));
+function getState(id: RevisionId): Promise<SampleData | null>;
+async function getState(id: string | RevisionId) {
+  return RevisionId.is(id)
+    ? getSampleData(id)
+    : localForage.getItem<unknown | null>(id);
 }
 
-async function setState(id: string, state: unknown) {
-  return localForage.setItem(getStateKey(id), state);
+async function setState(id: string | RevisionId, state: unknown) {
+  return RevisionId.is(id) &&
+    (state instanceof Blob || state instanceof AudioBuffer)
+    ? setSampleData(id, state)
+    : localForage.setItem(id, state);
 }
 
-async function deleteState(id: string) {
-  return localForage.removeItem(getStateKey(id));
+async function deleteState(id: string | RevisionId) {
+  return RevisionId.is(id) ? deleteSampleData(id) : localForage.removeItem(id);
 }
 
-async function getSampleState(id: string) {
-  return localForage.getItem<SampleSavedState | null>(getSampleStateKey(id));
+async function getStateKeys() {
+  return localForage.keys();
 }
 
-async function setSampleState(state: SampleSavedState) {
-  return localForage.setItem(getSampleStateKey(state.id), state);
-}
+// async function getSampleState(id: string) {
+//   return localForage.getItem<SampleSavedState | null>(getSampleStateKey(id));
+// }
 
-async function getSampleData(id: string) {
+// async function setSampleState(state: SampleSavedState) {
+//   return localForage.setItem(getSampleStateKey(state.id), state);
+// }
+
+async function getSampleData(id: RevisionId) {
   const value = await localForage.getItem<Blob | SerializedAudioBuffer | null>(
-    getSampleDataKey(id)
+    id
   );
   if (isSerializedAudioBuffer(value)) {
     const channelData = await Promise.all(
@@ -89,7 +90,7 @@ async function getSampleData(id: string) {
   return value;
 }
 
-async function setSampleData(id: string, data: Blob | AudioBuffer) {
+async function setSampleData(id: RevisionId, data: Blob | AudioBuffer) {
   if (persistent === false) {
     persistent = true;
     navigator.storage
@@ -106,7 +107,7 @@ async function setSampleData(id: string, data: Blob | AudioBuffer) {
           localForage.setItem(getAudioBufferChannelKey(id, i), data)
         )
         .concat(
-          localForage.setItem(getSampleDataKey(id), {
+          localForage.setItem(id, {
             numberOfChannels: data.numberOfChannels,
             sampleRate: data.sampleRate,
             length: data.length,
@@ -114,16 +115,16 @@ async function setSampleData(id: string, data: Blob | AudioBuffer) {
         )
     );
   } else {
-    await localForage.setItem(getSampleDataKey(id), data);
+    await localForage.setItem(id, data);
   }
 }
 
-async function deleteSampleData(id: string) {
+async function deleteSampleData(id: RevisionId) {
   const data = await localForage.getItem<Blob | SerializedAudioBuffer | null>(
-    getSampleDataKey(id)
+    id
   );
 
-  const deleteArray = [localForage.removeItem(getSampleDataKey(id))];
+  const deleteArray = [localForage.removeItem(id)];
 
   if (isSerializedAudioBuffer(data)) {
     for (let i = 0; i < data.numberOfChannels; ++i) {
@@ -134,20 +135,16 @@ async function deleteSampleData(id: string) {
   await Promise.all(deleteArray);
 }
 
-function create(): StorageBackend {
+function create(): ILocalBackend & ISampleDataBackend {
   navigator.storage.persisted().then((p) => (persistent = p));
+  config({
+    name: "sb-data",
+  });
   return {
     getState,
     setState,
     deleteState,
-
-    // getSampleState,
-    // setSampleState,
-
-    getSampleData,
-    setSampleData,
-
-    deleteSampleData,
+    getStateKeys,
   };
 }
 

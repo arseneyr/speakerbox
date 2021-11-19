@@ -1,3 +1,6 @@
+import * as t from "io-ts";
+import { v4 } from "uuid";
+import { ExtendedDoc, mergeableLoad, mergeableSave } from "$lib/sync/automerge";
 import type { Readable } from "svelte/store";
 
 export interface Player {
@@ -15,96 +18,166 @@ export class AbortError extends Error {
   }
 }
 
-declare global {
-  // interface EventTarget<
-  //   T extends { [key: string]: unknown } = { [key: string]: unknown }
-  // > {
-  //   addEventListener<K extends keyof T>(
-  //     type: K,
-  //     listener: (event: CustomEvent<T[K]>) => void
-  //   );
-  //   dispatchEvent<K extends Extract<keyof T, string>>(event: CustomEvent<T[K]>);
-  // }
-  // eslint-disable-next-line no-var
-  // var EventTarget: {
-  //   new <
-  //     T extends { [key: string]: unknown } = { [key: string]: unknown }
-  //   >(): EventTarget<T>;
-  //   prototype: EventTarget;
-  // };
+export const LOCAL_STATE_KEY = "local";
+export const REMOTE_STATE_KEY = "remote";
+
+export const LOCAL_VERSION_1_0 = t.literal("1.0");
+export type LOCAL_VERSION_1_0 = t.TypeOf<typeof LOCAL_VERSION_1_0>;
+
+export const MAIN_VERSION_1_0 = t.literal("1.0");
+export type MAIN_VERSION_1_0 = t.TypeOf<typeof MAIN_VERSION_1_0>;
+
+interface RevisionIdBrand {
+  readonly RevisionId: unique symbol;
+}
+export const RevisionId = t.brand(
+  t.string,
+  (r): r is t.Branded<string, RevisionIdBrand> => r.startsWith("revId-"),
+  "RevisionId"
+);
+export type RevisionId = t.TypeOf<typeof RevisionId>;
+export function generateRevisionId(): RevisionId {
+  return ("revId-" + v4()) as RevisionId;
 }
 
-// interface TypedEventTarget<T extends { [key: string]: unknown }> {
-//   addEventListener<K extends keyof T>(
-//     type: K,
-//     listener: (event: Event & { data: T[K] }) => void
-//   );
-//   dispatchEvent<K extends Extract<keyof T, string>>(event: TypedEvent<K, T[K]>);
-// }
+interface UserIdBrand {
+  readonly UserId: unique symbol;
+}
+export const UserId = t.brand(
+  t.string,
+  (u): u is t.Branded<string, UserIdBrand> => true,
+  "UserId"
+);
+export type UserId = t.TypeOf<typeof UserId>;
 
-export interface StorageBackend {
-  // getMainState(): Promise<unknown | null>;
-  // setMainState(state: unknown): Promise<unknown>;
-  getState(id: string): Promise<unknown | null>;
-  setState(id: string, state: unknown): Promise<unknown>;
-  deleteState(id: string): Promise<unknown>;
+export const SampleAddTypes = t.keyof({
+  UPLOAD: null,
+  RECORD_DESKTOP: null,
+});
+export const LocalSettings = t.partial({
+  outputDevice: t.string,
+  lastSampleAddType: SampleAddTypes,
+});
+export const SampleInfo = t.type({
+  title: t.string,
+  revisionId: RevisionId,
+});
+export const MainState = t.type({
+  version: MAIN_VERSION_1_0,
+  sampleList: t.array(t.string),
+  samples: t.record(t.string, SampleInfo),
+});
+export const LocalStateCached = t.type({
+  version: LOCAL_VERSION_1_0,
+  settings: LocalSettings,
+  userId: UserId,
+});
+export const LocalStateFull = t.type({
+  version: LOCAL_VERSION_1_0,
+  settings: LocalSettings,
+  mainState: MainState,
+});
+export const LocalState = t.union([LocalStateCached, LocalStateFull]);
 
-  // getSampleData(id: string): Promise<Blob | AudioBuffer | null>;
-  // setSampleData(id: string, data: Blob | AudioBuffer): Promise<unknown>;
+export type SampleAddTypes = t.TypeOf<typeof SampleAddTypes>;
+export type LocalSettings = t.TypeOf<typeof LocalSettings>;
+export type SampleInfo = t.TypeOf<typeof SampleInfo>;
+export type MainState = t.TypeOf<typeof MainState>;
+export type LocalStateCached = t.TypeOf<typeof LocalStateCached>;
+export type LocalStateFull = t.TypeOf<typeof LocalStateFull>;
+export type LocalState = t.TypeOf<typeof LocalState>;
+export type MergeableMainState = t.TypeOf<typeof MergeableMainState>;
 
-  // deleteSampleData(id: string): Promise<unknown>;
-
-  // saveInvalidMainState?(state: unknown): Promise<unknown>;
+export type SampleData = Blob;
+export interface SampleParams {
+  readonly id: string;
+  readonly title: string;
+  readonly data: SampleData;
 }
 
-export interface RemoteStorageBackend extends StorageBackend {
-  signedInUser: Readable<string | false | null>;
-  signIn(): Promise<void>;
+export interface ISyncManager {
+  addSample(params: SampleParams): Promise<unknown>;
+  updateSample(
+    update: Pick<SampleParams, "id"> & Partial<SampleParams>
+  ): Promise<unknown>;
+  moveSample(oldIndex: number, newIndex: number): Promise<unknown>;
+  setSettings(settings: t.TypeOf<typeof LocalSettings>): Promise<unknown>;
 }
 
-// export function TypedEventTarget<
-//   TBase extends GConstructor<EventTarget>,
-//   EventMap extends { [key: string]: any }
-// >(Base: TBase) {
-//   return class TypedEventTarget extends Base {
-//     public addEventListener<K extends Extract<keyof EventMap, string>>(
-//       type: K,
-//       listener: (ev: CustomEvent<EventMap[K]>) => void
-//     ) {
-//       return super.addEventListener(type, listener);
-//     }
-
-//     public dispatchEvent<V extends EventMap[keyof EventMap]>(
-//       event: CustomEvent<V>
-//     ) {
-//       return super.dispatchEvent(event);
-//     }
-
-//     public removeEventListener<K extends Extract<keyof EventMap, string>>(
-//       type: K,
-//       listener: (ev: CustomEvent<EventMap[K]>) => void
-//     ) {
-//       return super.removeEventListener(type, listener);
-//     }
-//   };
-// }
-
-export enum SampleAddTypes {
-  UPLOAD = "UPLOAD",
-  RECORD_DESKTOP = "RECORD_DESKTOP",
+export const enum SignedInTypes {
+  SignedIn = "SignedIn",
+  SignedOut = "SignedOut",
+  Offline = "Offline",
 }
 
-export interface SavedSettings {
-  lastSampleAddType?: SampleAddTypes;
+export type SignedInState =
+  | { state: SignedInTypes.SignedIn; user: UserId }
+  | { state: SignedInTypes.SignedOut }
+  | { state: SignedInTypes.Offline };
+
+interface ICommonBackend {
+  getState(key: string): Promise<unknown>;
+  setState(key: string, state: unknown): Promise<unknown>;
+  deleteState(key: string): Promise<unknown>;
+  getStateKeys(): Promise<string[]>;
 }
 
-export interface MainSavedState {
-  version: string;
-  samples: string[];
-  settings: SavedSettings;
+export type ILocalBackend = ICommonBackend & {
+  setState(
+    key: typeof LOCAL_STATE_KEY,
+    localState: t.TypeOf<typeof LocalState>
+  ): Promise<unknown>;
+  setState(
+    key: UserId,
+    cachedState: t.OutputOf<typeof MergeableMainState>
+  ): Promise<unknown>;
+};
+
+export type IRemoteBackend = ICommonBackend & {
+  setState(
+    key: typeof REMOTE_STATE_KEY,
+    cachedState: t.OutputOf<typeof MergeableMainState>
+  ): Promise<unknown>;
+  signedInUser: Readable<SignedInState | null>;
+};
+
+export interface ISampleDataBackend {
+  getState(key: RevisionId): Promise<SampleData | null>;
+  setState(key: RevisionId, data: SampleData): Promise<unknown>;
+  deleteState(key: RevisionId): Promise<unknown>;
 }
 
-export interface SampleSavedState {
-  id: string;
-  title?: string;
+export class RetryError extends Error {
+  constructor() {
+    super();
+    this.name = "RetryError";
+  }
 }
+
+export const AutomergeCodec = <C extends t.Mixed>(base: C) =>
+  new t.Type<ExtendedDoc<t.TypeOf<C>>, Uint8Array, unknown>(
+    "Automerge Doc",
+    (input): input is ExtendedDoc<t.TypeOf<C>> =>
+      typeof input === "object" &&
+      input !== null &&
+      "_actorId" in input &&
+      base.is(input),
+    (input, context) => {
+      try {
+        if (!(input instanceof Uint8Array)) {
+          throw new Error("non uint8array passed");
+        }
+        const doc = mergeableLoad(input);
+        return base.validate(doc, context);
+      } catch (e: unknown) {
+        return t.failure(
+          input,
+          context,
+          e instanceof Error ? e.message : undefined
+        );
+      }
+    },
+    (input) => mergeableSave(input)
+  );
+
+export const MergeableMainState = AutomergeCodec(MainState);

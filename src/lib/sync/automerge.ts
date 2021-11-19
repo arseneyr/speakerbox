@@ -1,6 +1,7 @@
 import { assert, Entries } from "$lib/utils";
 import type { BinaryDocument, Doc } from "automerge";
 import { CONFLICTS } from "automerge/frontend/constants";
+import type { Brand } from "io-ts";
 
 type DocWithConflicts<T> = {
   [CONFLICTS]?: {
@@ -19,7 +20,9 @@ type Mutable<T> = {
 };
 
 type ConflictMap<T extends Record<string, any>> = {
-  [K in keyof T]: T[K] extends Record<string, any>
+  [K in keyof T]: T[K] extends Brand<any>
+    ? { actorId: string; value: T[K] }[]
+    : T[K] extends Record<string, any>
     ? ConflictMap<T[K]>
     : { actorId: string; value: T[K] }[];
 };
@@ -98,7 +101,7 @@ function mergeableClone<T>(doc: Doc<T>, actorId?: string): ExtendedDoc<T> {
 
 function mergeableChange<T extends Record<string, unknown>>(
   doc: Doc<T>,
-  updateFn: (contents: Mutable<T>) => void
+  updateFn: (contents: T) => void
 ): ExtendedDoc<T> {
   return addActorId(Automerge.change(doc, updateFn));
 }
