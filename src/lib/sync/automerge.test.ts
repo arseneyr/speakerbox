@@ -56,8 +56,14 @@ describe("AutomergeCodec", () => {
 
 describe("automerge conflicts", () => {
   test("double init", () => {
-    const doc1 = mergeableInit({ foo: "baz" }, "c0ffee");
-    const doc2 = mergeableInit({ foo: "bar" }, "f00d");
+    const doc1 = mergeableInit<{ foo: string; big?: string }>(
+      { foo: "baz" },
+      "c0ffee"
+    );
+    const doc2 = mergeableInit<{ foo: string; big?: string }>(
+      { foo: "bar" },
+      "f00d"
+    );
     const expectedConflict = {
       foo: expect.arrayContaining([
         { actorId: "c0ffee", value: "baz" },
@@ -67,6 +73,10 @@ describe("automerge conflicts", () => {
     const merged = mergeableMerge(doc1, doc2);
     expect(mergeableGetConflicts(merged)).toEqual(expectedConflict);
     const merged2 = mergeableMerge(doc2, merged);
+    expect(mergeableGetConflicts(merged2)).toEqual(expectedConflict);
+
+    // Changing unrelated key keeps conflict
+    mergeableChange(merged2, (doc) => (doc["big"] = "dep"));
     expect(mergeableGetConflicts(merged2)).toEqual(expectedConflict);
   });
 

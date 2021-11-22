@@ -49,7 +49,7 @@ export type StateManagerOutputState =
     })
   | null;
 
-class StateManager {
+class StateManagerAdvanced {
   private readonly _localState = privateWritable<InternalState>();
   private _remoteState: MergeableMainState | null = null;
   private readonly _syncCounter = privateWritable(0);
@@ -70,14 +70,14 @@ class StateManager {
     const fetchedLocalState = await this._fetchLocalState();
     let internalLocalState: InternalState;
     if (!fetchedLocalState) {
-      internalLocalState = StateManager._createNewLocalState();
+      internalLocalState = StateManagerAdvanced._createNewLocalState();
       await this._localBackend.setState(LOCAL_STATE_KEY, internalLocalState);
     } else if (LocalStateCached.is(fetchedLocalState)) {
       const cachedState = await this._fetchCachedState(
         fetchedLocalState.userId
       );
       if (!cachedState) {
-        internalLocalState = StateManager._createNewLocalState();
+        internalLocalState = StateManagerAdvanced._createNewLocalState();
         await this._localBackend.setState(LOCAL_STATE_KEY, internalLocalState);
       } else {
         internalLocalState = {
@@ -215,7 +215,7 @@ class StateManager {
       newCachedState = mergeableInit(localState.mainState);
       newRemoteState = mergeableClone(newCachedState);
     } else {
-      newRemoteState = StateManager._moveSamplesIntoState(
+      newRemoteState = StateManagerAdvanced._moveSamplesIntoState(
         remoteState,
         localState.mainState
       );
@@ -245,7 +245,7 @@ class StateManager {
     return {
       version: LOCAL_VERSION_1_0.value,
       settings: {},
-      mainState: StateManager._createNewMainState(),
+      mainState: StateManagerAdvanced._createNewMainState(),
     };
   }
 
@@ -393,7 +393,7 @@ class StateManager {
           // Two endpoints tried to upgrade local states at the same time.
           // The one already stored wins.
 
-          localState.cachedState = StateManager._moveSamplesIntoState(
+          localState.cachedState = StateManagerAdvanced._moveSamplesIntoState(
             mergeableClone(newRemoteState),
             localState.cachedState
           );
@@ -463,7 +463,9 @@ class StateManager {
             } else {
               // New user signed in. Throw away the cache.
               if (!remoteState) {
-                remoteState = mergeableInit(StateManager._createNewMainState());
+                remoteState = mergeableInit(
+                  StateManagerAdvanced._createNewMainState()
+                );
                 syncRemoteState = true;
               }
               localState.cachedState = mergeableClone(remoteState);
@@ -472,7 +474,10 @@ class StateManager {
             }
           } else {
             // Upgrade local state to cached state
-            ({ localState, remoteState } = StateManager._upgradeLocalState(
+            ({
+              localState,
+              remoteState,
+            } = StateManagerAdvanced._upgradeLocalState(
               localState,
               remoteState,
               signedInState.user
@@ -489,7 +494,7 @@ class StateManager {
         this._localState._update((localState) => {
           if ("userId" in localState) {
             this._localBackend.deleteState(localState.userId);
-            localState = StateManager._createNewLocalState();
+            localState = StateManagerAdvanced._createNewLocalState();
             syncLocalState = true;
           }
           return localState;
@@ -504,4 +509,4 @@ class StateManager {
   }
 }
 
-export default StateManager;
+export default StateManagerAdvanced;

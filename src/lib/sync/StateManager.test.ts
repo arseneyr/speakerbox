@@ -5,7 +5,7 @@ import {
 } from "$lib/backend/testBackend";
 import { waitForValue } from "$lib/utils";
 import { get } from "svelte/store";
-import StateManager from "./StateManager";
+import StateManagerAdvanced from "./StateManagerAdvanced";
 import { generateRevisionId, ILocalBackend } from "$lib/types";
 
 let remoteBackendGenerator: ReturnType<typeof createTestRemoteBackend>;
@@ -13,14 +13,14 @@ beforeEach(() => {
   remoteBackendGenerator = createTestRemoteBackend();
 });
 
-async function waitForSyncing(...managers: StateManager[]) {
+async function waitForSyncing(...managers: StateManagerAdvanced[]) {
   await Promise.all(
     managers.map((manager) => waitForValue(manager.syncing, (s) => !s))
   );
 }
 
 async function getLocalState(localBackend: ILocalBackend) {
-  const stateManager = new StateManager(
+  const stateManager = new StateManagerAdvanced(
     localBackend,
     remoteBackendGenerator.createEndpoint()
   );
@@ -29,7 +29,7 @@ async function getLocalState(localBackend: ILocalBackend) {
 }
 
 async function getRemoteState(user = "") {
-  const stateManager = new StateManager(
+  const stateManager = new StateManagerAdvanced(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn(user)
   );
@@ -40,7 +40,7 @@ async function getRemoteState(user = "") {
 
 test("local only", async () => {
   const localBackend = createTestLocalBackend();
-  const stateManager = new StateManager(
+  const stateManager = new StateManagerAdvanced(
     localBackend,
     remoteBackendGenerator.createEndpoint()
   );
@@ -62,7 +62,7 @@ test("local only", async () => {
 test("upgrade local state on signin", async () => {
   const localBackend = inMemory();
   const remoteBackend = remoteBackendGenerator.createEndpoint();
-  const stateManager = new StateManager(localBackend, remoteBackend);
+  const stateManager = new StateManagerAdvanced(localBackend, remoteBackend);
   await stateManager.init();
   stateManager.updateMainState((state) => state.sampleList.push("a"));
   const expectedState = {
@@ -77,11 +77,11 @@ test("upgrade local state on signin", async () => {
 });
 
 test("simultaneous upgrades", async () => {
-  const stateManager1 = new StateManager(
+  const stateManager1 = new StateManagerAdvanced(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn("")
   );
-  const stateManager2 = new StateManager(
+  const stateManager2 = new StateManagerAdvanced(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn("")
   );
@@ -105,7 +105,7 @@ test("simultaneous upgrades", async () => {
 });
 
 test("simultaneous array edits", async () => {
-  const stateManager1 = new StateManager(
+  const stateManager1 = new StateManagerAdvanced(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn("")
   );
@@ -113,7 +113,7 @@ test("simultaneous array edits", async () => {
   stateManager1.updateMainState((state) => state.sampleList.push("foo"));
   await waitForSyncing(stateManager1);
 
-  const stateManager2 = new StateManager(
+  const stateManager2 = new StateManagerAdvanced(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn("")
   );
@@ -142,7 +142,7 @@ test("simultaneous sample object edits", async () => {
     generateRevisionId()
   );
 
-  const stateManager1 = new StateManager(
+  const stateManager1 = new StateManagerAdvanced(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn("")
   );
@@ -156,7 +156,7 @@ test("simultaneous sample object edits", async () => {
   );
   await waitForSyncing(stateManager1);
 
-  const stateManager2 = new StateManager(
+  const stateManager2 = new StateManagerAdvanced(
     inMemory(),
     remoteBackendGenerator.createEndpoint().__signIn("")
   );
@@ -199,7 +199,7 @@ test("simultaneous sample object edits", async () => {
 
 test("updating while offline gets persisted", async () => {
   const localBackend = inMemory();
-  let manager = await new StateManager(
+  let manager = await new StateManagerAdvanced(
     localBackend,
     remoteBackendGenerator.createEndpoint().__signIn("")
   ).init();
@@ -209,7 +209,10 @@ test("updating while offline gets persisted", async () => {
   const newRemoteBackend = remoteBackendGenerator
     .createEndpoint()
     .__goOffline();
-  manager = await new StateManager(localBackend, newRemoteBackend).init();
+  manager = await new StateManagerAdvanced(
+    localBackend,
+    newRemoteBackend
+  ).init();
   expect(get(manager.mainState)).toEqual({ sampleList: ["foo"], samples: {} });
 
   manager.updateMainState((state) => state.sampleList.push("bar"));
@@ -223,7 +226,7 @@ test("updating while offline gets persisted", async () => {
 
 test("signing in and out is ok", async () => {
   const remoteBackend = remoteBackendGenerator.createEndpoint();
-  await new StateManager(inMemory(), remoteBackend).init();
+  await new StateManagerAdvanced(inMemory(), remoteBackend).init();
 
   expect(() => {
     remoteBackend.__signIn("");

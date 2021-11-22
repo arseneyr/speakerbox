@@ -1,7 +1,9 @@
 import { derived, get, Readable, writable } from "svelte/store";
 import { assert } from "$lib/utils";
 import { v4 } from "uuid";
-import StateManager, { StateManagerOutputState } from "./StateManager";
+import StateManagerAdvanced, {
+  StateManagerOutputState,
+} from "./StateManagerAdvanced";
 import {
   generateRevisionId,
   ILocalBackend,
@@ -24,7 +26,7 @@ class SyncManager implements ISyncManager {
     private readonly _localBackend: ILocalBackend & ISampleDataBackend,
     private readonly _remoteBackend: IRemoteBackend & ISampleDataBackend
   ) {
-    this._stateManager = new StateManager(
+    this._stateManager = new StateManagerAdvanced(
       this._localBackend,
       this._remoteBackend
     );
