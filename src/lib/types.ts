@@ -1,7 +1,8 @@
 import * as t from "io-ts";
 import { v4 } from "uuid";
-import { ExtendedDoc, mergeableLoad, mergeableSave } from "$lib/sync/automerge";
 import type { Readable } from "svelte/store";
+import { JsonFromString } from "io-ts-types";
+import stringify from "json-stable-stringify";
 
 export interface Player {
   play(): void;
@@ -19,7 +20,7 @@ export class AbortError extends Error {
 }
 
 export const LOCAL_STATE_KEY = "local";
-export const REMOTE_STATE_KEY = "remote";
+export const REMOTE_STATE_KEY = "remote-state.json";
 
 export const LOCAL_VERSION_1_0 = t.literal("1.0");
 export type LOCAL_VERSION_1_0 = t.TypeOf<typeof LOCAL_VERSION_1_0>;
@@ -86,7 +87,6 @@ export type MainState = t.TypeOf<typeof MainState>;
 export type LocalStateCached = t.TypeOf<typeof LocalStateCached>;
 export type LocalStateFull = t.TypeOf<typeof LocalStateFull>;
 export type LocalState = t.TypeOf<typeof LocalState>;
-export type MergeableMainState = t.TypeOf<typeof MergeableMainState>;
 
 export type SampleData = Blob;
 export interface SampleParams {
@@ -94,6 +94,12 @@ export interface SampleParams {
   readonly title: string;
   readonly data: SampleData;
 }
+
+export const MainStateFromString = JsonFromString.pipe(MainState);
+export const BlobFromMainState = (state: MainState) =>
+  new Blob([stringify(state)], {
+    type: "application/json",
+  });
 
 export interface ISyncManager {
   addSample(params: SampleParams): Promise<unknown>;
@@ -127,17 +133,11 @@ export type ILocalBackend = ICommonBackend & {
     key: typeof LOCAL_STATE_KEY,
     localState: t.TypeOf<typeof LocalState>
   ): Promise<unknown>;
-  setState(
-    key: UserId,
-    cachedState: t.OutputOf<typeof MergeableMainState>
-  ): Promise<unknown>;
+  setState(key: UserId, cachedState: MainState): Promise<unknown>;
 };
 
 export type IRemoteBackend = ICommonBackend & {
-  setState(
-    key: typeof REMOTE_STATE_KEY,
-    cachedState: t.OutputOf<typeof MergeableMainState>
-  ): Promise<unknown>;
+  setState(key: typeof REMOTE_STATE_KEY, remoteState: Blob): Promise<unknown>;
   signedInUser: Readable<SignedInState | null>;
 };
 
@@ -153,31 +153,3 @@ export class RetryError extends Error {
     this.name = "RetryError";
   }
 }
-
-export const AutomergeCodec = <C extends t.Mixed>(base: C) =>
-  new t.Type<ExtendedDoc<t.TypeOf<C>>, Uint8Array, unknown>(
-    "Automerge Doc",
-    (input): input is ExtendedDoc<t.TypeOf<C>> =>
-      typeof input === "object" &&
-      input !== null &&
-      "_actorId" in input &&
-      base.is(input),
-    (input, context) => {
-      try {
-        if (!(input instanceof Uint8Array)) {
-          throw new Error("non uint8array passed");
-        }
-        const doc = mergeableLoad(input);
-        return base.validate(doc, context);
-      } catch (e: unknown) {
-        return t.failure(
-          input,
-          context,
-          e instanceof Error ? e.message : undefined
-        );
-      }
-    },
-    (input) => mergeableSave(input)
-  );
-
-export const MergeableMainState = AutomergeCodec(MainState);
