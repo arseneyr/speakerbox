@@ -1,5 +1,5 @@
 import { derived, readable, Readable, writable } from "svelte/store";
-import { memoizedDerived } from "./utils";
+import { memoizedDerived, runAtMostOnce } from "./utils";
 import Automerge from "automerge";
 
 test("high order stores", () => {
@@ -109,6 +109,17 @@ describe("automerge", () => {
     expect(conflicts).toBeDefined();
     console.log(conflicts);
   });
+});
+
+test("runAtMostOnce", async () => {
+  const arg1 = {},
+    arg2 = {};
+  const baseFn = jest.fn((a) => Promise.resolve(a));
+  const wrappedFn = runAtMostOnce(baseFn);
+  wrappedFn(arg1);
+  await wrappedFn(arg2);
+  expect(baseFn).toHaveBeenCalledTimes(1);
+  expect(baseFn.mock.calls[0][0]).toBe(arg2);
 });
 
 // describe("spyOnStore", () => {

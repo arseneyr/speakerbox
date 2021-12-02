@@ -45,6 +45,7 @@ export async function loadAutomerge(): Promise<typeof Automerge> {
   }
   return Automerge;
 }
+
 function mergeableGetConflicts<T>(
   doc: (Doc<T> | ExtendedDoc<T>) & DocWithConflicts<T>
 ): ConflictMap<T> | null {
@@ -107,7 +108,11 @@ function mergeableChange<T extends Record<string, unknown>>(
 }
 
 function mergeableMerge<T>(first: Doc<T>, second: Doc<T>): ExtendedDoc<T> {
-  return addActorId(Automerge.merge(first, second));
+  let doc = Automerge.merge(first, second);
+  if (!mergeableHasChanged(first, doc)) {
+    doc = first;
+  }
+  return addActorId(doc);
 }
 
 function mergeableHasChanged<T>(oldDoc: Doc<T>, newDoc: Doc<T>): boolean {

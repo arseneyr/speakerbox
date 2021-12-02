@@ -53,8 +53,11 @@ function privateWritable<T>(
       enumerable: false,
       writable: false,
       value: (updateFn: (v?: T) => T) => {
-        value = updateFn(value);
-        originalSet(value);
+        const newValue = updateFn(value);
+        if (!Object.is(newValue, value)) {
+          value = newValue;
+          originalSet(value);
+        }
       },
     },
     _val: {
@@ -210,4 +213,34 @@ function memoizedDerived<S extends Stores, T>(
   );
 }
 
-export { privateWritable, Deferred, waitForValue, assert, memoizedDerived };
+function runAtMostOnce<A extends any[]>(
+  this: any,
+  fn: (...args: A) => Promise<void>
+): (...args: A) => Promise<void> {
+  let nextArgs: A | null = null;
+  let currentPromise: Promise<void> = Promise.resolve();
+  const start = () => {
+    const args = nextArgs!;
+    nextArgs = null;
+    return fn.apply(this, args);
+  };
+  return (...args: A) => {
+    if (nextArgs) {
+      nextArgs = args;
+    } else {
+      nextArgs = args;
+      currentPromise = currentPromise.then(start, start);
+    }
+
+    return currentPromise;
+  };
+}
+
+export {
+  privateWritable,
+  Deferred,
+  waitForValue,
+  assert,
+  memoizedDerived,
+  runAtMostOnce,
+};
