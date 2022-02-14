@@ -1,6 +1,5 @@
 <script lang="ts">
-  import Ripple from "@smui/ripple/styled";
-  import IconButton from "@smui/icon-button/styled";
+  import IconButton from "@smui/icon-button";
   import { fade, scale } from "svelte/transition";
   import { backOut } from "svelte/easing";
 
@@ -10,9 +9,8 @@
   export let loading = false;
   export let editMode = false;
 
-  export let iconButton:
-    | { icon: string; onClick: () => void }
-    | undefined = undefined;
+  export let iconButton: { icon: string; onClick: () => void } | undefined =
+    undefined;
 
   let transition: { duration: number } | null;
   let outDuration: number;
@@ -82,7 +80,7 @@
 </div>
 
 <style lang="scss">
-  @use 'smui-theme' as theme;
+  @use "../theme";
   div.root {
     position: relative;
     /* width: 100%;

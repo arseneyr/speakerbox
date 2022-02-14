@@ -1,3 +1,4 @@
+const { dirname } = require("path");
 const path = require("path");
 const sveltePreprocess = require("svelte-preprocess");
 
@@ -26,6 +27,9 @@ module.exports = {
     config.define = config.define ?? {};
     config.define["process.env"] = process.env;
     config.define["global"] = "window";
+
+    config.root = dirname(require.resolve("storybook-builder-vite"));
+    config.server.fsServe = undefined;
 
     return config;
   },

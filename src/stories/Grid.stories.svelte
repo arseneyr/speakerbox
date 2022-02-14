@@ -2,7 +2,7 @@
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import SampleButton from "../components/SampleButton.svelte";
   import Grid from "../components/Grid.svelte";
-  import faker from "faker";
+  import faker from "@faker-js/faker";
 </script>
 
 <Meta title="Grid" component={Grid} />

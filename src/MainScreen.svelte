@@ -1,12 +1,12 @@
 <script lang="ts">
-  import Button, { Icon, Label } from "@smui/button/styled";
+  import Button, { Icon, Label } from "@smui/button";
   import Grid from "./components/Grid.svelte";
   import ControlPanel from "./components/ControlPanel.svelte";
   import Sample from "./Sample.svelte";
   import Editor from "./components/Editor.svelte";
   import { getMainStore, SampleStore } from "$lib/store";
-  import NewSampleButton from "./NewSampleButton.svelte";
-  import Snackbar, { Actions } from "@smui/snackbar/styled";
+  import NewSampleButton from "./components/NewSampleButton.svelte";
+  import Snackbar, { Actions } from "@smui/snackbar";
   import { getGDrive } from "./App.svelte";
   import { readable } from "svelte/store";
 
@@ -132,8 +132,8 @@
 </Snackbar>
 
 <style lang="scss">
-  @use 'smui-theme' as theme;
-  @use '@material/typography/index' as typography;
+  @use "theme";
+  // @use "@material/typography/index" as typography;
 
   :global(.snackbarSurface) {
     background-color: theme.$mainColor;
@@ -141,7 +141,7 @@
   :global(.snackbarSurface > span) {
     color: white;
   }
-  .gDriveLabel {
-    @include typography.typography("subtitle2");
-  }
+  // .gDriveLabel {
+  //   @include typography.typography("subtitle2");
+  // }
 </style>

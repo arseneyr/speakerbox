@@ -1,6 +1,6 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import NewSampleButton from "../NewSampleButton.svelte";
+  import NewSampleButton from "../components/NewSampleButton.svelte";
   import { AudioRecorder } from "$lib/recorder/recorder";
 </script>
 

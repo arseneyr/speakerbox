@@ -3,14 +3,14 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const dirName = dirname(fileURLToPath(import.meta.url));
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [svelte()],
   resolve: {
     alias: {
-      $lib: resolve(__dirname, "/src/lib"),
+      $lib: resolve(dirName, "./src/lib"),
     },
   },
   define: {

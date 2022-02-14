@@ -1,7 +1,7 @@
 <script lang="ts">
-  import Textfield from "@smui/textfield/styled";
-  import Button, { Group, Icon, Label } from "@smui/button/styled";
-  import Tooltip, { Wrapper } from "@smui/tooltip/styled";
+  import Textfield from "@smui/textfield";
+  import Button, { Group, Icon, Label } from "@smui/button";
+  import Tooltip, { Wrapper } from "@smui/tooltip";
   import CloseButton from "./CloseButton.svelte";
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import type { SampleStore } from "$lib/store";
@@ -272,8 +272,8 @@
 </div>
 
 <style lang="scss">
-  @use '@material/typography/index' as typography;
-  @use '@material/icon-button/index' as icon-button;
+  @use "@material/typography/index" as typography;
+  @use "@material/icon-button/index" as icon-button;
 
   .root {
     width: 100%;
@@ -296,7 +296,7 @@
     flex-grow: 1;
   }
   .topBar > :global(.title > input) {
-    @include typography.typography("headline5");
+    // @include typography.typography("headline5");
   }
   .saveButtons {
     margin: 16px 8px;

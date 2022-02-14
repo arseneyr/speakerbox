@@ -4,11 +4,11 @@
     PermissionDeniedError,
     startAudioRecording,
   } from "$lib/recorder";
-  import AddButton from "./components/AddButton.svelte";
+  import AddButton from "./AddButton.svelte";
   import { getMainStore, SampleStore } from "$lib/store";
-  import Button, { Icon, Label } from "@smui/button/styled";
-  import Snackbar, { Actions } from "@smui/snackbar/styled";
-  import IconButton from "@smui/icon-button/styled";
+  import Button, { Icon, Label } from "@smui/button";
+  import Snackbar, { Actions } from "@smui/snackbar";
+  import IconButton from "@smui/icon-button";
   import { fileOpen } from "browser-fs-access";
   import { createEventDispatcher } from "svelte";
   import { SampleAddTypes } from "$lib/types";
@@ -132,7 +132,7 @@
 </Snackbar>
 
 <style lang="scss">
-  @use 'smui-theme' as theme;
+  @use "../theme";
   :global(.snackbarSurface) {
     background-color: theme.$mainColor;
   }

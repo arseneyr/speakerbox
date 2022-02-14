@@ -1,7 +1,7 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import MainScreen from "../MainScreen.svelte";
-  import faker from "faker";
+  import faker from "@faker-js/faker";
   import wav from "./sample.wav";
   import { SampleStore, MainStore, setMainStore } from "$lib/store";
   import { inMemory } from "$lib/backend";

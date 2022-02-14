@@ -1,5 +1,5 @@
-@use 'sass:color';
-@use '@material/theme/color-palette';
+@use "sass:color";
+// @use '@material/theme/color-palette';
 
 $accent: #ff6bf9;
 
@@ -15,11 +15,11 @@ $lighterColor: #9dafad;
 $onSurface: #ebeee7;
 
 // Svelte Colors!
-@use '@material/theme/index' as theme with (
-  $primary: $accent,
-  $secondary: $lighterColor,
-  $surface: $lighterColor,
-  $background: #fff,
-  $error: color-palette.$red-900,
-  $on-surface: $onSurface
-);
+// @use '@material/theme/index' as theme with (
+//   $primary: $accent,
+//   $secondary: $lighterColor,
+//   $surface: $lighterColor,
+//   $background: #fff,
+//   $error: color-palette.$red-900,
+//   $on-surface: $onSurface
+// );

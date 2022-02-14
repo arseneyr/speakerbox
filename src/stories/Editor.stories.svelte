@@ -2,7 +2,7 @@
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import Editor from "../components/Editor.svelte";
   import wav from "./long_sample.mp3";
-  import faker from "faker";
+  import faker from "@faker-js/faker";
   import { SampleStore } from "$lib/store";
   const samplePromise = fetch(wav)
     .then((b) => b.blob())
