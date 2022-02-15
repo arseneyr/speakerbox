@@ -1,4 +1,4 @@
-import { assert, Entries } from "$lib/utils";
+import { assert, type Entries } from "$lib/utils";
 import type { BinaryDocument, Doc } from "automerge";
 import { CONFLICTS } from "automerge/frontend/constants";
 import type { Brand } from "io-ts";

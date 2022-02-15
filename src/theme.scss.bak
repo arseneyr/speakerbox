@@ -1,8 +1,0 @@
-$darkColor: #1c2524;
-$mainColor: #2f4541;
-$lightTextColor: #ebeee7;
-$lightAccent: #749d85;
-$darkAccent: #707e82;
-$sampleFont: 1.6em "Lexend", sans-serif;
-$progressColor: linear-gradient(to left, #ff6bf9, #ff7a9a);
-$lighterColor: #9dafad;
