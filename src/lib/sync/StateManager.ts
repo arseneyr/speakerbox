@@ -1,7 +1,7 @@
-import { derived, get, Readable } from "svelte/store";
+import { derived, get, type Readable } from "svelte/store";
 import {
-  ILocalBackend,
-  IRemoteBackend,
+  type ILocalBackend,
+  type IRemoteBackend,
   LocalStateCached,
   LocalState,
   LocalStateFull,
@@ -97,10 +97,7 @@ class StateManager {
       } else {
         assert(LocalStateCached.is(state));
 
-        const newCachedState = mergeableChange<MainState>(
-          state.cachedState,
-          updateFn
-        );
+        const newCachedState = mergeableChange(state.cachedState, updateFn);
         syncLocalState = mergeableHasChanged(state.cachedState, newCachedState);
         if (syncLocalState) {
           state.cachedState = newCachedState;
@@ -134,8 +131,9 @@ class StateManager {
     if (LocalStateFull.is(localState)) {
       return filter(localState.mainState);
     } else {
-      const sampleConflicts = mergeableGetConflicts(localState.cachedState)
-        ?.samples;
+      const sampleConflicts = mergeableGetConflicts(
+        localState.cachedState
+      )?.samples;
       const ret: StateManagerOutputState = filter(localState.cachedState);
       if (sampleConflicts) {
         // assert(this._remoteState);

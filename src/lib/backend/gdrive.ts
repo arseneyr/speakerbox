@@ -1,4 +1,4 @@
-import type { RemoteStorageBackend, StorageBackend } from "$lib/types";
+import type { IRemoteBackend, StorageBackend } from "$lib/types";
 import { privateWritable } from "$lib/utils";
 import { localForage } from ".";
 
@@ -52,7 +52,7 @@ async function initializeGapi(): Promise<void> {
   console.log(gapi.client.drive);
 }
 
-export class GDriveBackend extends EventTarget implements RemoteStorageBackend {
+export class GDriveBackend extends EventTarget implements IRemoteBackend {
   public readonly signedInUser = privateWritable<string | false | null>(null);
 
   private readonly _local = localForage();
