@@ -15,4 +15,5 @@ export default {
       babelConfig: true,
     },
   },
+  testPathIgnorePatterns: ["/node_modules/", "/.pnpm-store/"],
 };
