@@ -6,6 +6,14 @@ import type {
 } from "svelte/store";
 import { derived, writable } from "svelte/store";
 import externalAssert, { AssertionError } from "assert";
+import {
+  addListener,
+  type AnyAction,
+  type Reducer,
+  type ThunkAction,
+} from "@reduxjs/toolkit";
+import type { BaseActionCreator } from "@reduxjs/toolkit/dist/createAction";
+import type { TypedActionCreator } from "@reduxjs/toolkit/dist/listenerMiddleware/types";
 
 export type Entries<T> = {
   [K in keyof T]: [K, T[K]];
@@ -67,7 +75,7 @@ function privateWritable<T>(
 
   // delete ret["set"];
   // delete ret["update"];
-  return (ret as unknown) as PrivateWritable<T>;
+  return ret as unknown as PrivateWritable<T>;
 }
 
 class Deferred<T> {
@@ -236,6 +244,28 @@ function runAtMostOnce<A extends any[]>(
   };
 }
 
+function reduceReducers<S>(...reducers: Reducer<S>[]): Reducer<S> {
+  return (state, action) =>
+    reducers.reduce((newState, r) => r(newState, action), state) as S;
+}
+
+function waitForAction(
+  actionCreator: TypedActionCreator<string>
+): ThunkAction<Promise<void>, unknown, void, AnyAction> {
+  return (dispatch) =>
+    new Promise((resolve) => {
+      dispatch(
+        addListener({
+          actionCreator,
+          effect: (_, { unsubscribe }) => {
+            unsubscribe();
+            resolve();
+          },
+        })
+      );
+    });
+}
+
 export {
   privateWritable,
   Deferred,
@@ -243,4 +273,6 @@ export {
   assert,
   memoizedDerived,
   runAtMostOnce,
+  reduceReducers,
+  waitForAction,
 };

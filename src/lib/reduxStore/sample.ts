@@ -11,7 +11,7 @@ import {
   type Reducer,
 } from "@reduxjs/toolkit";
 import { mergeableChange, mergeableInit } from "./automerge";
-import { fetchRemoteState } from "./remoteBackend";
+import { fetchRemoteState, signOut } from "./remoteBackend";
 
 interface TempSampleState {
   [id: string]: {
@@ -78,72 +78,14 @@ const sampleSlice = createSlice({
       delete state.tempState[action.payload];
     },
   },
-  extraReducers: (builder) =>
+  extraReducers: (builder) => {
     builder.addCase(fetchRemoteState.fulfilled, (state, action) => {
       if (action.payload === null) {
         return;
       }
       state.savedState = mergeableMerge(state.savedState, action.payload);
-    }),
+    });
+  },
 });
 
-// function sampleReducer(
-//   state: SampleState = initialState,
-//   action: AnyAction
-// ): SampleState {
-//   if (addSample.match(action)) {
-//     const sample = action.payload;
-//     return {
-//       ...state,
-//       savedState: mergeableChange(state.savedState, (s) => {
-//         s.samples[sample.id] = sample;
-//         s.sampleList.push(sample.id);
-//       }),
-//       tempState: createNextState(state.tempState, (draft) => {
-//         draft[sample.id] = { playing: false };
-//       }),
-//     };
-//   } else if (setSamplePlaying.match(action)) {
-//     return {
-//       ...state,
-//       tempState: createNextState(state.tempState, (draft) => {
-//         draft[action.payload.id].playing = action.payload.playing;
-//       }),
-//     };
-//   } else if (stopAllSamples.match(action)) {
-//     return {
-//       ...state,
-//       tempState: createNextState(state.tempState, (draft) => {
-//         for (const s of Object.values(draft)) {
-//           s.playing = false;
-//         }
-//       }),
-//     };
-//   } else if (deleteSample.match(action)) {
-//     return {
-//       ...state,
-//       savedState: mergeableChange(state.savedState, (s) => {
-//         delete s.samples[action.payload];
-//         const i = s.sampleList.indexOf(action.payload);
-//         if (i >= 0) {
-//           s.sampleList.splice(i, 1);
-//         }
-//       }),
-//       tempState: createNextState(state.tempState, (draft) => {
-//         delete draft[action.payload];
-//       }),
-//     };
-//   } else if (fetchRemoteState.fulfilled.match(action)) {
-//     const incomingState = action.payload;
-//     if (incomingState !== null) {
-//       return {
-//         ...state,
-//       };
-//     }
-//   }
-
-//   return state;
-// }
-
-// export { sampleSlice };
 export default sampleSlice.reducer;

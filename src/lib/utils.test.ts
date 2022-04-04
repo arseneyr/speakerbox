@@ -1,6 +1,11 @@
-import { derived, readable, Readable, writable } from "svelte/store";
-import { memoizedDerived, runAtMostOnce } from "./utils";
+import { derived, readable, type Readable, writable } from "svelte/store";
+import { memoizedDerived, runAtMostOnce, waitForAction } from "./utils";
 import Automerge from "automerge";
+import {
+  configureStore,
+  createAction,
+  createListenerMiddleware,
+} from "@reduxjs/toolkit";
 
 test("high order stores", () => {
   const setStore = writable(new Set<Readable<{ inner: Readable<boolean> }>>());
@@ -120,6 +125,19 @@ test("runAtMostOnce", async () => {
   await wrappedFn(arg2);
   expect(baseFn).toHaveBeenCalledTimes(1);
   expect(baseFn.mock.calls[0][0]).toBe(arg2);
+});
+
+test("waitForAction", async () => {
+  const store = configureStore({
+    reducer: {},
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().prepend(createListenerMiddleware().middleware),
+  });
+
+  const action = createAction("testaction");
+  const p = store.dispatch(waitForAction(action));
+  store.dispatch(action);
+  await expect(p).resolves.not.toThrow();
 });
 
 // describe("spyOnStore", () => {

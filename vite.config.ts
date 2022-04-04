@@ -5,7 +5,6 @@ import { fileURLToPath } from "url";
 
 const dirName = dirname(fileURLToPath(import.meta.url));
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [svelte()],
   resolve: {

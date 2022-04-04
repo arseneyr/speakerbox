@@ -1,5 +1,5 @@
 export default {
-  preset: "ts-jest/presets/js-with-babel",
+  preset: "ts-jest",
   testEnvironment: "jsdom",
   setupFiles: ["web-audio-test-api"],
   setupFilesAfterEnv: ["<rootDir>/src/testSetup.ts"],
@@ -12,7 +12,12 @@ export default {
   ],
   globals: {
     "ts-jest": {
-      babelConfig: true,
+      babelConfig: {
+        presets: ["babel-preset-vite"],
+      },
+      diagnostics: {
+        ignoreCodes: [1343],
+      },
     },
   },
 };

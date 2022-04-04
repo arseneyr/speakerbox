@@ -5,7 +5,8 @@
 		"module": "es2020",
 		"lib": [
 			"es2020",
-			"DOM"
+			"DOM",
+			"WebWorker"
 		],
 		"moduleResolution": "node",
 		"baseUrl": ".",
@@ -38,6 +39,7 @@
 		"src/**/*.d.ts",
 		"src/**/*.ts",
 		"src/**/*.js",
-		"src/**/*.svelte"
+		"src/**/*.svelte",
+		"./vite.config.ts"
 	],
 }

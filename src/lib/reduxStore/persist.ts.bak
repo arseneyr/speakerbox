@@ -1,0 +1,185 @@
+import { AutomergeCodec, RetryError } from "$lib/types";
+import { Deferred, privateWritable } from "$lib/utils";
+import type { NullableTypeAnnotation } from "@babel/types";
+import {
+  createAction,
+  createAsyncThunk,
+  type AnyAction,
+  type AsyncThunkPayloadCreator,
+  type Reducer,
+  type StoreEnhancer,
+  type StoreEnhancerStoreCreator,
+  type ThunkDispatch,
+} from "@reduxjs/toolkit";
+import assert from "assert";
+import type { Doc } from "automerge";
+import { getOrElseW } from "fp-ts/lib/Either";
+import { pipe } from "fp-ts/lib/function";
+import type { Type } from "io-ts";
+import PQueue from "p-queue";
+import type { Readable } from "svelte/store";
+import {
+  mergeableChange,
+  mergeableClone,
+  mergeableHasChanged,
+  mergeableInit,
+  mergeableMerge,
+} from "./automerge";
+
+interface PersistorOptions<S> {
+  key: string;
+  codec?: Type<S>;
+}
+
+interface IBackend {
+  getKey(key: string): PromiseLike<{ value: unknown; tag: string }>;
+  setKey(key: string, value: unknown, tag?: string): PromiseLike<void>;
+}
+
+const persistReducer = Symbol();
+
+type ExtendedDoc<S> = Doc<S> & { [remoteState: symbol]: Doc<S> | null };
+
+type PersistReducer<S> = Reducer<ExtendedDoc<S>> & { [persistReducer]: true };
+
+function isPersistReducer<S>(r: Reducer<any>): r is PersistReducer<S> {
+  return persistReducer in r;
+}
+
+function toAutomergeReducer<S extends Record<string, unknown>>(
+  reducer: (state: S | undefined, action: AnyAction) => S | void
+): Reducer<Doc<S>> {
+  return (state, action) => {
+    if (state === undefined) {
+      return mergeableInit(reducer(undefined, action) as S);
+    }
+    return mergeableChange(state, (s) => reducer(s, action));
+  };
+}
+
+class Persistor<S extends Record<string, unknown>> {
+  readonly #key: string;
+  readonly #codec: Type<Doc<S>, ArrayBuffer, unknown>;
+  #changeStore!: Readable<Doc<S>>;
+  #REMOTE_STATE = Symbol();
+
+  #dispatch!: ThunkDispatch<unknown, void, AnyAction>;
+
+  public readonly actions;
+
+  constructor(options: PersistorOptions<S>) {
+    this.#key = options.key;
+    this.#codec = AutomergeCodec(options.codec ?? undefined);
+    this.actions = {
+      fetch: createAsyncThunk("persist/fetch", this.#fetch),
+    };
+  }
+
+  public reducerWrapper(
+    reducer:
+      | (((state: S | undefined, action: AnyAction) => S | void) & {
+          [persistReducer]?: never;
+        })
+      | PersistReducer<S>
+  ): PersistReducer<S> {
+    const detectChange = (
+      reducer: Reducer<Doc<S>>
+    ): Reducer<ExtendedDoc<S>> => {
+      const store = privateWritable<Doc<S>>();
+      this.#changeStore = store;
+      return (state, action) => {
+        let newState = reducer(state, action);
+        let remoteState = state && state[this.#REMOTE_STATE];
+        if (this.actions.fetch.fulfilled.match(action)) {
+          if (action.payload === null) {
+            remoteState = mergeableClone(newState);
+          } else {
+            newState = mergeableMerge(newState, action.payload);
+            remoteState = action.payload;
+          }
+        }
+        const newRemoteState = remoteState
+          ? mergeableMerge(remoteState, newState)
+          : null;
+        Object.defineProperty(newState, this.#REMOTE_STATE, {
+          value: newRemoteState,
+        });
+
+        if (
+          newRemoteState &&
+          (!remoteState || mergeableHasChanged(remoteState, newRemoteState))
+        ) {
+          store._set(newRemoteState);
+        }
+        return newState;
+      };
+    };
+
+    return Object.defineProperty(
+      detectChange(
+        isPersistReducer(reducer)
+          ? reducer
+          : toAutomergeReducer(reducer as Reducer<S>)
+      ),
+      persistReducer,
+      {
+        value: true,
+      }
+    ) as PersistReducer<S>;
+  }
+
+  public enhancer: StoreEnhancer =
+    (next: StoreEnhancerStoreCreator<any, AnyAction>) =>
+    (...args) => {
+      const ret = next(...args);
+      this.#dispatch = ret.dispatch.bind(ret);
+      return ret;
+    };
+
+  #backend: IBackend | null = null;
+  #uploadQueue = new PQueue({ concurrency: 1 });
+  #uploading: Deferred<void> | null = null;
+  #tag: string | undefined;
+
+  public async start(backend: IBackend) {
+    this.#backend = backend;
+
+    this.#dispatch(this.actions.fetch());
+  }
+
+  #fetch: AsyncThunkPayloadCreator<Doc<S> | null> = async () => {
+    assert(this.#backend && this.#dispatch);
+    const { value, tag } = await this.#backend.getKey(this.#key);
+    this.#tag = tag;
+    return pipe(
+      this.#codec.decode(value),
+      getOrElseW(() => null)
+    );
+  };
+
+  async #upload(remoteState: Doc<S>) {
+    try {
+      await this.#backend!.setKey(
+        this.#key,
+        this.#codec.encode(remoteState),
+        this.#tag
+      );
+      this.#uploading!.resolve();
+    } catch (err) {
+      if (!(err instanceof RetryError)) {
+        throw err;
+      }
+      this.#dispatch(this.actions.fetch());
+    }
+  }
+
+  #onStoreChange = async (state: Doc<S>) => {
+    if (!this.#uploading) {
+      this.#uploading = new Deferred();
+      await 0;
+      this.#upload(state);
+    }
+  };
+}
+
+export default Persistor;

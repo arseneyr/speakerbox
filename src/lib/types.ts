@@ -1,7 +1,9 @@
 import * as t from "io-ts";
 import { v4 } from "uuid";
-import { ExtendedDoc, mergeableLoad, mergeableSave } from "$lib/sync/automerge";
+import { mergeableLoad, mergeableSave } from "$lib/reduxStore/automerge";
 import type { Readable } from "svelte/store";
+import type { Doc } from "automerge";
+import type { Validation } from "io-ts";
 
 export interface Player {
   play(): void;
@@ -154,21 +156,21 @@ export class RetryError extends Error {
   }
 }
 
-export const AutomergeCodec = <C extends t.Mixed>(base: C) =>
-  new t.Type<ExtendedDoc<t.TypeOf<C>>, Uint8Array, unknown>(
+export const AutomergeCodec = <C extends t.Mixed>(base?: C) =>
+  new t.Type<Doc<t.TypeOf<C>>, Uint8Array, unknown>(
     "Automerge Doc",
-    (input): input is ExtendedDoc<t.TypeOf<C>> =>
-      typeof input === "object" &&
-      input !== null &&
-      "_actorId" in input &&
-      base.is(input),
+    (input): input is Doc<t.TypeOf<C>> =>
+      typeof input === "object" && input !== null && (!base || base.is(input)),
     (input, context) => {
       try {
         if (!(input instanceof Uint8Array)) {
-          throw new Error("non uint8array passed");
+          throw new Error("non arraybuffer passed");
         }
         const doc = mergeableLoad(input);
-        return base.validate(doc, context);
+        return (
+          (base?.validate(doc, context) as Validation<Doc<t.TypeOf<C>>>) ||
+          t.success(doc)
+        );
       } catch (e: unknown) {
         return t.failure(
           input,
@@ -181,3 +183,17 @@ export const AutomergeCodec = <C extends t.Mixed>(base: C) =>
   );
 
 export const MergeableMainState = AutomergeCodec(MainState);
+
+interface Newable {
+  new (...args: any[]): any;
+}
+
+export function instanceOf<C extends Newable>(C: C): t.Type<InstanceType<C>> {
+  return new t.Type<InstanceType<C>>(
+    `instanceOf(${C.name})`,
+    (v): v is InstanceType<C> => v instanceof C,
+    (i, c) =>
+      i instanceof C ? t.success<InstanceType<C>>(i) : t.failure(i, c),
+    (v) => v
+  );
+}

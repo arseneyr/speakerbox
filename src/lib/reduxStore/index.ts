@@ -18,5 +18,5 @@ function deriveStore<T, R>(transform: (store: T) => R): Readable<R> {
   };
 }
 
-export { default as Provider } from "./Provider.svelte";
+export { default as Provider, getStore } from "./Provider.svelte";
 export { deriveStore };

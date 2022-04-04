@@ -1,6 +1,6 @@
 {
   "editor.formatOnSave": true,
-  "jest.jestCommandLine": "yarn test",
+  "jest.jestCommandLine": "pnpm t --",
   "editor.defaultFormatter": "svelte.svelte-vscode",
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"

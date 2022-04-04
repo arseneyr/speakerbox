@@ -27,13 +27,14 @@
       "internalConsoleOptions": "neverOpen",
       "disableOptimisticBPs": true,
       "cwd": "${workspaceFolder}",
-      "runtimeExecutable": "yarn",
+      "runtimeExecutable": "pnpm",
       "args": [
         "test",
+        "--",
         "--runInBand",
         "--watchAll=false",
         "--testTimeout=300000",
-        "--testPathPattern=StateManager"
+        "--testPathPattern=persist"
       ],
       "skipFiles": [
         "<node_internals>/**"
