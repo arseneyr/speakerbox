@@ -45,7 +45,7 @@
   "type": "module",
   "dependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.16.8",
-    "@reduxjs/toolkit": "^1.7.2",
+    "@reduxjs/toolkit": "^1.8.1",
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.37",
     "@tsconfig/svelte": "^3.0.0",
     "@types/gapi": "^0.0.41",

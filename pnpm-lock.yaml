@@ -4,7 +4,7 @@ specifiers:
   '@babel/core': ^7.17.2
   '@babel/plugin-transform-modules-commonjs': ^7.16.8
   '@faker-js/faker': ^6.0.0-alpha.6
-  '@reduxjs/toolkit': ^1.7.2
+  '@reduxjs/toolkit': ^1.8.1
   '@storybook/addon-actions': ^6.4.19
   '@storybook/addon-essentials': ^6.4.19
   '@storybook/addon-links': ^6.4.19
@@ -60,7 +60,7 @@ specifiers:
 
 dependencies:
   '@babel/plugin-transform-modules-commonjs': 7.16.8_@babel+core@7.17.2
-  '@reduxjs/toolkit': 1.7.2
+  '@reduxjs/toolkit': 1.8.1
   '@sveltejs/vite-plugin-svelte': 1.0.0-next.37_svelte@3.46.4+vite@2.8.1
   '@tsconfig/svelte': 3.0.0
   '@types/gapi': 0.0.41
@@ -2098,10 +2098,10 @@ packages:
     resolution: {integrity: sha512-92FRmppjjqz29VMJ2dn+xdyXZBrMlE42AV6Kq6BwjWV7CNUW1hs2FtxSNLQE+gJhaZ6AAmYuO9y8dshhcBl7vA==}
     dev: true
 
-  /@reduxjs/toolkit/1.7.2:
-    resolution: {integrity: sha512-wwr3//Ar8ZhM9bS58O+HCIaMlR4Y6SNHfuszz9hKnQuFIKvwaL3Kmjo6fpDKUOjo4Lv54Yi299ed8rofCJ/Vjw==}
+  /@reduxjs/toolkit/1.8.1:
+    resolution: {integrity: sha512-Q6mzbTpO9nOYRnkwpDlFOAbQnd3g7zj7CtHAZWz5SzE5lcV97Tf8f3SzOO8BoPOMYBFgfZaqTUZqgGu+a0+Fng==}
     peerDependencies:
-      react: ^16.9.0 || ^17.0.0 || 18.0.0-beta
+      react: ^16.9.0 || ^17.0.0 || ^18
       react-redux: ^7.2.1 || ^8.0.0-beta
     peerDependenciesMeta:
       react:
@@ -7934,7 +7934,7 @@ packages:
       source-map: 0.6.1
       wordwrap: 1.0.0
     optionalDependencies:
-      uglify-js: 3.15.1
+      uglify-js: 3.15.3
     dev: true
 
   /has-bigints/1.0.1:
@@ -12840,8 +12840,8 @@ packages:
     hasBin: true
     dev: false
 
-  /uglify-js/3.15.1:
-    resolution: {integrity: sha512-FAGKF12fWdkpvNJZENacOH0e/83eG6JyVQyanIJaBXCN1J11TUQv1T1/z8S+Z0CG0ZPk1nPcreF/c7lrTd0TEQ==}
+  /uglify-js/3.15.3:
+    resolution: {integrity: sha512-6iCVm2omGJbsu3JWac+p6kUiOpg3wFO2f8lIXjfEb8RrmLjzog1wTPMmwKB7swfzzqxj9YM+sGUM++u1qN4qJg==}
     engines: {node: '>=0.8.0'}
     hasBin: true
     requiresBuild: true
