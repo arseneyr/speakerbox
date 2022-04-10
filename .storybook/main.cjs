@@ -11,28 +11,32 @@ module.exports = {
     "@storybook/addon-links",
     "@storybook/addon-essentials",
     "@storybook/addon-svelte-csf",
-    "@storybook/preset-scss",
   ],
+  framework: "@storybook/svelte",
   svelteOptions: {
     preprocess: sveltePreprocess(),
   },
   core: {
-    builder: "storybook-builder-vite",
+    builder: "@storybook/builder-vite",
   },
-  async viteFinal(config) {
-    config.resolve = config.resolve ?? {};
-    config.resolve.alias = config.resolve.alias ?? {};
-    config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
+  // async viteFinal(config) {
+  //   console.log(config);
+  //   config.resolve ??= {};
+  //   config.resolve.alias ??= {};
+  //   config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
 
-    config.define = config.define ?? {};
-    config.define["process.env"] = process.env;
-    config.define["global"] = "window";
+  //   config.define ??= {};
+  //   config.define["process.env"] = process.env;
+  //   // config.define["global"] = "window";
 
-    config.root = dirname(require.resolve("storybook-builder-vite"));
-    config.server.fsServe = undefined;
+  //   config.root = dirname(require.resolve("@storybook/builder-vite"));
+  //   // config.server.fsServe = undefined;
+  //   // config.optimizeDeps ??= {};
+  //   // config.optimizeDeps.include ??= [];
+  //   // config.optimizeDeps.include.push("global", "util-deprecate/browser");
 
-    return config;
-  },
+  //   return config;
+  // },
 };
 
 function excludePlugins(excludePaths) {

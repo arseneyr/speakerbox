@@ -18,7 +18,8 @@
 		"dbaeumer.vscode-eslint",
 		"Orta.vscode-jest",
 		"esbenp.prettier-vscode",
-		"svelte.svelte-vscode"
+		"svelte.svelte-vscode",
+		"bradlc.vscode-tailwindcss"
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
