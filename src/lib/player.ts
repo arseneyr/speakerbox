@@ -21,8 +21,7 @@ function createEncodedPlayer(blob: Blob, abort?: AbortSignal): Promise<Player> {
     let removeFromAudioContext: (() => void) | undefined;
     function onAbort() {
       audio.oncanplaythrough = null;
-      audio.src = "";
-      // audio.removeAttribute("src");
+      player.destroy();
       reject(new AbortError());
     }
     abort?.addEventListener("abort", onAbort);
@@ -41,7 +40,9 @@ function createEncodedPlayer(blob: Blob, abort?: AbortSignal): Promise<Player> {
       duration: 0,
       destroy() {
         this.stop();
-        audio.src = "";
+        // audio.src = "";
+        audio.removeAttribute("src");
+        audio.load();
         removeFromAudioContext?.();
       },
     };

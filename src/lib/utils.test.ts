@@ -1,4 +1,4 @@
-import { derived, readable, Readable, writable } from "svelte/store";
+import { derived, readable, type Readable, writable } from "svelte/store";
 import { memoizedDerived, runAtMostOnce } from "./utils";
 import Automerge from "automerge";
 

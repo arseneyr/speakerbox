@@ -1,11 +1,15 @@
 {
   "editor.formatOnSave": true,
   "jest.jestCommandLine": "yarn test",
-  "editor.defaultFormatter": "svelte.svelte-vscode",
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
   "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[svelte]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "typescript.tsdk": "node_modules/typescript/lib",
   "svelte.enable-ts-plugin": true,
+  "svelte.plugin.svelte.format.enable": false
 }

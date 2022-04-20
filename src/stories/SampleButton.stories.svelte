@@ -1,9 +1,25 @@
-<script>
+<script lang="ts">
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import SampleButton from "../components/SampleButton.svelte";
   // import SampleButtonWrapper from "./SampleButtonWrapper.svelte";
+  import wav from "./sample.wav";
+  import WaveformData from "waveform-data";
 
   let startTime = null;
+  let waveform: WaveformData | null = null;
+  fetch(wav)
+    .then((b) => b.arrayBuffer())
+    .then((buffer) =>
+      WaveformData.createFromAudio(
+        {
+          audio_context: new AudioContext(),
+          array_buffer: buffer,
+        },
+        (_, w) => {
+          waveform = w;
+        }
+      )
+    );
 </script>
 
 <Meta
@@ -20,8 +36,9 @@
 <Template let:args>
   <SampleButton
     {...args}
+    {waveform}
     {startTime}
-    duration={3000}
+    durationMs={3000}
     on:click={() => {
       startTime = Date.now();
       args.onClick();

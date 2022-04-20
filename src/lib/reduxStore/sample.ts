@@ -1,149 +1,101 @@
-import { mergeableMerge } from "$lib/sync/automerge";
+import { bufferToHex } from "$lib/utils";
 import {
-  MAIN_VERSION_1_0,
-  SampleInfo,
-  type MergeableMainState,
-} from "$lib/types";
-import {
-  createAction,
+  createAsyncThunk,
   createSlice,
   type PayloadAction,
-  type Reducer,
 } from "@reduxjs/toolkit";
-import { mergeableChange, mergeableInit } from "./automerge";
-import { fetchRemoteState } from "./remoteBackend";
 
-interface TempSampleState {
-  [id: string]: {
-    playing: boolean;
+interface ISampleState {
+  id: string;
+  hash: string;
+  title: string;
+}
+
+interface ISavedSampleState {
+  sampleList: string[];
+  samples: {
+    [id: string]: ISampleState;
   };
 }
 
-interface SampleState {
-  savedState: MergeableMainState;
-  tempState: TempSampleState;
+interface ITempSampleState {
+  playing: {
+    [id: string]: boolean;
+  };
 }
 
-const initialState: SampleState = {
-  savedState: mergeableInit({
-    version: MAIN_VERSION_1_0.value,
-    sampleList: [],
-    samples: {},
-  }),
-  tempState: {},
-};
+interface IAddSamplePayload {
+  id: string;
+  data: Blob;
+  title: string;
+}
 
-type AddSamplePayload = SampleInfo & { id: string };
-
-const addSample = createAction<AddSamplePayload>("samples/addSample");
-const setSamplePlaying = createAction<{ id: string; playing: boolean }>(
-  "samples/setSamplePlaying"
+const addSample = createAsyncThunk(
+  "addSample",
+  async (payload: IAddSamplePayload) => {
+    const hash = bufferToHex(
+      await self.crypto.subtle.digest("SHA-1", await payload.data.arrayBuffer())
+    );
+    return { ...payload, hash };
+  }
 );
-const stopAllSamples = createAction("samples/stopAllSamples");
-const deleteSample = createAction<string>("samples/deleteSample");
 
-// const fetchRemoteState = createAsyncThunk("samples/fetchRemoteState", async);
-
-const sampleSlice = createSlice({
-  name: "samples",
-  initialState,
+const savedSlice = createSlice({
+  name: "savedSamples",
+  initialState: { sampleList: [], samples: {} } as ISavedSampleState,
   reducers: {
-    addSample(state, action: PayloadAction<AddSamplePayload>) {
-      const sample = action.payload;
-      state.savedState = mergeableChange(state.savedState, (s) => {
-        s.samples[sample.id] = sample;
-        s.sampleList.push(sample.id);
-      });
-      state.tempState[sample.id];
-    },
-    setSamplePlaying(
-      state,
-      action: PayloadAction<{ id: string; playing: boolean }>
-    ) {
-      state.tempState[action.payload.id].playing = action.payload.playing;
-    },
-    stopAllSamples(state) {
-      for (const s of Object.values(state.tempState)) {
-        s.playing = false;
-      }
-    },
-    deleteSample(state, action: PayloadAction<string>) {
-      state.savedState = mergeableChange(state.savedState, (s) => {
-        delete s.samples[action.payload];
-        const i = s.sampleList.indexOf(action.payload);
-        if (i >= 0) {
-          s.sampleList.splice(i, 1);
-        }
-      });
-      delete state.tempState[action.payload];
+    deleteSample: (state, action: PayloadAction<string>) => {
+      state.sampleList = state.sampleList.filter((id) => id !== action.payload);
+      delete state.samples[action.payload];
     },
   },
   extraReducers: (builder) =>
-    builder.addCase(fetchRemoteState.fulfilled, (state, action) => {
-      if (action.payload === null) {
-        return;
+    builder.addCase(
+      addSample.fulfilled,
+      (state, action: PayloadAction<ISampleState>) => {
+        state.sampleList.push(action.payload.id);
+        state.samples[action.payload.id] = {
+          id: action.payload.id,
+          hash: action.payload.hash,
+          title: action.payload.hash,
+        };
       }
-      state.savedState = mergeableMerge(state.savedState, action.payload);
+    ),
+});
+
+const tempSlice = createSlice({
+  name: "tempSamples",
+  initialState: { playing: {} } as ITempSampleState,
+  reducers: {
+    playSample: (state, action: PayloadAction<string>) => {
+      state.playing[action.payload] = true;
+    },
+    stopSample: (state, action: PayloadAction<string>) => {
+      state.playing[action.payload] = false;
+    },
+    stopAllSamples: (state) => {
+      for (const id in state.playing) {
+        state.playing[id] = false;
+      }
+    },
+  },
+  extraReducers: (builder) =>
+    builder.addCase(addSample.fulfilled, (state, action) => {
+      state.playing[action.payload.id] = false;
     }),
 });
 
-// function sampleReducer(
-//   state: SampleState = initialState,
-//   action: AnyAction
-// ): SampleState {
-//   if (addSample.match(action)) {
-//     const sample = action.payload;
-//     return {
-//       ...state,
-//       savedState: mergeableChange(state.savedState, (s) => {
-//         s.samples[sample.id] = sample;
-//         s.sampleList.push(sample.id);
-//       }),
-//       tempState: createNextState(state.tempState, (draft) => {
-//         draft[sample.id] = { playing: false };
-//       }),
-//     };
-//   } else if (setSamplePlaying.match(action)) {
-//     return {
-//       ...state,
-//       tempState: createNextState(state.tempState, (draft) => {
-//         draft[action.payload.id].playing = action.payload.playing;
-//       }),
-//     };
-//   } else if (stopAllSamples.match(action)) {
-//     return {
-//       ...state,
-//       tempState: createNextState(state.tempState, (draft) => {
-//         for (const s of Object.values(draft)) {
-//           s.playing = false;
-//         }
-//       }),
-//     };
-//   } else if (deleteSample.match(action)) {
-//     return {
-//       ...state,
-//       savedState: mergeableChange(state.savedState, (s) => {
-//         delete s.samples[action.payload];
-//         const i = s.sampleList.indexOf(action.payload);
-//         if (i >= 0) {
-//           s.sampleList.splice(i, 1);
-//         }
-//       }),
-//       tempState: createNextState(state.tempState, (draft) => {
-//         delete draft[action.payload];
-//       }),
-//     };
-//   } else if (fetchRemoteState.fulfilled.match(action)) {
-//     const incomingState = action.payload;
-//     if (incomingState !== null) {
-//       return {
-//         ...state,
-//       };
-//     }
-//   }
+const { deleteSample } = savedSlice.actions;
+const { playSample, stopSample, stopAllSamples } = tempSlice.actions;
+const savedSampleReducer = savedSlice.reducer;
+const tempSampleReducer = tempSlice.reducer;
 
-//   return state;
-// }
-
-// export { sampleSlice };
-export default sampleSlice.reducer;
+export {
+  addSample,
+  deleteSample,
+  playSample,
+  stopSample,
+  stopAllSamples,
+  savedSampleReducer,
+  tempSampleReducer,
+};

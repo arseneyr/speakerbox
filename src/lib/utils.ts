@@ -67,7 +67,7 @@ function privateWritable<T>(
 
   // delete ret["set"];
   // delete ret["update"];
-  return (ret as unknown) as PrivateWritable<T>;
+  return ret as unknown as PrivateWritable<T>;
 }
 
 class Deferred<T> {
@@ -236,6 +236,12 @@ function runAtMostOnce<A extends any[]>(
   };
 }
 
+function bufferToHex(buffer: ArrayBuffer): string {
+  return [...new Uint8Array(buffer)]
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 export {
   privateWritable,
   Deferred,
@@ -243,4 +249,5 @@ export {
   assert,
   memoizedDerived,
   runAtMostOnce,
+  bufferToHex,
 };

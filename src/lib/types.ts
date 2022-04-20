@@ -1,6 +1,10 @@
 import * as t from "io-ts";
 import { v4 } from "uuid";
-import { ExtendedDoc, mergeableLoad, mergeableSave } from "$lib/sync/automerge";
+import {
+  type ExtendedDoc,
+  mergeableLoad,
+  mergeableSave,
+} from "$lib/sync/automerge";
 import type { Readable } from "svelte/store";
 
 export interface Player {
