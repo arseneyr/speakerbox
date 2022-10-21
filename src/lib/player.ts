@@ -1,33 +1,46 @@
-import { addSourceToAudioContext, getAudioContext } from "$lib/audioContext";
-import { AbortError } from "$lib/types";
-import type { Player } from "$lib/types";
-import { privateWritable } from "$lib/utils";
+import type { Readable } from "svelte/store";
+import { privateWritable } from "./utils";
 
-// declare global {
-//   interface Window {
-//     players?: HTMLAudioElement[];
-//   }
-// }
+export interface Player {
+  play(): void;
+  stop(): void;
+  destroy(): void;
+  playing: Readable<boolean>;
+  duration: number;
+}
 
-function createEncodedPlayer(blob: Blob, abort?: AbortSignal): Promise<Player> {
-  if (abort?.aborted) {
-    return Promise.reject(new AbortError());
+async function createFilePlayer(file: File): Promise<Player> {
+  const source = new MediaSource();
+  const audio = new Audio(URL.createObjectURL(source));
+
+  try {
+    const [sourceBuffer, arrayBuffer] = await Promise.all([
+      new Promise<SourceBuffer>((res) => {
+        source.addEventListener("sourceopen", () => {
+          res(source.addSourceBuffer(file.type));
+        });
+      }),
+      file.arrayBuffer(),
+    ]);
+    sourceBuffer.appendBuffer(arrayBuffer);
+    source.endOfStream();
+  } finally {
+    URL.revokeObjectURL(audio.src);
   }
-
   return new Promise((resolve, reject) => {
     // const audio = new Audio(URL.createObjectURL(new Blob([buffer])));
-    const audio = new Audio();
-    audio.srcObject = blob;
-    let removeFromAudioContext: (() => void) | undefined;
-    function onAbort() {
-      audio.oncanplaythrough = null;
-      player.destroy();
-      reject(new AbortError());
-    }
-    abort?.addEventListener("abort", onAbort);
+    // const audio = new Audio();
+    // audio.srcObject = blob;
+    // let removeFromAudioContext: (() => void) | undefined;
+    // function onAbort() {
+    //   audio.oncanplaythrough = null;
+    //   player.destroy();
+    //   reject(new AbortError());
+    // }
+    // abort?.addEventListener("abort", onAbort);
     const player = {
       play() {
-        getAudioContext().resume();
+        // getAudioContext().resume();
         audio.currentTime !== 0 && (audio.currentTime = 0);
         audio.play();
         this.playing._set(true);
@@ -43,7 +56,7 @@ function createEncodedPlayer(blob: Blob, abort?: AbortSignal): Promise<Player> {
         // audio.src = "";
         audio.removeAttribute("src");
         audio.load();
-        removeFromAudioContext?.();
+        // removeFromAudioContext?.();
       },
     };
     audio.ondurationchange = () => {
@@ -55,9 +68,9 @@ function createEncodedPlayer(blob: Blob, abort?: AbortSignal): Promise<Player> {
     };
 
     function onCanPlayThrough() {
-      abort?.removeEventListener("abort", onAbort);
-      audio.removeEventListener("canplaythrough", onCanPlayThrough);
-      removeFromAudioContext = addSourceToAudioContext(audio);
+      // abort?.removeEventListener("abort", onAbort);
+      // audio.removeEventListener("canplaythrough", onCanPlayThrough);
+      // removeFromAudioContext = addSourceToAudioContext(audio);
       resolve(player);
     }
 
@@ -67,42 +80,4 @@ function createEncodedPlayer(blob: Blob, abort?: AbortSignal): Promise<Player> {
   });
 }
 
-function createDecodedPlayer(buffer: AudioBuffer): Player {
-  let source: AudioBufferSourceNode | undefined;
-  const playing = privateWritable(false);
-  let removeFromAudioContext: (() => void) | undefined;
-  return {
-    play() {
-      getAudioContext().resume();
-      if (source) {
-        source.onended = null;
-        source.stop();
-        removeFromAudioContext?.();
-        removeFromAudioContext = undefined;
-      }
-      source = getAudioContext().createBufferSource();
-      source.buffer = buffer;
-      removeFromAudioContext = addSourceToAudioContext(source);
-      // source.connect(getAudioContext().destination);
-      source.onended = () => {
-        playing._set(false);
-        removeFromAudioContext?.();
-        removeFromAudioContext = undefined;
-      };
-      playing._set(true);
-      source.start();
-    },
-    stop() {
-      playing._set(false);
-      source?.stop();
-    },
-    duration: buffer.duration,
-    playing,
-    destroy() {
-      this.stop();
-      // source?.disconnect();
-    },
-  };
-}
-
-export { createEncodedPlayer, createDecodedPlayer };
+export { createFilePlayer };
