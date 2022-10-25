@@ -11,5 +11,6 @@
   "typescript.tsserver.experimental.enableProjectDiagnostics": true,
   "typescript.tsdk": "node_modules/typescript/lib",
   "svelte.enable-ts-plugin": true,
-  "svelte.plugin.svelte.format.enable": false
+  "svelte.plugin.svelte.format.enable": false,
+  "task.allowAutomaticTasks": "on"
 }

@@ -2,7 +2,7 @@
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
   import SampleButton from "../components/SampleButton.svelte";
   // import SampleButtonWrapper from "./SampleButtonWrapper.svelte";
-  import wav from "./sample.wav";
+  import wav from "./assets/sample.wav";
   import WaveformData from "waveform-data";
 
   let startTime = null;
