@@ -31,6 +31,7 @@
   class="w-1/3 max-w-lg basis-1/3 flex-col overflow-hidden rounded bg-gray-900 text-slate-300 opacity-90 shadow-md transition hover:opacity-100 active:shadow-sm"
   on:mousedown
   on:mouseup
+  on:click
 >
   <div
     class="w-full truncate text-ellipsis px-4 pt-1 pb-2 text-4xl leading-tight"
@@ -47,7 +48,7 @@
     <!-- <canvas bind:this={canvas} class="h-full grow" /> -->
 
     <button
-      class="transition-color absolute inset-y-0 right-0 h-full w-10 rounded-l text-gray-50 opacity-70 transition-opacity  hover:bg-gray-500 hover:opacity-80 "
+      class="transition-color absolute inset-y-0 right-0 h-full w-10 text-gray-50 opacity-70 transition-opacity  hover:bg-gray-500 hover:opacity-80 "
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

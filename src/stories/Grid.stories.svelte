@@ -1,8 +1,9 @@
 <script>
   import { Meta, Template, Story } from "@storybook/addon-svelte-csf";
-  import SampleButton from "../components/SampleButton.svelte";
+  import SampleButtonWrapper from "./SampleButtonWrapper.svelte";
   import Grid from "../components/Grid.svelte";
-  import faker from "@faker-js/faker";
+  import { faker } from "@faker-js/faker";
+  import sample from "./assets/short.webm";
 </script>
 
 <Meta title="Grid" component={Grid} />
@@ -10,10 +11,7 @@
 <Template let:args>
   <Grid>
     {#each args.items as sample}
-      <SampleButton
-        {...sample}
-        iconButton={sample.iconButton ? { icon: sample.iconButton } : undefined}
-      />
+      <SampleButtonWrapper {...sample} />
     {/each}
   </Grid>
 </Template>
@@ -22,8 +20,8 @@
   name="Of Sample buttons"
   args={{
     items: Array.from({ length: 20 }, () => ({
+      // sampleUrl: sample,
       title: faker.lorem.sentence(),
-      iconButton: faker.random.boolean() ? "edit" : undefined,
     })),
   }}
 />

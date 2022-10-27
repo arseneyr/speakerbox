@@ -35,7 +35,7 @@
 
 <SampleButton
   title={$title ?? undefined}
-  duration={durationMs}
+  {durationMs}
   loading={!$player}
   {startTime}
   {editMode}
