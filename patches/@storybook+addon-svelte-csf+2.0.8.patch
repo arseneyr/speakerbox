@@ -1,0 +1,19 @@
+diff --git a/node_modules/@storybook/addon-svelte-csf/index.d.ts b/node_modules/@storybook/addon-svelte-csf/index.d.ts
+index f53a377..ad6d5b7 100644
+--- a/node_modules/@storybook/addon-svelte-csf/index.d.ts
++++ b/node_modules/@storybook/addon-svelte-csf/index.d.ts
+@@ -58,10 +58,10 @@ export class Meta extends SvelteComponentTyped<BaseMeta<any> & BaseAnnotations<a
+ /**
+  * Story.
+  */
+-export class Story extends SvelteComponentTyped<StoryProps, {}, Slots> {}
++export class Story extends SvelteComponentTyped<StoryProps, any, Slots> {}
+ /**
+  * Template.
+  * 
+  * Allow to reuse definition between stories.
+  */
+-export class Template extends SvelteComponentTyped<TemplateProps, {}, Slots> {}
+\ No newline at end of file
++export class Template extends SvelteComponentTyped<TemplateProps, any, Slots> {}
+\ No newline at end of file
