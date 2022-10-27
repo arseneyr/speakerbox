@@ -19,11 +19,13 @@ module.exports = {
   core: {
     builder: "@storybook/builder-vite",
   },
-  // async viteFinal(config) {
-  //   console.log(config);
-  //   config.resolve ??= {};
-  //   config.resolve.alias ??= {};
-  //   config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
+  async viteFinal(config) {
+    config.resolve ??= {};
+    config.resolve.alias ??= {};
+    config.resolve.alias["$lib"] = path.resolve(__dirname, "../src/lib");
+
+    return config;
+  },
 
   //   config.define ??= {};
   //   config.define["process.env"] = process.env;
