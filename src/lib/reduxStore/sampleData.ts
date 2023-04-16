@@ -1,18 +1,24 @@
-import { createSlice } from "@reduxjs/toolkit";
-import { addSample } from "./sample";
+import { createAction, type Middleware } from "@reduxjs/toolkit";
+import type { RootState } from "./store";
 
-interface ISampleDataState {
-  [hash: string]: Blob;
+type SampleDataId = string & { __brand: "SampleDataId" };
+
+interface SampleData {
+  id: SampleDataId;
+  loading: boolean;
 }
 
-const slice = createSlice({
-  name: "sampleData",
-  initialState: {} as ISampleDataState,
-  reducers: {},
-  extraReducers: (builder) =>
-    builder.addCase(addSample.fulfilled, (state, action) => {
-      state[action.payload.hash] = action.payload.data;
-    }),
-});
+const createNewSample = createAction<Blob>("createSample");
 
-export default slice.reducer;
+function sampleMiddleware(): Middleware<{}, RootState> {
+  return ({ dispatch }) =>
+    (next) =>
+    (action) => {
+      if (createNewSample.match(action)) {
+        action.payload;
+        dispatch();
+      }
+    };
+}
+
+export type { SampleDataId };

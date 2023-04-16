@@ -1,101 +1,30 @@
-import { bufferToHex } from "$lib/utils";
-import {
-  createAsyncThunk,
-  createSlice,
-  type PayloadAction,
-} from "@reduxjs/toolkit";
+import { createEntityAdapter, createSlice } from "@reduxjs/toolkit";
+import type { SampleDataId } from "./sampleData";
+import type { RootState } from "./store";
 
-interface ISampleState {
-  id: string;
-  hash: string;
-  title: string;
+type SampleId = string & { __brand: "SampleId" };
+
+interface Sample {
+  readonly id: SampleId;
+  readonly sampleDataId: SampleDataId;
+  readonly title: string;
 }
 
-interface ISavedSampleState {
-  sampleList: string[];
-  samples: {
-    [id: string]: ISampleState;
-  };
-}
+const sampleAdapter = createEntityAdapter<Sample>({});
 
-interface ITempSampleState {
-  playing: {
-    [id: string]: boolean;
-  };
-}
+const sampleSlice = createSlice({
+  name: "samples",
+  initialState: sampleAdapter.getInitialState(),
+  reducers: {
+    addSample: sampleAdapter.addOne,
+  },
+});
 
-interface IAddSamplePayload {
-  id: string;
-  data: Blob;
-  title: string;
-}
-
-const addSample = createAsyncThunk(
-  "addSample",
-  async (payload: IAddSamplePayload) => {
-    const hash = bufferToHex(
-      await self.crypto.subtle.digest("SHA-1", await payload.data.arrayBuffer())
-    );
-    return { ...payload, hash };
-  }
+const sampleSelectors = sampleAdapter.getSelectors<RootState>(
+  (state) => state.samples
 );
 
-const savedSlice = createSlice({
-  name: "savedSamples",
-  initialState: { sampleList: [], samples: {} } as ISavedSampleState,
-  reducers: {
-    deleteSample: (state, action: PayloadAction<string>) => {
-      state.sampleList = state.sampleList.filter((id) => id !== action.payload);
-      delete state.samples[action.payload];
-    },
-  },
-  extraReducers: (builder) =>
-    builder.addCase(
-      addSample.fulfilled,
-      (state, action: PayloadAction<ISampleState>) => {
-        state.sampleList.push(action.payload.id);
-        state.samples[action.payload.id] = {
-          id: action.payload.id,
-          hash: action.payload.hash,
-          title: action.payload.hash,
-        };
-      }
-    ),
-});
+export default sampleSlice.reducer;
 
-const tempSlice = createSlice({
-  name: "tempSamples",
-  initialState: { playing: {} } as ITempSampleState,
-  reducers: {
-    playSample: (state, action: PayloadAction<string>) => {
-      state.playing[action.payload] = true;
-    },
-    stopSample: (state, action: PayloadAction<string>) => {
-      state.playing[action.payload] = false;
-    },
-    stopAllSamples: (state) => {
-      for (const id in state.playing) {
-        state.playing[id] = false;
-      }
-    },
-  },
-  extraReducers: (builder) =>
-    builder.addCase(addSample.fulfilled, (state, action) => {
-      state.playing[action.payload.id] = false;
-    }),
-});
-
-const { deleteSample } = savedSlice.actions;
-const { playSample, stopSample, stopAllSamples } = tempSlice.actions;
-const savedSampleReducer = savedSlice.reducer;
-const tempSampleReducer = tempSlice.reducer;
-
-export {
-  addSample,
-  deleteSample,
-  playSample,
-  stopSample,
-  stopAllSamples,
-  savedSampleReducer,
-  tempSampleReducer,
-};
+export const { addSample } = sampleSlice.actions;
+export { sampleSelectors };

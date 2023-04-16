@@ -79,7 +79,7 @@ class AudioElementPlayer {
     this.playing._set(true);
   }
 
-  protected async ready(): Promise<typeof this> {
+  protected async ready(): Promise<this> {
     await this.#ready.promise;
     return this;
   }
@@ -152,7 +152,7 @@ class MSEPlayer extends AudioElementPlayer {
     );
   }
 
-  protected async ready(): Promise<typeof this> {
+  protected async ready(): Promise<this> {
     await this.#sourceBufferReady;
     await super.ready();
     return this;
