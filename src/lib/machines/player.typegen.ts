@@ -18,6 +18,7 @@ export interface Typegen0 {
   eventsCausingActions: {
     onReady: "READY";
     rewind: "ENDED" | "PLAY" | "READY" | "STOP";
+    sendParent: "PLAY" | "READY";
     startPlaying: "PLAY";
     stopPlaying: "ENDED" | "ERROR" | "STOP" | "xstate.stop";
   };

@@ -24,7 +24,7 @@ const sampleSelectors = sampleAdapter.getSelectors<RootState>(
   (state) => state.samples
 );
 
-export default sampleSlice.reducer;
-
 export const { addSample } = sampleSlice.actions;
 export { sampleSelectors };
+
+export default sampleSlice.reducer;

@@ -12,10 +12,13 @@ export interface Typegen0 {
     guards: never;
     services: never;
   };
-  eventsCausingActions: {};
+  eventsCausingActions: {
+    createBlobPlayer: "SET_BLOB_SOURCE";
+    forwardToPlayer: "PLAY" | "STOP";
+  };
   eventsCausingDelays: {};
   eventsCausingGuards: {};
   eventsCausingServices: {};
-  matchesStates: "loading" | "stopped";
+  matchesStates: "loading" | "playing" | "start" | "stopped";
   tags: never;
 }

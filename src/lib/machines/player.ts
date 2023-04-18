@@ -1,4 +1,11 @@
-import { assign, createMachine } from "xstate";
+import { assign, createMachine, sendParent } from "xstate";
+
+export type PlayerEvents<TContext> =
+  | { type: "READY"; data: Partial<TContext> }
+  | { type: "PLAY" }
+  | { type: "ENDED" }
+  | { type: "STOP" }
+  | { type: "ERROR" };
 
 function createPlayerMachine<TContext>() {
   return createMachine(
@@ -7,12 +14,7 @@ function createPlayerMachine<TContext>() {
       id: "player",
       tsTypes: {} as import("./player.typegen").Typegen0,
       schema: {
-        events: {} as
-          | { type: "READY"; data: Partial<TContext> }
-          | { type: "PLAY" }
-          | { type: "ENDED" }
-          | { type: "STOP" }
-          | { type: "ERROR" },
+        events: {} as PlayerEvents<TContext>,
         context: {} as TContext,
       },
       initial: "loading",
@@ -24,19 +26,19 @@ function createPlayerMachine<TContext>() {
         loading: {
           on: {
             READY: {
-              actions: "onReady",
+              actions: ["onReady", "sendParent"],
               target: "stopped",
             },
           },
         },
         stopped: {
+          entry: "rewind",
           on: {
             PLAY: {
-              actions: "startPlaying",
+              actions: ["startPlaying", "sendParent"],
               target: "playing",
             },
           },
-          entry: "rewind",
         },
         playing: {
           on: {
@@ -52,42 +54,46 @@ function createPlayerMachine<TContext>() {
     {
       actions: {
         onReady: assign((context, event) => ({ ...context, ...event.data })),
+        sendParent: sendParent((_, event) => event),
       },
     }
   );
 }
 
-const audioElementPlayer = createPlayerMachine<{
+type AudioElementPlayerContext = {
   srcBlob: Blob;
-  audioElement: HTMLAudioElement;
-}>().withConfig({
-  services: {
-    loadPlayer: (context) => (sendParent) => {
-      const url = URL.createObjectURL(context.srcBlob);
-      const audioElement = new Audio(url);
-      URL.revokeObjectURL(url);
+  audioElement?: HTMLAudioElement;
+};
 
-      audioElement.addEventListener("canplaythrough", () =>
-        sendParent({ type: "READY", data: { audioElement } })
-      );
-      audioElement.addEventListener("error", () =>
-        sendParent({ type: "ERROR" })
-      );
-      audioElement.addEventListener("ended", () =>
-        sendParent({ type: "ENDED" })
-      );
-      return () => {
-        audioElement.src = "";
-      };
+const audioElementPlayer =
+  createPlayerMachine<AudioElementPlayerContext>().withConfig({
+    services: {
+      loadPlayer: (context) => (sendParent) => {
+        const url = URL.createObjectURL(context.srcBlob);
+        const audioElement = new Audio(url);
+        URL.revokeObjectURL(url);
+
+        audioElement.addEventListener("canplaythrough", () =>
+          sendParent({ type: "READY", data: { audioElement } })
+        );
+        audioElement.addEventListener("error", () =>
+          sendParent({ type: "ERROR" })
+        );
+        audioElement.addEventListener("ended", () =>
+          sendParent({ type: "ENDED" })
+        );
+        return () => {
+          audioElement.src = "";
+        };
+      },
     },
-  },
-  actions: {
-    rewind: (context) => {
-      context.audioElement.currentTime = 0;
+    actions: {
+      rewind: (context) => {
+        context.audioElement!.currentTime = 0;
+      },
+      stopPlaying: (context) => context.audioElement!.pause(),
+      startPlaying: (context) => context.audioElement!.play(),
     },
-    stopPlaying: (context) => context.audioElement.pause(),
-    startPlaying: (context) => context.audioElement.play(),
-  },
-});
+  });
 
 export { audioElementPlayer };
