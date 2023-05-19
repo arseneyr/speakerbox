@@ -13,7 +13,6 @@ export interface Typegen0 {
       data: unknown;
     };
     "xstate.init": { type: "xstate.init" };
-    "xstate.stop": { type: "xstate.stop" };
   };
   invokeSrcNameMap: {
     loadLocalState: "done.invoke.loadLocalState";
@@ -28,7 +27,7 @@ export interface Typegen0 {
     sendLoadState:
       | "done.invoke.loadLocalState"
       | "error.platform.loadLocalState";
-    spawnLocalState: "xstate.stop";
+    spawnLocalStateMachine: "xstate.init";
   };
   eventsCausingDelays: {};
   eventsCausingGuards: {};

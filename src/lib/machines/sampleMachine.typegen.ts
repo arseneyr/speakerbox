@@ -13,12 +13,13 @@ export interface Typegen0 {
     services: never;
   };
   eventsCausingActions: {
-    createBlobPlayer: "SET_BLOB_SOURCE";
+    createBlobPlayer: "PRELOAD";
     forwardToPlayer: "PLAY" | "STOP";
+    startPreload: "xstate.init";
   };
   eventsCausingDelays: {};
   eventsCausingGuards: {};
   eventsCausingServices: {};
-  matchesStates: "loading" | "playing" | "start" | "stopped";
+  matchesStates: "loading" | "playing" | "stopped";
   tags: never;
 }

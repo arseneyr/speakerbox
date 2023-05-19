@@ -72,6 +72,6 @@
     "wasm-media-encoders": "^0.6.4",
     "waveform-data": "^4.3.0",
     "wavesurfer.js": "^6.6.3",
-    "xstate": "^4.37.1"
+    "xstate": "4.37.2"
   }
 }

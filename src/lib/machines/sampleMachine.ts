@@ -4,35 +4,33 @@ import {
   spawn,
   assign,
   forwardTo,
+  sendTo,
 } from "xstate";
-import { audioElementPlayer, type PlayerEvents } from "./player";
+import { audioElementPlayerMachine, type PlayerEvents } from "./playerMachine";
+import { saveStateMachineId } from "./saveState";
 
-const sampleState = createMachine(
+const sampleMachine = createMachine(
   {
-    /** @xstate-layout N4IgpgJg5mDOIC5SwIYFsAOAbMBlALivmAHRYD2KEAlgHZQDEuAogCoD6uAggLIAKAGWbsAIl1ZcA2gAYAuolAZysavmrlaCkAA9EAWgBMAVgDMAGhABPfQBYDJIwF9nF2uQhwtqTDgJEwWkoqahpaugh6dtIW1hEAjAYAnC4g3th4hMRklDT0gcqq6ppIOvomAOwGMbYGKWm+maSw+OQYGJD5wUVhtuUOJglG1RF2zs5AA */
-    id: "sampleState",
+    /** @xstate-layout N4IgpgJg5mDOIC5SwIYFsAOAbMBlALivmAHRYD2KEAlgHZQDEACgEoCiAMgPICCAIgG0ADAF1EoDOVjV81crXEgAHogAsAJgA0IAJ6IAHAEYSAViHnzqgOwA2fQGYrhmwF8X21JhwEipClTpGdn4ATWExJBBJaVl5RRUEdXUTUxt1VQBOfSEM9RsTQ3tVbT0EQyMSDJN7Q3V7ExsM1X19arcPdGw8QmISWHxyDAxIZg4eMNFFaJk5BUiEpJSG9KycvIKiksQ69RJVatqre31VcpN9dpBPLp9e7BQdQIY2ADk+NkFJyOnYudAF5KpFbZXL5QrFXSIezqfR7IRpVQ5RFIy7Xbw9Uj3R70Bi4AAqXCY4SmUhmcXm20By0yIPW4K2CEcsIy8MWdkKQky9lRnXRvhIWKeTDGEwiElJv3iansJBsiJs9gy9iEBUM1nsDPULJIytUdiERSsqg0rkutHIEDgijR3V8JJisylCAAtDYGc6Uhkvd6fT7ue4rrzbb1-DR6PayX9lIhGiQYbUbJyWacjVYGeVdvsanUGk0Wm0AzbbqR+oNhhAI5KKQhTkISCdHCYTFYkpyTBkGdCbKZloYqlYB-olTyvMHMVgHoFK47q7H43kk5zDKnOxljMkB0b9Fr9HKTG43EA */
 
     tsTypes: {} as import("./sampleMachine.typegen").Typegen0,
 
     schema: {
-      context: {} as { playerRef?: ActorRefFrom<typeof audioElementPlayer> },
-      events: {} as
-        | { type: "SET_BLOB_SOURCE"; data: Blob }
-        | PlayerEvents<unknown>,
+      context: {} as {
+        id: string;
+        title: string;
+        dataId: string;
+        playerRef?: ActorRefFrom<typeof audioElementPlayerMachine>;
+      },
+      events: {} as { type: "PRELOAD"; data: Blob } | PlayerEvents<unknown>,
     },
-    initial: "start",
+    initial: "loading",
 
     states: {
-      start: {
-        on: {
-          SET_BLOB_SOURCE: {
-            target: "loading",
-            actions: "createBlobPlayer",
-          },
-        },
-      },
       loading: {
+        entry: "startPreload",
         on: {
+          PRELOAD: { actions: "createBlobPlayer" },
           READY: "stopped",
         },
       },
@@ -42,6 +40,7 @@ const sampleState = createMachine(
           PLAY: { actions: "forwardToPlayer", target: "playing" },
         },
       },
+
       playing: {
         on: {
           ENDED: "stopped",
@@ -57,9 +56,15 @@ const sampleState = createMachine(
     actions: {
       createBlobPlayer: assign({
         playerRef: (_, event) =>
-          spawn(audioElementPlayer.withContext({ srcBlob: event.data })),
+          spawn(audioElementPlayerMachine.withContext({ srcBlob: event.data })),
       }),
       forwardToPlayer: forwardTo((context) => context.playerRef!),
+      startPreload: sendTo(saveStateMachineId, (context) => ({
+        type: "GET_PRELOAD",
+        data: { dataId: context.dataId, reply: context.id },
+      })),
     },
   }
 );
+
+export { sampleMachine };

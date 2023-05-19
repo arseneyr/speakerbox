@@ -3,20 +3,24 @@ import {
   createMachine,
   type ActorRefFrom,
   spawn,
-  forwardTo,
   sendTo,
 } from "xstate";
 import localState from "./localState";
 
+const saveStateMachineId = "saveStateMachine";
+
 const saveStateMachine = createMachine(
   {
-    /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOlgBd0AncgYggHtCSCA3BgazBLSz0NIVq5BGwaZ05XEwDaABgC68hYlAAHBrFxSmqkAA9EAFgDMJAExyTARnMBWADQgAnogBsADhJ2Avn6f4DBBwerw4BMR6Glo6+HqGCAC05uYeTq5J1gCc-iBh-MRklDRRmtrScUgGiInWHnLpiADsWSRZdjb2ufkRpAA2DOjBEKUxFfGI5kZGJCZZcm72jQjWViRGHba+fj5AA */
+    /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOlgBd0AncgYggHtCSCA3BgazBIBsH0IAGQaZ0PAMqVyYANoAGALqJQABwaxc5XE2UgAHogCMhgEwkAHCfOG5AFnsBWWwE4AbAGZXAGhABPIwDstiS2Du6m7iYmDjEOAQEAvgk+aFh4hKQU1HRgVFQMVCQqPOjkAGYFqLz8QiJikqWyirpqGlo6SPpGhu4hzv3OhgGRcXHmPv4I1n0DARFycu7miUk++AwQcLqpOATELeqa2vi6BggAtIYTiOeuqyA76cRklDQHbceniLYB1wgmATMtjkrhMQwcIKiJnc7nujz2pD4Akg7yOHVAZ0MtnMJGcYOWAUG8WG7lsf2BvWckLBtlczlJhg8SSSQA */
     tsTypes: {} as import("./saveState.typegen").Typegen0,
     schema: {
       context: {} as { localStateRef: ActorRefFrom<typeof localState> },
-      events: {} as { type: "REHYDRATE" },
+      events: {} as
+        | { type: "REHYDRATE" }
+        | { type: "GET_PRELOAD"; data: { dataId: string; reply: string } },
       services: {} as { loadLocalState: { data: object } },
     },
+    id: saveStateMachineId,
     initial: "start",
     states: {
       start: {
@@ -25,13 +29,14 @@ const saveStateMachine = createMachine(
           src: "loadLocalState",
           onDone: {
             actions: "sendLoadState",
+            target: "loaded",
           },
           onError: {
             actions: "sendLoadState",
+            target: "loaded",
           },
-          target: "loaded",
         },
-        onExit: "spawnLocalState",
+        entry: "spawnLocalStateMachine",
       },
 
       loaded: {},
@@ -42,15 +47,20 @@ const saveStateMachine = createMachine(
       loadLocalState: async () => ({}),
     },
     actions: {
-      spawnLocalState: assign({ localStateRef: () => spawn(localState) }),
+      spawnLocalStateMachine: assign({
+        localStateRef: () => spawn(localState),
+      }),
       sendLoadState: (context, event) =>
         sendTo(context.localStateRef, {
-          type: "STATE_LOADED",
+          type: "LOAD_STATE",
           data:
-            event.type === "error.platform.loadLocalState" ? {} : event.data,
+            event.type === "error.platform.loadLocalState"
+              ? { samples: [] }
+              : event.data,
         }),
     },
   }
 );
 
 export default saveStateMachine;
+export { saveStateMachineId };

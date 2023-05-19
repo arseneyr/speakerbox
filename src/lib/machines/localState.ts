@@ -1,17 +1,38 @@
-import { assign, createMachine } from "xstate";
+import {
+  assign,
+  createMachine,
+  actions,
+  sendParent,
+  type ActorRefFrom,
+  type Actor,
+  spawn,
+} from "xstate";
+import { sampleMachine } from "./sampleMachine";
+
+const { pure } = actions;
+
+interface SavedSample {
+  id: string;
+  dataId: string;
+  title: string;
+}
+
+interface SaveState {
+  samples: SavedSample[];
+}
 
 interface Sample {
-  id: string;
+  ref: ActorRefFrom<typeof sampleMachine>;
 }
 
 interface LocalStateContext {
-  version: 1;
-  samples: Sample[];
+  sampleIds: string[];
+  samples: Map<string, Sample>;
 }
 
-type StateLoadedEvent = { type: "STATE_LOADED"; data: object | null };
+type LoadStateEvent = { type: "LOAD_STATE"; data: SaveState };
 
-function isValidSaveState(state: unknown): state is LocalStateContext {
+function isValidSaveState(state: unknown): state is SaveState {
   return (
     typeof state === "object" &&
     !!state &&
@@ -27,23 +48,17 @@ const localState = createMachine(
     tsTypes: {} as import("./localState.typegen").Typegen0,
     schema: {
       context: {} as LocalStateContext,
-      events: {} as StateLoadedEvent,
+      events: {} as LoadStateEvent,
     },
-    context: { version: 1, samples: [] },
-    initial: "start",
+    context: { samples: new Map(), sampleIds: [] },
+    initial: "loading",
     states: {
-      start: {
+      loading: {
         on: {
-          STATE_LOADED: [
-            {
-              cond: (context, event) => !isValidSaveState(event.data),
-              target: "loaded",
-            },
-            {
-              target: "loaded",
-              actions: "loadLocalState",
-            },
-          ],
+          LOAD_STATE: {
+            target: "loaded",
+            actions: "loadSaveState",
+          },
         },
       },
 
@@ -52,9 +67,25 @@ const localState = createMachine(
   },
   {
     actions: {
-      loadLocalState: assign(
-        (context, event) => event.data as LocalStateContext
-      ),
+      loadSaveState: assign({
+        sampleIds: (_, event) => event.data.samples.map((s) => s.id),
+        samples: (_, event) =>
+          new Map(
+            event.data.samples.map((s) => [
+              s.id,
+              {
+                ref: spawn(
+                  sampleMachine.withContext({
+                    id: s.id,
+                    title: s.title,
+                    dataId: s.dataId,
+                  }),
+                  s.id
+                ),
+              },
+            ])
+          ),
+      }),
     },
   }
 );
