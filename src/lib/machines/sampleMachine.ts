@@ -1,7 +1,6 @@
 import {
   createMachine,
   type ActorRefFrom,
-  spawn,
   assign,
   forwardTo,
   sendTo,
@@ -13,16 +12,18 @@ const sampleMachine = createMachine(
   {
     /** @xstate-layout N4IgpgJg5mDOIC5SwIYFsAOAbMBlALivmAHRYD2KEAlgHZQDEACgEoCiAMgPICCAIgG0ADAF1EoDOVjV81crXEgAHogAsAJgA0IAJ6IAHAEYSAViHnzqgOwA2fQGYrhmwF8X21JhwEipClTpGdn4ATWExJBBJaVl5RRUEdXUTUxt1VQBOfSEM9RsTQ3tVbT0EQyMSDJN7Q3V7ExsM1X19arcPdGw8QmISWHxyDAxIZg4eMNFFaJk5BUiEpJSG9KycvIKiksQ69RJVatqre31VcpN9dpBPLp9e7BQdQIY2ADk+NkFJyOnYudAF5KpFbZXL5QrFXSIezqfR7IRpVQ5RFIy7Xbw9Uj3R70Bi4AAqXCY4SmUhmcXm20By0yIPW4K2CEcsIy8MWdkKQky9lRnXRvhIWKeTDGEwiElJv3iansJBsiJs9gy9iEBUM1nsDPULJIytUdiERSsqg0rkutHIEDgijR3V8JJisylCAAtDYGc6Uhkvd6fT7ue4rrzbb1-DR6PayX9lIhGiQYbUbJyWacjVYGeVdvsanUGk0Wm0AzbbqR+oNhhAI5KKQhTkISCdHCYTFYkpyTBkGdCbKZloYqlYB-olTyvMHMVgHoFK47q7H43kk5zDKnOxljMkB0b9Fr9HKTG43EA */
 
-    tsTypes: {} as import("./sampleMachine.typegen").Typegen0,
+    types: {} as {
+      typegen: import("./sampleMachine.typegen").Typegen0;
 
-    schema: {
-      context: {} as {
+      context: {
         id: string;
         title: string;
         dataId: string;
         playerRef?: ActorRefFrom<typeof audioElementPlayerMachine>;
-      },
-      events: {} as { type: "PRELOAD"; data: Blob } | PlayerEvents<unknown>,
+      };
+      events:
+        | { type: "SAMPLE_DATA_LOADED"; data: Blob }
+        | PlayerEvents<unknown>;
     },
     initial: "loading",
 
@@ -30,7 +31,7 @@ const sampleMachine = createMachine(
       loading: {
         entry: "startPreload",
         on: {
-          PRELOAD: { actions: "createBlobPlayer" },
+          SAMPLE_DATA_LOADED: { actions: "createBlobPlayer" },
           READY: "stopped",
         },
       },
@@ -55,12 +56,12 @@ const sampleMachine = createMachine(
   {
     actions: {
       createBlobPlayer: assign({
-        playerRef: (_, event) =>
-          spawn(audioElementPlayerMachine.withContext({ srcBlob: event.data })),
+        playerRef: ({ event, spawn }) =>
+          spawn(audioElementPlayerMachine, { input: { srcBlob: event.data } }),
       }),
-      forwardToPlayer: forwardTo((context) => context.playerRef!),
-      startPreload: sendTo(saveStateMachineId, (context) => ({
-        type: "GET_PRELOAD",
+      forwardToPlayer: forwardTo(({ context }) => context.playerRef!),
+      startPreload: sendTo(saveStateMachineId, ({ context }) => ({
+        type: "SAMPLE_DATA_LOAD",
         data: { dataId: context.dataId, reply: context.id },
       })),
     },

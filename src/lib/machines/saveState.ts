@@ -1,25 +1,29 @@
-import {
-  assign,
-  createMachine,
-  type ActorRefFrom,
-  spawn,
-  sendTo,
-} from "xstate";
-import localState from "./localState";
+import { createMachine, fromPromise, sendParent } from "xstate";
 
 const saveStateMachineId = "saveStateMachine";
 
+interface SavedSample {
+  id: string;
+  dataId: string;
+  title: string;
+}
+
+interface SaveState {
+  version: string;
+  samples: SavedSample[];
+}
+
+function isValidSaveState(state: unknown): state is SaveState {
+  return (
+    typeof state === "object" &&
+    !!state &&
+    "version" in state &&
+    state?.version === 1
+  );
+}
+
 const saveStateMachine = createMachine(
   {
-    /** @xstate-layout N4IgpgJg5mDOIC5QAoC2BDAxgCwJYDswBKAOlgBd0AncgYggHtCSCA3BgazBIBsH0IAGQaZ0PAMqVyYANoAGALqJQABwaxc5XE2UgAHogCMhgEwkAHCfOG5AFnsBWWwE4AbAGZXAGhABPIwDstiS2Du6m7iYmDjEOAQEAvgk+aFh4hKQU1HRgVFQMVCQqPOjkAGYFqLz8QiJikqWyirpqGlo6SPpGhu4hzv3OhgGRcXHmPv4I1n0DARFycu7miUk++AwQcLqpOATELeqa2vi6BggAtIYTiOeuqyA76cRklDQHbceniLYB1wgmATMtjkrhMQwcIKiJnc7nujz2pD4Akg7yOHVAZ0MtnMJGcYOWAUG8WG7lsf2BvWckLBtlczlJhg8SSSQA */
-    tsTypes: {} as import("./saveState.typegen").Typegen0,
-    schema: {
-      context: {} as { localStateRef: ActorRefFrom<typeof localState> },
-      events: {} as
-        | { type: "REHYDRATE" }
-        | { type: "GET_PRELOAD"; data: { dataId: string; reply: string } },
-      services: {} as { loadLocalState: { data: object } },
-    },
     id: saveStateMachineId,
     initial: "start",
     states: {
@@ -39,24 +43,25 @@ const saveStateMachine = createMachine(
         entry: "spawnLocalStateMachine",
       },
 
-      loaded: {},
+      loaded: {
+        on: {
+          SAMPLE_DATA_LOAD: {},
+        },
+      },
     },
   },
   {
-    services: {
-      loadLocalState: async () => ({}),
+    actors: {
+      loadLocalState: fromPromise(async () => ({})),
     },
     actions: {
-      spawnLocalStateMachine: assign({
-        localStateRef: () => spawn(localState),
-      }),
-      sendLoadState: (context, event) =>
-        sendTo(context.localStateRef, {
-          type: "LOAD_STATE",
+      sendLoadState: ({ event }) =>
+        sendParent({
+          type: "STATE_LOADED",
           data:
-            event.type === "error.platform.loadLocalState"
-              ? { samples: [] }
-              : event.data,
+            event.type === "done.invoke.loadLocalState"
+              ? event.data
+              : { samples: [] },
         }),
     },
   }

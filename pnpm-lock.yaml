@@ -80,8 +80,8 @@ dependencies:
     specifier: ^6.6.3
     version: 6.6.3
   xstate:
-    specifier: 4.37.2
-    version: 4.37.2
+    specifier: 5.0.0-beta.13
+    version: 5.0.0-beta.13
 
 devDependencies:
   '@faker-js/faker':
@@ -8769,8 +8769,8 @@ packages:
         optional: true
     dev: true
 
-  /xstate@4.37.2:
-    resolution: {integrity: sha512-Qm337O49CRTZ3PRyRuK6b+kvI+D3JGxXIZCTul+xEsyFCVkTFDt5jixaL1nBWcUBcaTQ9um/5CRGVItPi7fveg==}
+  /xstate@5.0.0-beta.13:
+    resolution: {integrity: sha512-cv27Y9t6xJimBZ/FBFe6Vjegai/3Gv6INFQcdsiNGrFuXXjP7IMwjytOIxL6VhlDasXcoofWQoPy95v2d284ow==}
     dev: false
 
   /xtend@4.0.2:

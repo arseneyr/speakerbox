@@ -1,15 +1,6 @@
-import {
-  assign,
-  createMachine,
-  actions,
-  sendParent,
-  type ActorRefFrom,
-  type Actor,
-  spawn,
-} from "xstate";
+import { assign, createMachine, type ActorRefFrom } from "xstate";
 import { sampleMachine } from "./sampleMachine";
-
-const { pure } = actions;
+import saveStateMachine, { saveStateMachineId } from "./saveState";
 
 interface SavedSample {
   id: string;
@@ -28,34 +19,30 @@ interface Sample {
 interface LocalStateContext {
   sampleIds: string[];
   samples: Map<string, Sample>;
+  saveStateRef?: ActorRefFrom<typeof saveStateMachine>;
 }
 
-type LoadStateEvent = { type: "LOAD_STATE"; data: SaveState };
-
-function isValidSaveState(state: unknown): state is SaveState {
-  return (
-    typeof state === "object" &&
-    !!state &&
-    "version" in state &&
-    state?.version === 1
-  );
-}
+type LoadStateEvent = { type: "STATE_LOADED"; data: SaveState };
 
 const localState = createMachine(
   {
     /** @xstate-layout N4IgpgJg5mDOIC5QBsD2BjAhsgygF0zzAFlN0ALASwDswA6WAgJzwGIcAVAQQ4FEB9ADIB5LgBFeYgNoAGALqJQAB1SxKeSqmqKQAD0QBGAGwGANCACehgOzW6AFgCsAZhkBOe-YAcAJns+DLy8AX2DzNCxcAiJSChp6RkwWdm4+IVEJaQMFJBAVNQ0tHX0EYzNLRC8DOkdQsJBqVAg4HQjsfEISMipaHXz1TW1ckoBaI3MrBDHQ8Ix26K642gZmPD7VAaLhxH8JwwNqg3tnAOc3GWsvWyMZkDaoztie+jRMZoh1gsHinccfGvsRiujj2pQOdDc1iMjns1j8BgC7nsdWCQA */
     id: "localStateMachine",
-    tsTypes: {} as import("./localState.typegen").Typegen0,
-    schema: {
-      context: {} as LocalStateContext,
-      events: {} as LoadStateEvent,
+    types: {} as {
+      typegen: import("./localState.typegen").Typegen0;
+      context: LocalStateContext;
+      events: LoadStateEvent;
     },
     context: { samples: new Map(), sampleIds: [] },
     initial: "loading",
+    invoke: {
+      src: saveStateMachine,
+      id: saveStateMachineId,
+    },
     states: {
       loading: {
         on: {
-          LOAD_STATE: {
+          STATE_LOADED: {
             target: "loaded",
             actions: "loadSaveState",
           },
@@ -68,20 +55,20 @@ const localState = createMachine(
   {
     actions: {
       loadSaveState: assign({
-        sampleIds: (_, event) => event.data.samples.map((s) => s.id),
-        samples: (_, event) =>
+        sampleIds: ({ event }) => event.data.samples.map((s) => s.id),
+        samples: ({ event, spawn }) =>
           new Map(
             event.data.samples.map((s) => [
               s.id,
               {
-                ref: spawn(
-                  sampleMachine.withContext({
+                ref: spawn(sampleMachine, {
+                  input: {
                     id: s.id,
                     title: s.title,
                     dataId: s.dataId,
-                  }),
-                  s.id
-                ),
+                  },
+                  id: s.id,
+                }),
               },
             ])
           ),

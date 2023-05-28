@@ -1,4 +1,10 @@
-import { assign, createMachine, sendParent } from "xstate";
+import {
+  assign,
+  createMachine,
+  sendParent,
+  type MachineContext,
+  fromCallback,
+} from "xstate";
 
 export type PlayerEvents<TContext> =
   | { type: "READY"; data: Partial<TContext> }
@@ -7,15 +13,16 @@ export type PlayerEvents<TContext> =
   | { type: "STOP" }
   | { type: "ERROR" };
 
-function createPlayerMachine<TContext>() {
+function createPlayerMachine<TContext extends MachineContext>() {
   return createMachine(
     {
       /** @xstate-layout N4IgpgJg5mDOIC5QAcA2BDAnmATgYgFEAlIgeSIG0AGAXURQHtYBLAF2YYDt6QAPRACwB2ADQhMggKwAOAHQBGSQDYATJIC+6sWiy5ZqBugjNOUPEQIBBACIBNanSQhkTNh25P+CNfNlCqAMzyamISCIoCshpazhjYOLKwrAzIyJB4AAoAMpb2tDwuLOxcPF4qSr5C0sGSoYhqVLICkkFqmtpxejqYJmYAygAqpBkOBa7FHqBlkpWBNXUIAQJKTVSq0R26Cd29hABy1gTWo06FbiWe9TN+cyHiiAEAnCuPa20x3V1xu9m5J4xFdylRDVWTSJRCeTSIS1e7eSSNAIqarvGKcBgQOAFTo4MaAi5TRAAWnkCyJSnasS2+kMxlMePOkz4iHkwRurVhYXkQiEfnKynem3iiWSqUgDImwIQAhUsw5CyCKwCAo2VOFO3pp3GQMu0tEcOVvmRNUpnwSuBwDFxWvxTOmcvmcOavIEb2imiAA */
       id: "player",
-      tsTypes: {} as import("./playerMachine.typegen").Typegen0,
-      schema: {
-        events: {} as PlayerEvents<TContext>,
-        context: {} as TContext,
+      types: {} as {
+        typegen: import("./playerMachine.typegen").Typegen0;
+        events: PlayerEvents<TContext>;
+        context: TContext;
+        // actors: { loadPlayer: { output: any } };
       },
       initial: "loading",
       invoke: { src: "loadPlayer" },
@@ -53,8 +60,11 @@ function createPlayerMachine<TContext>() {
     },
     {
       actions: {
-        onReady: assign((context, event) => ({ ...context, ...event.data })),
-        sendParent: sendParent((_, event) => event),
+        onReady: assign(({ context, event }) => ({
+          ...context,
+          ...event.data,
+        })),
+        sendParent: sendParent(({ event }) => event),
       },
     }
   );
@@ -66,10 +76,10 @@ type AudioElementPlayerContext = {
 };
 
 const audioElementPlayerMachine =
-  createPlayerMachine<AudioElementPlayerContext>().withConfig({
-    services: {
-      loadPlayer: (context) => (sendParent) => {
-        const url = URL.createObjectURL(context.srcBlob);
+  createPlayerMachine<AudioElementPlayerContext>().provide({
+    actors: {
+      loadPlayer: fromCallback((sendParent, _, { input }) => {
+        const url = URL.createObjectURL(input.srcBlob);
         const audioElement = new Audio(url);
         URL.revokeObjectURL(url);
 
@@ -85,14 +95,14 @@ const audioElementPlayerMachine =
         return () => {
           audioElement.src = "";
         };
-      },
-    },
+      }),
+    } as any,
     actions: {
-      rewind: (context) => {
+      rewind: ({ context }) => {
         context.audioElement!.currentTime = 0;
       },
-      stopPlaying: (context) => context.audioElement!.pause(),
-      startPlaying: (context) => context.audioElement!.play(),
+      stopPlaying: ({ context }) => context.audioElement!.pause(),
+      startPlaying: ({ context }) => context.audioElement!.play(),
     },
   });
 
