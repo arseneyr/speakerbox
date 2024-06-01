@@ -1,0 +1,5 @@
+{
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsserver.experimental.useVsCodeWatcher": false,
+  "editor.formatOnSave": true,
+}
