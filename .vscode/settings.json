@@ -2,4 +2,11 @@
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "typescript.tsserver.experimental.useVsCodeWatcher": false,
   "editor.formatOnSave": true,
+  "typescript.workspaceSymbols.excludeLibrarySymbols": false,
+  "tailwindCSS.experimental.classRegex": [
+    [
+      "clsx\\(([^)]*)\\)",
+      "(?:'|\"|`)([^']*)(?:'|\"|`)"
+    ]
+  ]
 }

@@ -8,4 +8,8 @@ export default {
   },
 } satisfies Meta<typeof SampleComponent>;
 
-export const Primary = {};
+export const Primary = {
+  args: {
+    title: "Yo",
+  },
+};
