@@ -1,5 +1,5 @@
 import "./App.css";
-import { Sample } from "@features/sample/Sample";
+import { SampleContainer } from "@features/sample/SampleContainer";
 import testMp3Url from "@assets/test.mp3";
 import { ReactElement } from "react";
 import SampleGrid from "./SampleGrid";
@@ -26,7 +26,7 @@ function App() {
   return (
     <SampleGrid>
       {allSampleIds
-        .map((id): ReactElement => <Sample id={id} key={id} />)
+        .map((id): ReactElement => <SampleContainer id={id} key={id} />)
         .concat(<AddSampleButton onClick={onAddClick} key="addButton" />)}
     </SampleGrid>
   );
