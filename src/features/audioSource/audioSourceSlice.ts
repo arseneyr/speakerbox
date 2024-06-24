@@ -11,7 +11,6 @@ import {
   call,
   cancel,
   cancelled,
-  delay,
   fork,
   join,
   put,
