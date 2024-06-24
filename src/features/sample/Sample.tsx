@@ -1,28 +1,33 @@
 import { clsx } from "clsx/lite";
-import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
-const ProgressBar = (props: { duration: number; children?: ReactNode }) => {
+const ProgressBar = (props: { endTime: number; children?: ReactNode }) => {
   const leaveDurationMs = 300;
   let transitionDuration;
 
   const [stage, setStage] = useState<"from" | "enter" | "leave">("from");
+  const [duration, setDuration] = useState<number | null>(null);
   const divRef = useRef<HTMLDivElement>(null);
   if (stage === "enter") {
-    transitionDuration = `${props.duration}ms`;
+    transitionDuration = `${duration}ms`;
   } else if (stage === "leave") {
     transitionDuration = `${leaveDurationMs}ms`;
   }
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     // force reflow to animate between "from" and "enter"
     void divRef.current?.offsetHeight;
+    setDuration(props.endTime - Date.now());
     setStage("enter");
-  }, []);
+  }, [props.endTime]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setStage("leave"), props.duration);
+    const timer = setTimeout(
+      () => setStage("leave"),
+      props.endTime - Date.now(),
+    );
     return () => clearTimeout(timer);
-  }, [props.duration]);
+  }, [props.endTime]);
 
   return (
     <div
@@ -35,7 +40,7 @@ const ProgressBar = (props: { duration: number; children?: ReactNode }) => {
       )}
       style={{ transitionDuration }}
     >
-      <div className="p-2">{props.children}</div>
+      {props.children}
     </div>
   );
 };
@@ -48,19 +53,6 @@ interface SampleProps {
 }
 
 export const Sample = (props: SampleProps) => {
-  const [duration, setDuration] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!props.progressFinishTime) {
-      return;
-    }
-
-    const duration = props.progressFinishTime - Date.now();
-    if (duration > 0) {
-      setDuration(duration);
-    }
-  }, [props.progressFinishTime]);
-
   return (
     <button
       className={clsx(
@@ -75,9 +67,12 @@ export const Sample = (props: SampleProps) => {
       onClick={props.onClick}
     >
       {props.title}
-      {duration && (
-        <ProgressBar key={props.progressFinishTime ?? 0} duration={duration}>
-          {props.title}
+      {props.progressFinishTime && (
+        <ProgressBar
+          key={props.progressFinishTime ?? 0}
+          endTime={props.progressFinishTime}
+        >
+          <div className="p-2">{props.title}</div>
         </ProgressBar>
       )}
     </button>

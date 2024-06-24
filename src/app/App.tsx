@@ -2,7 +2,7 @@ import "./App.css";
 import { SampleContainer } from "@features/sample/SampleContainer";
 import testMp3Url from "@assets/test.mp3";
 import { ReactElement } from "react";
-import SampleGrid from "./SampleGrid";
+import SampleGrid from "@features/sample/SampleGrid";
 import AddSampleButton from "@features/addSample/AddSampleButton";
 import { selectAllSampleIds, createSample } from "@features/sample/sampleSlice";
 import { useAppDispatch, useAppSelector } from "./hooks";

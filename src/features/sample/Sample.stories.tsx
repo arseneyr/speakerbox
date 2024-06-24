@@ -1,15 +1,19 @@
-import { ComponentProps, useState } from "react";
+import { useState } from "react";
 import { Sample } from "./Sample";
 import { Meta, StoryObj } from "@storybook/react";
 import { fn } from "@storybook/test";
 
-const SampleWrapper = (props: ComponentProps<typeof Sample>) => {
+const SampleWrapper = (props: {
+  title: string;
+  onClick: () => void;
+  duration: number;
+}) => {
   const [endPlay, setEndPlay] = useState<number | undefined>();
   return (
     <Sample
       {...props}
       onClick={() => {
-        setEndPlay(Date.now() + 5000);
+        setEndPlay(Date.now() + props.duration);
         props.onClick?.();
       }}
       progressFinishTime={endPlay}
@@ -22,13 +26,14 @@ const meta = {
   parameters: {
     layout: "centered",
   },
-} satisfies Meta<typeof Sample>;
+} satisfies Meta<typeof SampleWrapper>;
 
 export default meta;
 
-export const Primary = {
+export const Default = {
   args: {
     title: "Yo",
     onClick: fn(),
+    duration: 5000,
   },
 } satisfies StoryObj<typeof meta>;

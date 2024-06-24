@@ -34,5 +34,5 @@ export const Waveform: React.FunctionComponent<WaveformProps> = (props) => {
   useEffect(() => {
     ref.current && ref.current.ws.setMediaElement(props.mediaElement);
   }, [props.mediaElement]);
-  return <div className="w-full bg-neutral" ref={createWavesurfer} onFocusOu={} />;
+  return <div className="w-full bg-neutral" ref={createWavesurfer} />;
 };

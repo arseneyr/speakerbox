@@ -1,9 +1,11 @@
-import {
-  selectAudioSourceById,
-  playAudioSource,
-} from "../audioSource/audioSourceSlice";
+import { useState } from "react";
 import { Sample } from "./Sample";
-import { selectIsSampleLoading, selectSampleById } from "./sampleSlice";
+import {
+  playSample,
+  selectIsSampleLoading,
+  selectSampleById,
+  selectSampleDurationMs,
+} from "./sampleSlice";
 import { useAppDispatch, useAppSelector } from "@app/hooks";
 
 interface SampleContainerProps {
@@ -12,19 +14,24 @@ interface SampleContainerProps {
 
 const SampleContainer = (props: SampleContainerProps) => {
   const sample = useAppSelector((state) => selectSampleById(state, props.id));
-  const source = useAppSelector((state) =>
-    selectAudioSourceById(state, sample.sourceId),
-  );
   const loading = useAppSelector((state) =>
     selectIsSampleLoading(state, props.id),
   );
+  const durationMs = useAppSelector((state) =>
+    selectSampleDurationMs(state, props.id),
+  );
   const dispatch = useAppDispatch();
+  const [endTime, setEndTime] = useState<number | undefined>();
 
   return (
     <Sample
       title={sample.title}
-      onClick={() => dispatch(playAudioSource(source.id))}
+      onClick={() => {
+        dispatch(playSample(props.id));
+        setEndTime(Date.now() + durationMs!);
+      }}
       loading={loading}
+      progressFinishTime={endTime}
     />
   );
 };

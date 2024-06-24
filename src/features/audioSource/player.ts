@@ -48,7 +48,7 @@ export function createEncodedPlayer(
       },
     } satisfies Player;
     audio.ondurationchange = () => {
-      player.durationMs = audio.duration;
+      player.durationMs = audio.duration * 1000;
     };
 
     function onCanPlayThrough() {
