@@ -1,3 +1,4 @@
+import { EntityId, EntityState } from "@reduxjs/toolkit";
 import {
   CallEffectDescriptor,
   ChannelTakeEffectDescriptor,
@@ -74,3 +75,22 @@ export type GuardedType<T> = T extends (
 ) => x is infer U
   ? U
   : never;
+
+export function isObject(
+  o: unknown,
+): o is Record<string | number | symbol, unknown> {
+  return typeof o === "object" && o !== null && !Array.isArray(o);
+}
+
+export function isEntityState<T, Id extends EntityId = string>(
+  state: unknown,
+): state is EntityState<T, Id> {
+  if (!isObject(state)) {
+    return false;
+  }
+  const { ids, entities } = state;
+  if (!Array.isArray(ids) || !isObject(entities)) {
+    return false;
+  }
+  return ids.every((v) => v in entities);
+}

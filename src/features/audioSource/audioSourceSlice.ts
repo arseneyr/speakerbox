@@ -21,12 +21,15 @@ import { Player, createEncodedPlayer } from "./player";
 import { CANCEL, Task } from "redux-saga";
 import { GuardedType, SagaCancellablePromise } from "@common/utils";
 import { RootState } from "@app/store";
+import { finishRehydrate } from "@features/persist/persistor";
+import { getMany } from "idb-keyval";
 
 enum AudioSourceState {
   CREATED = "created",
   LOADING = "loading",
   READY = "ready",
   PLAYING = "playing",
+  ERROR = "error",
 }
 
 interface AudioSource {
@@ -47,7 +50,7 @@ const audioSourceSlice = createSlice({
     ) {
       audioSourceEntityAdapter.addOne(state, {
         id: action.payload.id,
-        state: AudioSourceState.CREATED,
+        state: AudioSourceState.LOADING,
         durationMs: null,
       });
     },
@@ -84,6 +87,25 @@ const audioSourceSlice = createSlice({
     destroyAudioSource(state, action: PayloadAction<string>) {
       audioSourceEntityAdapter.removeOne(state, action.payload);
     },
+    errorAudioSource(state, action: PayloadAction<string>) {
+      audioSourceEntityAdapter.updateOne(state, {
+        id: action.payload,
+        changes: { state: AudioSourceState.ERROR },
+      });
+    },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(finishRehydrate, (state, action) => {
+      action.payload.audioSources &&
+        audioSourceEntityAdapter.setAll(
+          state,
+          action.payload.audioSources.map((id) => ({
+            id,
+            state: AudioSourceState.CREATED,
+            durationMs: null,
+          })),
+        );
+    });
   },
 });
 
@@ -94,6 +116,7 @@ const {
   stopAudioSource,
   destroyAudioSource,
   audioSourceEnded,
+  errorAudioSource,
 } = audioSourceSlice.actions;
 
 function* playAudioSaga(
@@ -132,8 +155,34 @@ function* audioPlayerSaga(action: ReturnType<typeof createAudioSource>) {
   }
 }
 
+function* rehydrateSaga(action: ReturnType<typeof finishRehydrate>) {
+  const ids = action.payload.audioSources ?? [];
+  const loadedSources: unknown[] = ids.length ? yield call(getMany, ids) : [];
+
+  const ret: [string, Task][] = [];
+
+  for (const [i, s] of loadedSources.entries()) {
+    const id = ids[i];
+    if (s instanceof Blob) {
+      const createAction = createAudioSource({ id, blob: s });
+      ret.push([id, yield fork(audioPlayerSaga, createAction)]);
+    } else {
+      yield put(errorAudioSource(id));
+    }
+  }
+  return ret;
+}
+
 function* audioSourceSaga() {
-  const players = new Map<string, Task>();
+  const rehydrateAction: ReturnType<typeof finishRehydrate> = yield take(
+    finishRehydrate.type,
+  );
+  const rehydrateResult: [string, Task][] = yield call(
+    rehydrateSaga,
+    rehydrateAction,
+  );
+
+  const players = new Map<string, Task>(rehydrateResult);
   const predicate = isAnyOf(createAudioSource, destroyAudioSource);
   for (;;) {
     const action: GuardedType<typeof predicate> = yield take(predicate);
@@ -149,6 +198,19 @@ function* audioSourceSaga() {
   }
 }
 
+// Persist
+export function persistAudioSources(rootState: RootState) {
+  return rootState.audioSources.ids;
+}
+
+export function rehydrateAudioSources(input: unknown) {
+  if (!Array.isArray(input)) {
+    return null;
+  }
+  return input;
+}
+
+// Selectors
 const audioSourceSelectors = audioSourceEntityAdapter.getSelectors<RootState>(
   (state) => state.audioSources,
 );
@@ -165,6 +227,7 @@ export const isSourceLoading = (source: AudioSource) =>
 
 export const selectAudioSourceById = audioSourceSelectors.selectById;
 
+// Actions
 export {
   createAudioSource,
   playAudioSource,
@@ -172,8 +235,9 @@ export {
   destroyAudioSource,
 };
 
+// Saga
 export { audioSourceSaga };
 
+// Reducer
 const audioSourceReducer = audioSourceSlice.reducer;
-
 export default audioSourceReducer;

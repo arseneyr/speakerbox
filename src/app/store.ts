@@ -5,6 +5,7 @@ import audioSourceReducer, {
 } from "@features/audioSource/audioSourceSlice";
 import createSagaMiddleware from "redux-saga";
 import { rootSaga } from "./saga";
+import { persistReducer, startRehydrate } from "@features/persist/persistor";
 
 export function createStore() {
   const sagaMiddleware = createSagaMiddleware();
@@ -12,14 +13,18 @@ export function createStore() {
     reducer: {
       samples: sampleReducer,
       audioSources: audioSourceReducer,
+      persist: persistReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware({
-        serializableCheck: { ignoredActions: [createAudioSource.type] },
+        serializableCheck: {
+          ignoredActions: [createAudioSource.type],
+        },
       }).concat(sagaMiddleware),
   });
 
   sagaMiddleware.run(rootSaga);
+  store.dispatch(startRehydrate());
   return store;
 }
 

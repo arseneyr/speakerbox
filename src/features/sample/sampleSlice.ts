@@ -1,4 +1,5 @@
 import {
+  EntityState,
   PayloadAction,
   ThunkAction,
   UnknownAction,
@@ -12,6 +13,8 @@ import {
   playAudioSource,
   selectAudioSourceById,
 } from "../audioSource/audioSourceSlice";
+import { isEntityState } from "@common/utils";
+import { finishRehydrate } from "@features/persist/persistor";
 
 interface Sample {
   id: string;
@@ -32,6 +35,11 @@ const sampleSlice = createSlice({
       samplesAdapter.addOne(state, action.payload);
     },
   },
+  extraReducers: (builder) => {
+    builder.addCase(finishRehydrate, (_state, action) => {
+      return action.payload.samples ?? samplesAdapter.getInitialState();
+    });
+  },
 });
 
 const playSample =
@@ -40,6 +48,18 @@ const playSample =
     const sample = selectSampleById(getState(), id);
     dispatch(playAudioSource(sample.sourceId));
   };
+
+// Persist
+export function persistSamples(rootState: RootState) {
+  return rootState.samples;
+}
+
+export function rehydrateSamples(input: unknown) {
+  if (!isEntityState(input)) {
+    return null;
+  }
+  return input as EntityState<Sample, string>;
+}
 
 // Selectors
 const sampleSelectors = samplesAdapter.getSelectors<RootState>(
