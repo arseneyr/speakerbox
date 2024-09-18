@@ -48,33 +48,43 @@ const ProgressBar = (props: { endTime: number; children?: ReactNode }) => {
 interface SampleProps {
   title: string;
   onClick?: () => unknown;
+  errored?: boolean;
   loading?: boolean;
   progressFinishTime?: number;
 }
 
 export const Sample = (props: SampleProps) => {
   return (
-    <button
-      className={clsx(
-        `relative isolate select-none overflow-hidden rounded border-l-4 border-primary
-        bg-neutral p-2 text-left font-sans text-4xl font-medium shadow-sm transition
-        duration-200`,
-        props.loading
-          ? "skeleton text-neutral-content/40"
-          : "hover:text-accent hover:shadow-lg active:scale-[0.98] active:shadow-sm",
+    <div className="indicator w-full">
+      {props.errored && (
+        <span className="badge indicator-item badge-error indicator-center indicator-middle">
+          Not found :(
+        </span>
       )}
-      disabled={props.loading}
-      onClick={props.onClick}
-    >
-      {props.title}
-      {props.progressFinishTime && (
-        <ProgressBar
-          key={props.progressFinishTime ?? 0}
-          endTime={props.progressFinishTime}
-        >
-          <div className="p-2">{props.title}</div>
-        </ProgressBar>
-      )}
-    </button>
+      <button
+        className={clsx(
+          `relative isolate w-full select-none overflow-hidden rounded border-l-4
+          bg-neutral p-2 text-left font-sans text-4xl font-medium shadow-sm transition
+          duration-200`,
+          props.loading || props.errored
+            ? "border-neutral-content/40 text-neutral-content/40"
+            : `border-primary hover:text-accent hover:shadow-lg active:scale-[0.98]
+              active:shadow-sm`,
+          props.loading && "skeleton",
+        )}
+        disabled={props.loading || props.errored}
+        onClick={props.onClick}
+      >
+        {props.title}
+        {props.progressFinishTime && (
+          <ProgressBar
+            key={props.progressFinishTime ?? 0}
+            endTime={props.progressFinishTime}
+          >
+            <div className="p-2">{props.title}</div>
+          </ProgressBar>
+        )}
+      </button>
+    </div>
   );
 };

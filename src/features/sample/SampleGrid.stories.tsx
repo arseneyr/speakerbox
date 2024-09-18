@@ -27,7 +27,9 @@ const meta = {
 export default meta;
 
 export const Default = {
-  args: { samples: Array(100).fill(SampleDefault.args) },
+  args: {
+    samples: Array.from({ length: 100 }, () => ({ ...SampleDefault.args })),
+  },
 } satisfies StoryObj<typeof meta>;
 
 export const SingleItem = {
