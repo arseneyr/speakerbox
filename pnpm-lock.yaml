@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@reduxjs/toolkit':
-    hash: b3pqhamkr2wsmn66qhcdwgyibm
+    hash: wccfj4twun4bdxaxdygx6q26hm
     path: patches/@reduxjs__toolkit.patch
 
 importers:
@@ -15,7 +15,7 @@ importers:
     dependencies:
       '@reduxjs/toolkit':
         specifier: ^2.2.7
-        version: 2.2.7(patch_hash=b3pqhamkr2wsmn66qhcdwgyibm)(react-redux@9.1.2(@types/react@18.3.7)(react@18.3.1)(redux@5.0.1))(react@18.3.1)
+        version: 2.2.7(patch_hash=wccfj4twun4bdxaxdygx6q26hm)(react-redux@9.1.2(@types/react@18.3.7)(react@18.3.1)(redux@5.0.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -3622,7 +3622,7 @@ snapshots:
 
   '@redux-saga/types@1.2.1': {}
 
-  '@reduxjs/toolkit@2.2.7(patch_hash=b3pqhamkr2wsmn66qhcdwgyibm)(react-redux@9.1.2(@types/react@18.3.7)(react@18.3.1)(redux@5.0.1))(react@18.3.1)':
+  '@reduxjs/toolkit@2.2.7(patch_hash=wccfj4twun4bdxaxdygx6q26hm)(react-redux@9.1.2(@types/react@18.3.7)(react@18.3.1)(redux@5.0.1))(react@18.3.1)':
     dependencies:
       immer: 10.1.1
       redux: 5.0.1

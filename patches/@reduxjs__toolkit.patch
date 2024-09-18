@@ -43,10 +43,10 @@ index 54a1f4dd2809938f5badc05ce9f31150754d9559..a90e7a39d8851d18408c988b32038fac
       * Returns a promise that resolves when `waitFor` resolves or
       * rejects if the listener has been cancelled or is completed.
 diff --git a/src/listenerMiddleware/index.ts b/src/listenerMiddleware/index.ts
-index efa2912ad3c88d6912b4ef11f2cbe96e8a709594..2e67d008565c673f3b051f9f1198ae07996afbf9 100644
+index efa2912ad3c88d6912b4ef11f2cbe96e8a709594..a56aa3d4ed54a8546c74b955951a9d9928d0c39f 100644
 --- a/src/listenerMiddleware/index.ts
 +++ b/src/listenerMiddleware/index.ts
-@@ -85,6 +85,7 @@ const alm = 'listenerMiddleware' as const
+@@ -85,14 +85,15 @@ const alm = 'listenerMiddleware' as const
  const createFork = (
    parentAbortSignal: AbortSignalWithReason<unknown>,
    parentBlockingPromises: Promise<any>[],
@@ -54,6 +54,16 @@ index efa2912ad3c88d6912b4ef11f2cbe96e8a709594..2e67d008565c673f3b051f9f1198ae07
  ) => {
    const linkControllers = (controller: AbortController) =>
      addAbortSignalListener(parentAbortSignal, () =>
+       abortControllerWithReason(controller, parentAbortSignal.reason),
+     )
+ 
+-  return <T>(
+-    taskExecutor: ForkedTaskExecutor<T>,
++  return <T, State>(
++    taskExecutor: ForkedTaskExecutor<T, State>,
+     opts?: ForkOptions,
+   ): ForkedTask<T> => {
+     assertFunction(taskExecutor, 'taskExecutor')
 @@ -100,11 +101,17 @@ const createFork = (
  
      linkControllers(childAbortController)
@@ -72,6 +82,15 @@ index efa2912ad3c88d6912b4ef11f2cbe96e8a709594..2e67d008565c673f3b051f9f1198ae07
            pause: createPause(childAbortController.signal),
            delay: createDelay(childAbortController.signal),
            signal: childAbortController.signal,
+@@ -416,7 +423,7 @@ export const createListenerMiddleware = <
+             pause: createPause<any>(internalTaskController.signal),
+             extra,
+             signal: internalTaskController.signal,
+-            fork: createFork(internalTaskController.signal, autoJoinPromises),
++            fork: createFork(internalTaskController.signal, autoJoinPromises, startListening),
+             unsubscribe: entry.unsubscribe,
+             subscribe: () => {
+               listenerMap.set(entry.id, entry)
 diff --git a/src/listenerMiddleware/types.ts b/src/listenerMiddleware/types.ts
 index b5980e1085d4b9356d08f9f6d525174d73695502..6a75bf00641bf1c021a6ce53ec2c3eb3dece88d4 100644
 --- a/src/listenerMiddleware/types.ts
