@@ -13,8 +13,8 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"arcanis.vscode-zipfs",
 				"esbenp.prettier-vscode",
+				"dbaeumer.vscode-eslint",
 				"bradlc.vscode-tailwindcss"
 			]
 		}
