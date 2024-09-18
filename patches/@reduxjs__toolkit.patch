@@ -1,0 +1,120 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 54a1f4dd2809938f5badc05ce9f31150754d9559..a90e7a39d8851d18408c988b32038fac413118c6 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -2078,7 +2078,8 @@ interface ConditionFunction<State> {
+ /** @internal */
+ type MatchFunction<T> = (v: any) => v is T;
+ /** @public */
+-interface ForkedTaskAPI {
++interface ForkedTaskAPI<State> {
++    take: TakePattern<State>
+     /**
+      * Returns a promise that resolves when `waitFor` resolves or
+      * rejects if the task or the parent listener has been cancelled or is completed.
+@@ -2098,15 +2099,15 @@ interface ForkedTaskAPI {
+     signal: AbortSignal;
+ }
+ /** @public */
+-interface AsyncTaskExecutor<T> {
+-    (forkApi: ForkedTaskAPI): Promise<T>;
++interface AsyncTaskExecutor<T, State> {
++    (forkApi: ForkedTaskAPI<State>): Promise<T>;
+ }
+ /** @public */
+-interface SyncTaskExecutor<T> {
+-    (forkApi: ForkedTaskAPI): T;
++interface SyncTaskExecutor<T, State> {
++    (forkApi: ForkedTaskAPI<State>): T;
+ }
+ /** @public */
+-type ForkedTaskExecutor<T> = AsyncTaskExecutor<T> | SyncTaskExecutor<T>;
++type ForkedTaskExecutor<T, State> = AsyncTaskExecutor<T, State> | SyncTaskExecutor<T, State>;
+ /** @public */
+ type TaskResolved<T> = {
+     readonly status: 'ok';
+@@ -2267,7 +2268,7 @@ interface ListenerEffectAPI<State, DispatchType extends Dispatch, ExtraArgument
+      * @param executor
+      * @param options
+      */
+-    fork<T>(executor: ForkedTaskExecutor<T>, options?: ForkOptions): ForkedTask<T>;
++    fork<T>(executor: ForkedTaskExecutor<T, State>, options?: ForkOptions): ForkedTask<T>;
+     /**
+      * Returns a promise that resolves when `waitFor` resolves or
+      * rejects if the listener has been cancelled or is completed.
+diff --git a/src/listenerMiddleware/index.ts b/src/listenerMiddleware/index.ts
+index efa2912ad3c88d6912b4ef11f2cbe96e8a709594..2e67d008565c673f3b051f9f1198ae07996afbf9 100644
+--- a/src/listenerMiddleware/index.ts
++++ b/src/listenerMiddleware/index.ts
+@@ -85,6 +85,7 @@ const alm = 'listenerMiddleware' as const
+ const createFork = (
+   parentAbortSignal: AbortSignalWithReason<unknown>,
+   parentBlockingPromises: Promise<any>[],
++  startListening: AddListenerOverloads<any>
+ ) => {
+   const linkControllers = (controller: AbortController) =>
+     addAbortSignalListener(parentAbortSignal, () =>
+@@ -100,11 +101,17 @@ const createFork = (
+ 
+     linkControllers(childAbortController)
+ 
++    const take = createTakePattern(
++      startListening as AddListenerOverloads<any>,
++      childAbortController.signal,
++    )
++
+     const result = runTask<T>(
+       async (): Promise<T> => {
+         validateActive(parentAbortSignal)
+         validateActive(childAbortController.signal)
+         const result = (await taskExecutor({
++          take,
+           pause: createPause(childAbortController.signal),
+           delay: createDelay(childAbortController.signal),
+           signal: childAbortController.signal,
+diff --git a/src/listenerMiddleware/types.ts b/src/listenerMiddleware/types.ts
+index b5980e1085d4b9356d08f9f6d525174d73695502..6a75bf00641bf1c021a6ce53ec2c3eb3dece88d4 100644
+--- a/src/listenerMiddleware/types.ts
++++ b/src/listenerMiddleware/types.ts
+@@ -51,7 +51,8 @@ export interface ConditionFunction<State> {
+ export type MatchFunction<T> = (v: any) => v is T
+ 
+ /** @public */
+-export interface ForkedTaskAPI {
++export interface ForkedTaskAPI<State> {
++  take: TakePattern<State>
+   /**
+    * Returns a promise that resolves when `waitFor` resolves or
+    * rejects if the task or the parent listener has been cancelled or is completed.
+@@ -72,17 +73,17 @@ export interface ForkedTaskAPI {
+ }
+ 
+ /** @public */
+-export interface AsyncTaskExecutor<T> {
+-  (forkApi: ForkedTaskAPI): Promise<T>
++export interface AsyncTaskExecutor<T, State> {
++  (forkApi: ForkedTaskAPI<State>): Promise<T>
+ }
+ 
+ /** @public */
+-export interface SyncTaskExecutor<T> {
+-  (forkApi: ForkedTaskAPI): T
++export interface SyncTaskExecutor<T, State> {
++  (forkApi: ForkedTaskAPI<State>): T
+ }
+ 
+ /** @public */
+-export type ForkedTaskExecutor<T> = AsyncTaskExecutor<T> | SyncTaskExecutor<T>
++export type ForkedTaskExecutor<T, State> = AsyncTaskExecutor<T,State> | SyncTaskExecutor<T,State>
+ 
+ /** @public */
+ export type TaskResolved<T> = {
+@@ -257,7 +258,7 @@ export interface ListenerEffectAPI<
+    * @param executor
+    * @param options
+    */
+-  fork<T>(executor: ForkedTaskExecutor<T>, options?: ForkOptions): ForkedTask<T>
++  fork<T>(executor: ForkedTaskExecutor<T, State>, options?: ForkOptions): ForkedTask<T>
+   /**
+    * Returns a promise that resolves when `waitFor` resolves or
+    * rejects if the listener has been cancelled or is completed.
