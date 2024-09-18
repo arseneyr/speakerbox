@@ -7,6 +7,13 @@ import AddSampleButton from "@features/addSample/AddSampleButton";
 import { selectAllSampleIds, createSample } from "@features/sample/sampleSlice";
 import { useAppDispatch, useAppSelector } from "./hooks";
 import { createAudioSource } from "@features/audioSource/audioSourceSlice";
+import { PersistGate } from "@features/persist/PersistGate";
+import PlusSvg from "@assets/plus.svg?react";
+import {
+  RecorderState,
+  selectRecorder,
+  startRecording,
+} from "@features/recorder/recorderSlice";
 
 async function fetchTestMp3() {
   const resp = await fetch(testMp3Url);
@@ -23,12 +30,33 @@ function App() {
     dispatch(createAudioSource({ id: sourceId, blob }));
     dispatch(createSample({ id: sampleId, sourceId, title: "SUUUP" }));
   }
+  const addButtonOptions = [
+    { text: "Add sample", icon: <PlusSvg />, onClick: onAddClick },
+  ];
   return (
-    <SampleGrid>
-      {allSampleIds
-        .map((id): ReactElement => <SampleContainer id={id} key={id} />)
-        .concat(<AddSampleButton onClick={onAddClick} key="addButton" />)}
-    </SampleGrid>
+    <PersistGate
+      loading={<span className="loading loading-ring loading-lg"></span>}
+      debounceMs={2000}
+    >
+      <SampleGrid>
+        {allSampleIds
+          .map((id): ReactElement => <SampleContainer id={id} key={id} />)
+          .concat(
+            <AddSampleButton
+              options={addButtonOptions}
+              default={null}
+              key="addButton"
+            />,
+          )
+          .concat(
+            <button className="btn" onClick={() => dispatch(startRecording())}>
+              {useAppSelector(selectRecorder) === RecorderState.RECORDING
+                ? "recording"
+                : "record"}
+            </button>,
+          )}
+      </SampleGrid>
+    </PersistGate>
   );
 }
 
