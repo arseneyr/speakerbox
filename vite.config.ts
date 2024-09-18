@@ -10,4 +10,10 @@ export default defineConfig({
     // port forwarding doesn't work with WSL and IPV6
     host: "0.0.0.0",
   },
+  resolve: {
+    alias: {
+      "@reduxjs/toolkit":
+        "/workspaces/speakerbox/node_modules/@reduxjs/toolkit/src/index.ts",
+    },
+  },
 });
