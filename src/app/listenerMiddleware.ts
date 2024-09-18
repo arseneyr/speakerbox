@@ -1,14 +1,32 @@
-import { createListenerMiddleware } from "@reduxjs/toolkit";
+import {
+  AnyListenerPredicate,
+  createListenerMiddleware,
+  ForkedTask,
+  ForkedTaskExecutor,
+  ListenerEffectAPI,
+} from "@reduxjs/toolkit";
 import type { RootState, AppDispatch } from "./store";
-import { startRecorderListener } from "@features/recorder/recorderSlice";
 
 export const listenerMiddleware = createListenerMiddleware();
 
-export const startAppListening = listenerMiddleware.startListening.withTypes<
+export const appStartListening = listenerMiddleware.startListening.withTypes<
   RootState,
   AppDispatch
 >();
 
-export type AppStartListening = typeof startAppListening;
+export type AppStartListening = typeof appStartListening;
 
-startRecorderListener(startAppListening);
+export const forkWithCancelAction =
+  (listenerAPI: ListenerEffectAPI<RootState, AppDispatch>) =>
+  <T>(
+    cancelPattern: AnyListenerPredicate<RootState>,
+    executor: ForkedTaskExecutor<T, RootState>,
+  ) => {
+    const mainTask = listenerAPI.fork((...args) =>
+      Promise.resolve(executor(...args)).finally(() => cancelTask.cancel()),
+    );
+    const cancelTask: ForkedTask<unknown> = listenerAPI.fork(({ take }) =>
+      take(cancelPattern).then(() => mainTask.cancel()),
+    );
+    return mainTask;
+  };

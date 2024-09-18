@@ -1,5 +1,4 @@
 import {
-  Action,
   PayloadAction,
   createEntityAdapter,
   createSelector,
@@ -7,22 +6,15 @@ import {
   isAnyOf,
 } from "@reduxjs/toolkit";
 
-import {
-  call,
-  cancel,
-  cancelled,
-  fork,
-  join,
-  put,
-  take,
-  takeLatest,
-} from "redux-saga/effects";
 import { Player, createEncodedPlayer } from "./player";
-import { CANCEL, Task } from "redux-saga";
-import { GuardedType, SagaCancellablePromise, uuid } from "@common/utils";
+import { uuid } from "@common/utils";
 import { RootState } from "@app/store";
 import { finishRehydrate } from "@features/persist/persistor";
 import { del, getMany, set } from "idb-keyval";
+import {
+  AppStartListening,
+  forkWithCancelAction,
+} from "@app/listenerMiddleware";
 
 enum AudioSourceState {
   CREATED = "created",
@@ -120,75 +112,89 @@ const {
   errorAudioSource,
 } = audioSourceSlice.actions;
 
-function* playAudioSaga(
-  player: Player,
-  action: ReturnType<typeof playAudioSource | typeof stopAudioSource>,
-) {
-  if (stopAudioSource.match(action)) {
-    player.stop();
-    return;
-  }
+// Listener
 
-  yield call([player, player.play]);
-  yield put(audioSourceEnded(action.payload));
-}
+export const startAudioSourceListener = (
+  appStartListening: AppStartListening,
+) => {
+  const playerMap = new Map<string, Player>();
 
-function cancellableCreatePlayer(blob: Blob) {
-  const abort = new AbortController();
-  const promise = createEncodedPlayer(blob, abort.signal);
-  (promise as SagaCancellablePromise<Player>)[CANCEL] = () => abort.abort();
-  return promise;
-}
+  const playerActionMatcher = isAnyOf(
+    playAudioSource,
+    stopAudioSource,
+    destroyAudioSource,
+  );
 
-function* audioPlayerSaga(action: ReturnType<typeof createAudioSource>) {
-  const { id, blob } = action.payload;
-  const player: Player = yield call(cancellableCreatePlayer, blob);
-  yield put(audioSourceReady({ id, durationMs: player.durationMs }));
-  const isPlayerAction = isAnyOf(playAudioSource, stopAudioSource);
-  const predicate = (action: Action) =>
-    isPlayerAction(action) && action.payload === id;
-  try {
-    yield join(yield takeLatest(predicate, playAudioSaga, player));
-  } finally {
-    if ((yield cancelled()) as boolean) {
-      player.destroy();
-    }
-  }
-}
+  const startPlayerListener = (id: string) =>
+    appStartListening({
+      predicate: (action) =>
+        playerActionMatcher(action) && action.payload === id,
+      effect: async (action, listenerAPI) => {
+        listenerAPI.cancelActiveListeners();
+        if (destroyAudioSource.match(action)) {
+          return;
+        }
+        const player = playerMap.get(id);
+        if (!player) {
+          return;
+        }
+        if (stopAudioSource.match(action)) {
+          player.stop();
+          return;
+        }
+        await listenerAPI.pause(player.play());
+        listenerAPI.dispatch(audioSourceEnded(id));
+      },
+    });
 
-function* rehydrateSaga(action: ReturnType<typeof finishRehydrate>) {
-  const ids = action.payload.audioSources ?? [];
-  const loadedSources: unknown[] = ids.length ? yield call(getMany, ids) : [];
+  appStartListening({
+    actionCreator: createAudioSource,
+    effect: async (action, listenerAPI) => {
+      const { id, blob } = action.payload;
+      const createTask = forkWithCancelAction(listenerAPI)(
+        (action) => destroyAudioSource.match(action) && action.payload === id,
+        ({ pause, signal }) => pause(createEncodedPlayer(blob, signal)),
+      );
+      const result = await createTask.result;
+      if (result.status === "ok") {
+        const player = result.value;
+        playerMap.set(id, player);
+        listenerAPI.dispatch(
+          audioSourceReady({ id, durationMs: player.durationMs }),
+        );
+        startPlayerListener(id);
+      } else if (result.status === "rejected") {
+        listenerAPI.dispatch(errorAudioSource(id));
+      }
+    },
+  });
 
-  for (const [i, s] of loadedSources.entries()) {
-    const id = ids[i];
-    yield put(
-      s instanceof Blob
-        ? createAudioSource({ id, blob: s })
-        : errorAudioSource(id),
-    );
-  }
-}
+  appStartListening({
+    actionCreator: destroyAudioSource,
+    effect: ({ payload: id }) => {
+      playerMap.get(id)?.stop();
+      playerMap.delete(id);
+      del(id);
+    },
+  });
 
-function* audioSourceSaga() {
-  yield fork(rehydrateSaga, yield take(finishRehydrate.type));
+  appStartListening({
+    actionCreator: finishRehydrate,
+    effect: async (rehydrateAction, listenerAPI) => {
+      listenerAPI.unsubscribe();
+      const ids = rehydrateAction.payload.audioSources ?? [];
+      const loadedSources: unknown[] = ids.length ? await getMany(ids) : [];
 
-  const players = new Map<string, Task>();
-  const predicate = isAnyOf(createAudioSource, destroyAudioSource);
-  for (;;) {
-    const action: GuardedType<typeof predicate> = yield take(predicate);
-    if (createAudioSource.match(action) && !players.has(action.payload.id)) {
-      players.set(action.payload.id, yield fork(audioPlayerSaga, action));
-      yield fork(set, action.payload.id, action.payload.blob);
-    } else if (destroyAudioSource.match(action)) {
-      const id = action.payload;
-      const task = players.get(id);
-      task && ((yield cancel(task)) as unknown);
-      players.delete(id);
-      yield fork(del, id);
-    }
-  }
-}
+      loadedSources.forEach((blob, i) =>
+        listenerAPI.dispatch(
+          blob instanceof Blob
+            ? createAudioSource({ id: ids[i], blob })
+            : errorAudioSource(ids[i]),
+        ),
+      );
+    },
+  });
+};
 
 export function generateAudioSourceId() {
   return uuid();
@@ -233,9 +239,6 @@ export {
   stopAudioSource,
   destroyAudioSource,
 };
-
-// Saga
-export { audioSourceSaga };
 
 // Reducer
 export const audioSourceReducer = audioSourceSlice.reducer;

@@ -3,12 +3,16 @@ import { sampleReducer } from "@features/sample/sampleSlice";
 import {
   audioSourceReducer,
   createAudioSource,
+  startAudioSourceListener,
 } from "@features/audioSource/audioSourceSlice";
 import createSagaMiddleware from "redux-saga";
 import { rootSaga } from "./saga";
 import { persistReducer, startRehydrate } from "@features/persist/persistor";
-import { recorderReducer } from "@features/recorder/recorderSlice";
-import { listenerMiddleware } from "./listenerMiddleware";
+import {
+  recorderReducer,
+  startRecorderListener,
+} from "@features/recorder/recorderSlice";
+import { appStartListening, listenerMiddleware } from "./listenerMiddleware";
 
 export function createStore() {
   const sagaMiddleware = createSagaMiddleware();
@@ -33,6 +37,9 @@ export function createStore() {
   store.dispatch(startRehydrate());
   return store;
 }
+
+startRecorderListener(appStartListening);
+startAudioSourceListener(appStartListening);
 
 type Store = ReturnType<typeof createStore>;
 
