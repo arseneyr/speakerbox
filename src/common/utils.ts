@@ -94,3 +94,7 @@ export function isEntityState<T, Id extends EntityId = string>(
   }
   return ids.every((v) => v in entities);
 }
+
+export function uuid() {
+  return crypto.randomUUID();
+}

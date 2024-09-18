@@ -9,10 +9,11 @@ import {
 } from "@reduxjs/toolkit";
 import { RootState } from "@app/store";
 import {
+  isSourceErrored,
   isSourceLoading,
   playAudioSource,
   selectAudioSourceById,
-} from "../audioSource/audioSourceSlice";
+} from "@features/audioSource/audioSourceSlice";
 import { isEntityState } from "@common/utils";
 import { finishRehydrate } from "@features/persist/persistor";
 
@@ -77,6 +78,10 @@ export const selectIsSampleLoading = createSelector(
   [selectSampleSource],
   isSourceLoading,
 );
+export const selectIsSampleErrored = createSelector(
+  [selectSampleSource],
+  isSourceErrored,
+);
 export const selectSampleDurationMs = createSelector(
   [selectSampleSource],
   (source) => source.durationMs,
@@ -87,5 +92,4 @@ export const { createSample } = sampleSlice.actions;
 export { playSample };
 
 // Reducer
-const sampleReducer = sampleSlice.reducer;
-export default sampleReducer;
+export const sampleReducer = sampleSlice.reducer;

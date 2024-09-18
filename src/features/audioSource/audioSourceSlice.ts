@@ -19,10 +19,10 @@ import {
 } from "redux-saga/effects";
 import { Player, createEncodedPlayer } from "./player";
 import { CANCEL, Task } from "redux-saga";
-import { GuardedType, SagaCancellablePromise } from "@common/utils";
+import { GuardedType, SagaCancellablePromise, uuid } from "@common/utils";
 import { RootState } from "@app/store";
 import { finishRehydrate } from "@features/persist/persistor";
-import { getMany } from "idb-keyval";
+import { del, getMany, set } from "idb-keyval";
 
 enum AudioSourceState {
   CREATED = "created",
@@ -88,9 +88,10 @@ const audioSourceSlice = createSlice({
       audioSourceEntityAdapter.removeOne(state, action.payload);
     },
     errorAudioSource(state, action: PayloadAction<string>) {
-      audioSourceEntityAdapter.updateOne(state, {
+      audioSourceEntityAdapter.upsertOne(state, {
         id: action.payload,
-        changes: { state: AudioSourceState.ERROR },
+        state: AudioSourceState.ERROR,
+        durationMs: null,
       });
     },
   },
@@ -101,7 +102,7 @@ const audioSourceSlice = createSlice({
           state,
           action.payload.audioSources.map((id) => ({
             id,
-            state: AudioSourceState.CREATED,
+            state: AudioSourceState.LOADING,
             durationMs: null,
           })),
         );
@@ -159,43 +160,38 @@ function* rehydrateSaga(action: ReturnType<typeof finishRehydrate>) {
   const ids = action.payload.audioSources ?? [];
   const loadedSources: unknown[] = ids.length ? yield call(getMany, ids) : [];
 
-  const ret: [string, Task][] = [];
-
   for (const [i, s] of loadedSources.entries()) {
     const id = ids[i];
-    if (s instanceof Blob) {
-      const createAction = createAudioSource({ id, blob: s });
-      ret.push([id, yield fork(audioPlayerSaga, createAction)]);
-    } else {
-      yield put(errorAudioSource(id));
-    }
+    yield put(
+      s instanceof Blob
+        ? createAudioSource({ id, blob: s })
+        : errorAudioSource(id),
+    );
   }
-  return ret;
 }
 
 function* audioSourceSaga() {
-  const rehydrateAction: ReturnType<typeof finishRehydrate> = yield take(
-    finishRehydrate.type,
-  );
-  const rehydrateResult: [string, Task][] = yield call(
-    rehydrateSaga,
-    rehydrateAction,
-  );
+  yield fork(rehydrateSaga, yield take(finishRehydrate.type));
 
-  const players = new Map<string, Task>(rehydrateResult);
+  const players = new Map<string, Task>();
   const predicate = isAnyOf(createAudioSource, destroyAudioSource);
   for (;;) {
     const action: GuardedType<typeof predicate> = yield take(predicate);
     if (createAudioSource.match(action) && !players.has(action.payload.id)) {
       players.set(action.payload.id, yield fork(audioPlayerSaga, action));
-    } else if (
-      destroyAudioSource.match(action) &&
-      players.has(action.payload)
-    ) {
-      yield cancel(players.get(action.payload)!);
-      players.delete(action.payload);
+      yield fork(set, action.payload.id, action.payload.blob);
+    } else if (destroyAudioSource.match(action)) {
+      const id = action.payload;
+      const task = players.get(id);
+      task && ((yield cancel(task)) as unknown);
+      players.delete(id);
+      yield fork(del, id);
     }
   }
+}
+
+export function generateAudioSourceId() {
+  return uuid();
 }
 
 // Persist
@@ -203,7 +199,7 @@ export function persistAudioSources(rootState: RootState) {
   return rootState.audioSources.ids;
 }
 
-export function rehydrateAudioSources(input: unknown) {
+export function rehydrateAudioSources(input: unknown): string[] | null {
   if (!Array.isArray(input)) {
     return null;
   }
@@ -225,6 +221,9 @@ export const isSourceLoading = (source: AudioSource) =>
   source.state === AudioSourceState.CREATED ||
   source.state === AudioSourceState.LOADING;
 
+export const isSourceErrored = (source: AudioSource) =>
+  source.state === AudioSourceState.ERROR;
+
 export const selectAudioSourceById = audioSourceSelectors.selectById;
 
 // Actions
@@ -239,5 +238,4 @@ export {
 export { audioSourceSaga };
 
 // Reducer
-const audioSourceReducer = audioSourceSlice.reducer;
-export default audioSourceReducer;
+export const audioSourceReducer = audioSourceSlice.reducer;
