@@ -1,6 +1,6 @@
 import React from "react";
-import AddIcon from "@assets/plus.svg";
-import DownIcon from "@assets/chevron_down.svg";
+import AddIcon from "@assets/plus.svg?react";
+import DownIcon from "@assets/chevron_down.svg?react";
 
 interface AddSampleButtonOption {
   icon: React.ReactElement;
@@ -54,7 +54,7 @@ const AddSampleWithDefault: React.FunctionComponent<AddSampleButtonProps> = (
           className="menu dropdown-content absolute inset-0 min-w-full px-0"
         >
           {props.options.map((option) => (
-            <li className="pb-2">
+            <li className="pb-2" key={option.text}>
               <a onClick={blurOnClick(option.onClick)} className="text-nowrap">
                 {option.icon}
                 {option.text}
@@ -70,9 +70,6 @@ const AddSampleWithDefault: React.FunctionComponent<AddSampleButtonProps> = (
 const AddSampleButton: React.FunctionComponent<AddSampleButtonProps> = (
   props,
 ) => {
-  const defaultIcon = props.default?.icon ?? <AddIcon />;
-  const defaultText = props.default?.text ?? "Add sample";
-
   return props.default ? (
     <AddSampleWithDefault
       {...props}
@@ -85,12 +82,12 @@ const AddSampleButton: React.FunctionComponent<AddSampleButtonProps> = (
         role="button"
         className="btn btn-primary collapse-arrow text-lg"
       >
-        {defaultIcon}
-        {defaultText}
+        <AddIcon />
+        Add sample
       </div>
       <ul tabIndex={0} className="menu dropdown-content min-w-full px-0">
         {props.options.map((option) => (
-          <li className="pb-2">
+          <li className="pb-2" key={option.text}>
             <a onClick={blurOnClick(option.onClick)}>
               {option.icon}
               {option.text}
