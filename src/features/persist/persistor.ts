@@ -1,11 +1,6 @@
 import { call, put, select, take } from "redux-saga/effects";
 import { getMany, setMany } from "idb-keyval";
-import {
-  PayloadAction,
-  Reducer,
-  UnknownAction,
-  createSlice,
-} from "@reduxjs/toolkit";
+import { PayloadAction, Reducer, createSlice } from "@reduxjs/toolkit";
 import { RootState } from "@app/store";
 import {
   persistAudioSources,
@@ -53,7 +48,7 @@ function createPersistor<S, PS extends PersistorSlices<S>>(
       },
     },
   });
-  const { startRehydrate, finishRehydrate } = persistSlice.actions;
+  const { finishRehydrate } = persistSlice.actions;
 
   function pick(rootState: S) {
     return Object.fromEntries(
@@ -79,15 +74,11 @@ function createPersistor<S, PS extends PersistorSlices<S>>(
   }
 
   function* persistSaga() {
+    yield call(rehydrateSaga);
     const initState: S = yield select();
-    let oldState = pick(initState);
+    const oldState = pick(initState);
     for (;;) {
-      const action: UnknownAction = yield take("*");
-      if (startRehydrate.match(action)) {
-        const newState: S = yield call(rehydrateSaga);
-        oldState = pick(newState);
-        continue;
-      }
+      yield take("*");
       const state: S = yield select();
       const setArray: [string, unknown][] = [];
       for (const [key, { persist }] of Object.entries(persistSlices)) {
@@ -126,6 +117,9 @@ const persistor = createPersistor<RootState, typeof persistSlices>({
 
 const persistReducer: Reducer<PersistState> = persistor.reducer;
 const persistSaga = persistor.saga;
+
+export const selectIsRehydrated = (state: RootState) =>
+  !!state.persist.rehydrated;
 
 export { persistReducer, persistSaga };
 
